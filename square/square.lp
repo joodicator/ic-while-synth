@@ -1,19 +1,17 @@
 #const time_limit=100.
-con(-127..128).
-
 var(x). var(y). var(s). var(d).
 
-line( 1, set(x, -5)).               % x = -5;
-line( 2, set(y, 0)).                % y = 0;
+line( 1, set(x, con(-5))).          % x = -5;
+line( 2, set(y, con(0))).           % y = 0;
 line( 3, jif(lt(x, 0), 4, 6)).      % if (x < 0) {
-line( 4, set(s, -1)).               %     s = -1;
+line( 4, set(s, con(-1))).          %     s = -1;
 line( 5, jmp(7)).                   % } else {
-line( 6, set(s, 1)).                %     s = 1; }
-line( 7, set(d, 1)).                % d = 1;
+line( 6, set(s, con(1))).           %     s = 1; }
+line( 7, set(d, con(1))).           % d = 1;
 line( 8, jif(eq(x, 0), 13, 9)).     % while (x != 0) {
 line( 9, set(x, sub(x, s))).        %   x = x - s;
 line(10, set(y, add(y, d))).        %   y = y + d;
-line(11, set(d, add(d, 2))).        %   d = d + 2
+line(11, set(d, add(d, con(2)))).   %   d = d + 2
 line(12, jmp(8)).                   % }
 line(13, halt).
 
@@ -30,13 +28,13 @@ false_at(T) :- line_at(T,N), line(N,jif(le(X,C),_,_)), var_at(T,X,V), V > C.
 %-------------------------------------------------------------------------------
 % Arithmetic expressions: Con, Var, Var+Con, Var-Con, Var+Var, Var-Var.
 expr_at(T, C) :-
-    line_at(T,N), rhs_at(N,C), con(C).
+    line_at(T,N), rhs_at(N,con(C)).
 expr_at(T, V) :-
     line_at(T,N), rhs_at(N,X), var_at(T,X,V).
 expr_at(T, V+C) :-
-    line_at(T,N), rhs_at(N,add(X,C)), var_at(T,X,V), con(C).
+    line_at(T,N), rhs_at(N,add(X,con(C))), var_at(T,X,V).
 expr_at(T, V-C) :-
-    line_at(T,N), rhs_at(N,sub(X,C)), var_at(T,X,V), con(C).
+    line_at(T,N), rhs_at(N,sub(X,con(C))), var_at(T,X,V).
 expr_at(T, V+W) :-
     line_at(T,N), rhs_at(N,add(X,Y)), var_at(T,X,V), var_at(T,Y,W).
 expr_at(T, V-W) :-
