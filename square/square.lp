@@ -23,22 +23,26 @@ true_at(T) :- line_at(T,N), line(N,jif(eq(X,C),_,_)), var_at(T,X,V), V = C.
 true_at(T) :- line_at(T,N), line(N,jif(lt(X,C),_,_)), var_at(T,X,V), V < C.
 true_at(T) :- line_at(T,N), line(N,jif(le(X,C),_,_)), var_at(T,X,V), V <= C.
 
+false_at(T) :- line_at(T,N), line(N,jif(eq(X,C),_,_)), var_at(T,X,V), V != C.
+false_at(T) :- line_at(T,N), line(N,jif(lt(X,C),_,_)), var_at(T,X,V), V >= C.
+false_at(T) :- line_at(T,N), line(N,jif(le(X,C),_,_)), var_at(T,X,V), V > C.
+
 %-------------------------------------------------------------------------------
 % Arithmetic expressions: Con, Var, Var+Con, Var-Con, Var+Var, Var-Var.
 expr_at(T, C) :-
-    line_at(T,N), p(N,C), con(C).
+    line_at(T,N), rhs_at(N,C), con(C).
 expr_at(T, V) :-
-    line_at(T,N), p(N,X), var_at(T,X,V).
+    line_at(T,N), rhs_at(N,X), var_at(T,X,V).
 expr_at(T, V+C) :-
-    line_at(T,N), p(N,add(X,C)), var_at(T,X,V), con(C).
+    line_at(T,N), rhs_at(N,add(X,C)), var_at(T,X,V), con(C).
 expr_at(T, V-C) :-
-    line_at(T,N), p(N,sub(X,C)), var_at(T,X,V), con(C).
+    line_at(T,N), rhs_at(N,sub(X,C)), var_at(T,X,V), con(C).
 expr_at(T, V+W) :-
-    line_at(T,N), p(N,add(X,Y)), var_at(T,X,V), var_at(T,Y,W).
+    line_at(T,N), rhs_at(N,add(X,Y)), var_at(T,X,V), var_at(T,Y,W).
 expr_at(T, V-W) :-
-    line_at(T,N), p(N,sub(X,Y)), var_at(T,X,V), var_at(T,Y,W).
+    line_at(T,N), rhs_at(N,sub(X,Y)), var_at(T,X,V), var_at(T,Y,W).
 
-p(N, X) :- line(N,set(_,X)).
+rhs_at(N, X) :- line(N, set(_, X)).
 
 %-------------------------------------------------------------------------------
 % Stop execution when the program either halts or times out.
@@ -68,21 +72,24 @@ line_at(T+1, JT) :-
 
 % Conditional jump (false)
 line_at(T+1, JF) :-
-    not stop_at(T), line_at(T, N), line(N, jif(_,JT,JF)), not true_at(T).
+    not stop_at(T), line_at(T, N), line(N, jif(_,JT,JF)), false_at(T).
 
 %-------------------------------------------------------------------------------
 % Initialise variables to 0.
 var_at(0, X, 0) :- var(X).
 
-set_at(T, X) :- line_at(T, N), line(N, set(X, _)).
+not_set_at(T, X) :- line_at(T, N), line(N, set(Y, _)), Y != X, var(X).
+not_set_at(T, X) :- line_at(T, N), line(N, jif(_, _, _)), var(X).
+not_set_at(T, X) :- line_at(T, N), line(N, jmp(_)), var(X).
+not_set_at(T, X) :- line_at(T, N), line(N, halt), var(X).
 
 % When not setting, variables do not change.
 var_at(T+1, X, V) :-
-    not stop_at(T), var_at(T, X, V), not set_at(T, X), con(V).
+    not stop_at(T), var_at(T, X, V), not_set_at(T, X).
 
 % Variable assignment.
 var_at(T+1, X, V) :-
-    not stop_at(T), line_at(T, N), line(N, set(X, E)), expr_at(T, V), con(V).
+    not stop_at(T), line_at(T, N), line(N, set(X, E)), expr_at(T, V).
 
 %-------------------------------------------------------------------------------
 halts :- stop_at(T), halt_at(T).
