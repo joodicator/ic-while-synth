@@ -1,5 +1,5 @@
 #const line_max=10.
-#const time_max=100.
+#const time_max=50.
 #const con_min=-31.
 #const con_max=32.
 
@@ -104,10 +104,12 @@ run_halt(R) :- run_halt(R,_).
 % run_var_out(R,X,C) if the final value of X in run R is C.
 run_var_out(R,X,C) :- run_var(R,T,X,C), not run(R,T).
 
-run_var_in(R,X) :- in(R,X,_).
+% Initialise variables to their input value or, by default, 0.
+run_var_in(R,X)  :- in(R,X,_).
 run_var(R,0,X,C) :- in(R,X,C).
 run_var(R,0,X,0) :- run(R), var(X), not run_var_in(R,X).
 
+% On a set statement, update variables; otherwise, leave them constant.
 run_var(R,T+1,X,C) :-
     run_line(R,T,L), not line_set(L,X), run_var(R,T,X,C).
 run_var(R,T+1,X,C) :-
@@ -115,7 +117,7 @@ run_var(R,T+1,X,C) :-
 
 % Start at line 1, and, by default, move to the next line at each step.
 run_line(R,0,1)     :- run(R).
-run_line(R,T+1,L+1) :- run(R,T), run_line(R,T,L), not line_jump(L).
+run_line(R,T+1,L+1) :- L<=line_max, run(R,T), run_line(R,T,L), not line_jump(L).
 
 % Jump to a point given that a boolean guard is true.
 run_line(R,T+1,L+1) :-
