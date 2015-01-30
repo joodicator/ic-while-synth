@@ -1,51 +1,48 @@
-#const line_max=3.
-#const time_max=10.
+#const line_max=5.
+#const time_max=line_max+1.
 
-#const con_bound=32.
+#const con_bound=16.
 #const con_min=0.
 #const con_max=con_bound.
 
 #hide.
 #show line_instr/2.
-
 #show run_does_not_halt/1.
-%#show run_var_out/3.
-%#show line_set/2.
-%#show run_expr/4.
+
+% #show run_var_out/3.
+% #show line_set/2.
+% #show run_expr/4.
+
+%-------------------------------------------------------------------------------
+% Variables.
+
+var(a). var(b). var(z).
+%var(a). var(b). var(c). var(z).
 
 %-------------------------------------------------------------------------------
 % Test examples.
- in(0,x,0).  in(1,x,1).  in(2,x,2).  in(3,x,3).    in(4,x,4). % x = n
-out(0,y,0). out(1,y,2). out(2,y,6). out(3,y,12). out(4,y,20). % y = n(n+1)
 
-% [jjc311@corona06:~/git/while/learn2]$ clingo learn.lp
-% Answer: 1
-% line_instr(3,set(y,add(z,x))) line_instr(2,set(z,mul(x,x))) line_instr(1,set(y,con(27))) 
-% Optimization: 6 
-% Answer: 2
-% line_instr(3,set(y,add(y,x))) line_instr(2,set(y,mul(x,x))) line_instr(1,skip) 
-% Optimization: 5 
-% Answer: 3
-% line_instr(3,set(y,add(x,y))) line_instr(2,skip) line_instr(1,set(y,mul(x,x))) 
-% Optimization: 4 
-% Answer: 4
-% line_instr(3,skip) line_instr(2,set(y,add(x,y))) line_instr(1,set(y,mul(x,x))) 
-% Optimization: 3 
-% OPTIMUM FOUND
-% 
-% Models      : 1     
-%   Enumerated: 4
-%  Optimum   : yes
-% Optimization: 3 
-% Time        : 30.130
-%   Prepare   : 5.460
-%   Prepro.   : 3.380
-%   Solving   : 21.290
+in(r1,a,1). in(r1,b,2). out(r1,z,2).
+in(r2,a,2). in(r2,b,1). out(r2,z,2).
 
+in(r3,a,1). in(r3,b,3). out(r3,z,3).
+in(r4,a,3). in(r4,b,1). out(r4,z,3).
+
+in(r5,a,2). in(r5,b,3). out(r5,z,3).
+in(r6,a,3). in(r6,b,2). out(r6,z,3).
+
+in(r7,a,2). in(r7,b,4). out(r7,z,4).
+in(r8,a,4). in(r8,b,2). out(r8,z,4).
+
+%in(r1,a,1). in(r1,b,2). in(r1,c,3). out(r1,z,3).
+%in(r2,a,2). in(r2,b,4). in(r2,c,3). out(r2,z,4).
+%in(r3,a,5). in(r3,b,3). in(r3,c,4). out(r3,z,5).
+%in(r4,a,6). in(r4,b,5). in(r4,c,4). out(r4,z,6).
+%in(r5,a,6). in(r5,b,7). in(r5,c,5). out(r5,z,7).
+%in(r6,a,7). in(r6,b,8). in(r6,c,6). out(r6,z,8).
 
 %-------------------------------------------------------------------------------
-% Variables, constants, and line numbers.
-var(x). var(y). var(z).
+% Constants, line numbers.
 con(con_min..con_max).
 line(1..line_max).
 
@@ -53,26 +50,24 @@ line(1..line_max).
 % Exactly one instruction per line.
 1{ line_instr(L, I) : instr(I) }1 :- line(L).
 
-%line_instr(1, set(z, mul(x, x))).
-%line_instr(2, set(y, add(z, x))).
-%line_instr(3, skip).
-
 % All test examples must halt with the correct value.
 :- run_does_not_halt(R).
 :- run_var_out(R,X,Actual), out(R,X,Expected), Actual != Expected.
 
-% As many trailing "skip" instructions as possible (weighted by line number).
-#maximize [ line_instr(L, skip)=L ].
-
 %-------------------------------------------------------------------------------
 % Instructions.
-instr(skip).
 instr(set(V, E))            :- var(V), expr(E).
-instr(if(B,DeltaElse))      :- bool(B), line(DeltaElse).
-instr(else(DeltaEnd))       :- line(DeltaEnd).
-instr(end_if).
-instr(while(B,DeltaEnd))    :- bool_neg(B), line(DeltaEnd).
-instr(end_while(DeltaHead)) :- line(DeltaHead).
+instr(if(B,BodyLength))     :- bool(B), line(BodyLength).
+% instr(while(B,DeltaEnd))    :- bool_neg(B), line(DeltaEnd).
+% instr(end_while(DeltaHead)) :- line(DeltaHead).
+
+% If statements may not end outside the program.
+:- line_instr(L,if(_,Length)), line(L), line(Length), L+Length+1>line_max.
+
+% Nested if statements may not end outside a parent.
+:- line_instr(L1,if(_,Len1)), line(L1), line(Len1),
+   line_instr(L2,if(_,Len2)), line(L2), line(Len2),
+   L1 < L2, L2 <= L1+Len1, L2+Len2 >= L1+Len1.
 
 %-------------------------------------------------------------------------------
 % Arithmetic expressions. (Constants must be assigned to a variable to be used.)
@@ -80,9 +75,9 @@ expr(con(con_min..con_max)).
 expr(var(V)) :- var(V).
 expr(add(V1, V2)) :- var(V1), var(V2).
 expr(sub(V1, V2)) :- var(V1), var(V2).
-expr(mul(V1, V2)) :- var(V1), var(V2).
 
-%expr(div(V1, V2)) :- var(V1), var(V2).
+% expr(mul(V1, V2)) :- var(V1), var(V2).
+% expr(div(V1, V2)) :- var(V1), var(V2).
 
 %-------------------------------------------------------------------------------
 % Boolean expressions (with and without negated versions).
@@ -140,19 +135,15 @@ run_line(R,T+1,L+1) :-
     run(R,T), run_line(R,T,L), line_instr(L,while(B,_)), run_bool(R,T,B).
 
 % Jump by a certain distance, given that a boolean guard is false.
-run_line(R,T+1,L+DeltaElse+1) :-
-    run(R,T), run_line(R,T,L), line_instr(L,if(B,DeltaElse)),
-    not run_bool(R,T,B),
-    line_instr(L+DeltaElse,else(_)). % Partially verify integrity.
+run_line(R,T+1,L+BodyLength+1) :-
+    run(R,T), run_line(R,T,L), line_instr(L,if(B,BodyLength)),
+    not run_bool(R,T,B).
 run_line(R,T+1,L+DeltaEnd+1) :-
     run(R,T), run_line(R,T,L), line_instr(L,while(B,DeltaEnd)),
     not run_bool(R,T,B),
     line_instr(L+DeltaEnd,end_while(DeltaEnd)). % Partially verify integrity.
 
 % Automatically jump by a certain distance.
-run_line(R,T+1,L+DeltaEnd+1) :-
-    run(R,T), run_line(R,T,L), line_instr(L,else(DeltaEnd)),
-    line_instr(L_end,end_if).
 run_line(R,T+1,L-DeltaHead) :-
     run(R,T), run_line(R,T,L), line_instr(L,end_while(DeltaHead)),
     line_instr(L_head, while(_,_)).
@@ -173,16 +164,17 @@ run_expr(R,T,add(V1,V2),C) :-
 run_expr(R,T,sub(V1,V2),C) :-
     run_var(R,T,V1,C1), run_var(R,T,V2,C2),
     C = (C1 - C2 + con_bound) #mod con_bound, con(C).
-run_expr(R,T,mul(V1,V2),C) :-
-    run_var(R,T,V1,C1), run_var(R,T,V2,C2),
-    C = (C1 * C2) #mod con_bound, con(C).
 
-%run_expr(R,T,div(V1,V2),C) :-
-%    run_var(R,T,V1,C1), run_var(R,T,V2,C2),
-%    C2 != 0, C = (C1 #div C2), con(C).
-%run_expr(R,T,div(V1,V2),0) :-
-%    run_var(R,T,V1,C1), run_var(R,T,V2,C2),
-%    C2 == 0.
+% run_expr(R,T,mul(V1,V2),C) :-
+%     run_var(R,T,V1,C1), run_var(R,T,V2,C2),
+%     C = (C1 * C2) #mod con_bound, con(C).
+
+% run_expr(R,T,div(V1,V2),C) :-
+%     run_var(R,T,V1,C1), run_var(R,T,V2,C2),
+%     C2 != 0, C = (C1 #div C2), con(C).
+% run_expr(R,T,div(V1,V2),0) :-
+%     run_var(R,T,V1,C1), run_var(R,T,V2,C2),
+%     C2 == 0.
 
 % Evaluate boolean expressions.
 run_bool(R,T,lt(V1,V2)) :-
