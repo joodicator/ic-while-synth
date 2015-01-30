@@ -1,7 +1,7 @@
 #const line_max=5.
 #const time_max=line_max+1.
 
-#const con_bound=16.
+#const con_bound=8.
 #const con_min=0.
 #const con_max=con_bound.
 
@@ -16,30 +16,32 @@
 %-------------------------------------------------------------------------------
 % Variables.
 
-var(a). var(b). var(z).
-%var(a). var(b). var(c). var(z).
+var(a). var(b). var(c). var(z).
+
+read_only(a). read_only(b). read_only(c).
 
 %-------------------------------------------------------------------------------
 % Test examples.
 
-in(r1,a,1). in(r1,b,2). out(r1,z,2).
-in(r2,a,2). in(r2,b,1). out(r2,z,2).
+in(r1,a,1). in(r1,b,1). in(r1,c,1). out(r1,z,1).
+in(r2,a,2). in(r2,b,2). in(r2,c,2). out(r2,z,2).
+in(r3,a,3). in(r3,b,3). in(r3,c,3). out(r3,z,3).
 
-in(r3,a,1). in(r3,b,3). out(r3,z,3).
-in(r4,a,3). in(r4,b,1). out(r4,z,3).
+in(r4,a,2). in(r4,b,1). in(r4,c,1). out(r4,z,2).
+in(r5,a,2). in(r5,b,3). in(r5,c,2). out(r5,z,3).
+in(r6,a,3). in(r6,b,4). in(r6,c,3). out(r6,z,4).
 
-in(r5,a,2). in(r5,b,3). out(r5,z,3).
-in(r6,a,3). in(r6,b,2). out(r6,z,3).
+in(r7,a,2). in(r7,b,2). in(r7,c,1). out(r7,z,2).
+in(r8,a,3). in(r8,b,2). in(r8,c,3). out(r8,z,3).
+in(r9,a,3). in(r9,b,4). in(r9,c,4). out(r9,z,4).
 
-in(r7,a,2). in(r7,b,4). out(r7,z,4).
-in(r8,a,4). in(r8,b,2). out(r8,z,4).
+in(rA,a,3). in(rA,b,2). in(rA,c,1). out(rA,z,3).
+in(rB,a,4). in(rB,b,2). in(rB,c,3). out(rB,z,4).
+in(rC,a,3). in(rC,b,5). in(rC,c,4). out(rC,z,5).
 
-%in(r1,a,1). in(r1,b,2). in(r1,c,3). out(r1,z,3).
-%in(r2,a,2). in(r2,b,4). in(r2,c,3). out(r2,z,4).
-%in(r3,a,5). in(r3,b,3). in(r3,c,4). out(r3,z,5).
-%in(r4,a,6). in(r4,b,5). in(r4,c,4). out(r4,z,6).
-%in(r5,a,6). in(r5,b,7). in(r5,c,5). out(r5,z,7).
-%in(r6,a,7). in(r6,b,8). in(r6,c,6). out(r6,z,8).
+in(rD,a,2). in(rD,b,3). in(rD,c,1). out(rD,z,3).
+in(rE,a,3). in(rE,b,2). in(rE,c,4). out(rE,z,4).
+in(rF,a,3). in(rF,b,4). in(rF,c,5). out(rF,z,5).
 
 %-------------------------------------------------------------------------------
 % Constants, line numbers.
@@ -56,13 +58,14 @@ line(1..line_max).
 
 %-------------------------------------------------------------------------------
 % Instructions.
-instr(set(V, E))            :- var(V), expr(E).
+instr(set(V, E))            :- var(V), not read_only(V), expr(E).
 instr(if(B,BodyLength))     :- bool(B), line(BodyLength).
 % instr(while(B,DeltaEnd))    :- bool_neg(B), line(DeltaEnd).
 % instr(end_while(DeltaHead)) :- line(DeltaHead).
 
 % If statements may not end outside the program.
-:- line_instr(L,if(_,Length)), line(L), line(Length), L+Length+1>line_max.
+:- line_instr(L,if(_,Len)), line(L), line(Len),
+   L+Len>line_max.
 
 % Nested if statements may not end outside a parent.
 :- line_instr(L1,if(_,Len1)), line(L1), line(Len1),
@@ -71,10 +74,10 @@ instr(if(B,BodyLength))     :- bool(B), line(BodyLength).
 
 %-------------------------------------------------------------------------------
 % Arithmetic expressions. (Constants must be assigned to a variable to be used.)
-expr(con(con_min..con_max)).
-expr(var(V)) :- var(V).
-expr(add(V1, V2)) :- var(V1), var(V2).
 expr(sub(V1, V2)) :- var(V1), var(V2).
+expr(add(V1, V2)) :- var(V1), var(V2).
+expr(var(V)) :- var(V).
+expr(con(con_min..con_max)).
 
 % expr(mul(V1, V2)) :- var(V1), var(V2).
 % expr(div(V1, V2)) :- var(V1), var(V2).
