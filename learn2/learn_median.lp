@@ -55,6 +55,10 @@ line(1..line_max).
 % Exactly one instruction per line.
 1{ line_instr(L, I) : instr(I, L) }1 :- line(L).
 
+line_instr(1, set(y, var(a))).
+line_instr(2, if(lt(y, b), 1)).
+line_instr(3, set(y, var(b))).
+
 % All test examples must halt with the correct value.
 :- run_does_not_halt(R).
 :- run_var_out(R,X,Actual), out(R,X,Expected), Actual != Expected.
