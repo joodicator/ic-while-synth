@@ -13,6 +13,7 @@ data Instr
   = ISet Var Expr
   | IIf Guard Len
   | IWhile Guard Len
+  | IEndWhile
   deriving Show
 
 data Expr
@@ -53,6 +54,8 @@ showProgram' indent ((lineNum,instr):lines)
             ("if (" ++ showGuard guard ++ "):", len)
         IWhile guard len ->
             ("while (" ++ showGuard guard ++ "):", len)
+        IEndWhile ->
+            ("end_while", 0)
     lineNumStr
       = reverse $ take 6 $ (reverse (show lineNum ++ ". ")) ++ repeat ' '
 
@@ -79,6 +82,8 @@ readInstr term = case term of
     TFun (Name "while") [tBool, TInt len] -> do
         bool <- readGuard tBool
         return (IWhile bool len)
+    TFun (Name "end_while") [] -> do
+        return IEndWhile
     _ -> do
         Nothing
 

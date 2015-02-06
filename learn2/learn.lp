@@ -1,7 +1,7 @@
 #const line_max=5.
-#const time_max=15.
+#const time_max=30.
 
-#const con_bound=7.
+#const con_bound=11.
 #const con_min=0.
 #const con_max=con_bound.
 
@@ -11,21 +11,16 @@
 
 % #show run_var_out/3.
 % #show line_set/2.
-#show run_line/3.
-
-timeout :- run_line(R,time_max,L), L != line_max+1.
-:- timeout.
+% #show run_line/3.
 
 %-------------------------------------------------------------------------------
 % Variables.
 
 var(x). % input
-var(v0).
-var(v1).
-var(y).
+var(v1). % constant 1
 var(z). % output: z = x(x+1)/2.
 
-write_var(y).
+write_var(x).
 write_var(z).
 
 %-------------------------------------------------------------------------------
@@ -38,7 +33,7 @@ ex(r0, 0, 0).
 ex(r1, 1, 1).
 ex(r2, 2, 3).
 ex(r3, 3, 6).
-%ex(r4, 4, 10).
+ex(r4, 4, 10).
 
 %-------------------------------------------------------------------------------
 % Constants, line numbers.
@@ -49,10 +44,14 @@ line(1..line_max).
 % Exactly one instruction per line.
 1{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
 
-line_instr(1, set(v1, con(1))).
-line_instr(2, while(lt(v0, x), line_max-2)).
+preset_line_instr(1, set(v1, con(1))).
+%preset_line_instr(2, while(lt(v0, x), line_max-3)).
+%preset_line_instr(3, set(z, add(z,x))).
+%preset_line_instr(4, set(x, sub(x,v1))).
+%preset_line_instr(line_max, end_while).
 
-valid_line_instr(1, set(v1, con(1))).
+valid_line_instr(L,I) :- preset_line_instr(L,I).
+line_instr(L,I) :- preset_line_instr(L,I).
 
 % All test examples must halt with the correct value.
 :- run_does_not_halt(R).
@@ -62,14 +61,27 @@ valid_line_instr(1, set(v1, con(1))).
 % Instructions.
 valid_line_instr(L, set(V, E))      :- line(L), write_var(V), expr(E).
 valid_line_instr(L, if(B, 1..M))    :- line(L), bool(B), M=line_max-L.
-valid_line_instr(L, while(B, 1..M)) :- line(L), bool(B), M=line_max-L.
+valid_line_instr(L, while(B, 1..M)) :- line(L), bool(B), M=line_max-L-1.
+valid_line_instr(L, end_while)      :- line(L).
 
-% Forbid blocks that end outside of a block they start within.
-:- block(L,M), block(PL,PM), PL<L, L<=PL+PM, L+M>PL+PM.
+% Require end_while statements to occur at exactly the correct positions.
+:- line_instr(L,end_while), not end_while_block(L).
+:- end_while_block(L), not line_instr(L,end_while).
+end_while_block(L) :- line_instr_while_length(LH,B), L=LH+B+1.
+
+% Forbid if/while blocks that end outside of a block they start within.
+:- line_instr_if_length(L,M), block(PL,PM), PL<L, L<=PL+PM, L+M>PL+PM.
+:- line_instr_while_length(L,M), block(PL,PM), PL<L, L<=PL+PM, L+M+1>PL+PM.
 
 % block(L, M) if a code block starts after line L, and ends after line L+M.
 block(L, M) :- line_instr(L,    if(_, M)).
 block(L, M) :- line_instr(L, while(_, M)).
+
+% Projection of if/while parameters.
+line_instr_if_guard(L, G)     :- line_instr(L, if(G, _)).
+line_instr_if_length(L, B)    :- line_instr(L, if(_, B)).
+line_instr_while_guard(L, G)  :- line_instr(L, while(G, _)).
+line_instr_while_length(L, B) :- line_instr(L, while(_, B)).
 
 %-------------------------------------------------------------------------------
 % Arithmetic expressions. (Constants must be assigned to a variable to be used.)
@@ -143,32 +155,32 @@ run_line(R,T+1,L+BodyLength+1) :-
 
 % Run while loops.
 run_line(R,T+1,L+1) :-
+    % Boolean guard is true upon (re-)entering loop.
     run(R,T), run_line(R,T,L), line_instr_while_guard(L,B), run_bool(R,T,B).
-run_line(R,T+1,L+BodyLength+1) :-
+run_line(R,T+1,L+BodyLength+2) :-
+    % Boolean guard is false upon (re-)entering loop.
     run(R,T), run_line(R,T,L), line_instr(L,while(B,BodyLength)),
     not run_bool(R,T,B).
 run_line(R,T+1,HeadLine) :-
-    run(R,T), run_line(R,T,L),
+    % Re-enter loop after reaching end_while.
+    run(R,T), run_line(R,T,L), line_instr(L,end_while),
     line_instr_while_length(HeadLine, BodyLength),
-    L==HeadLine+BodyLength.
-
-line_instr_if_guard(L, G)     :- line_instr(L, if(G, _)).
-line_instr_while_guard(L, G)  :- line_instr(L, while(G, _)).
-line_instr_while_length(L, B) :- line_instr(L, while(_, B)).
+    L == HeadLine+BodyLength+1.
 
 line_jump(L) :- line_instr(L, if(_,_)).
-line_jump(L) :- line_instr(L, else(_)).
 line_jump(L) :- line_instr(L, while(_,_)).
-line_jump(L) :- line_instr(L, end_while(_)).
+line_jump(L) :- line_instr(L, end_while).
 
 % Evaluate arithmetic expressions.
 run_expr(R,T,con(C),C) :-
     run(R,T), con(C).
 run_expr(R,T,var(V),C) :-
     run_var(R,T,V,C), con(C).
+
 run_expr(R,T,add(V1,V2),C) :-
     run_var(R,T,V1,C1), run_var(R,T,V2,C2),
     C = (C1 + C2) #mod con_bound, con(C).
+
 run_expr(R,T,sub(V1,V2),C) :-
     run_var(R,T,V1,C1), run_var(R,T,V2,C2),
     C = (C1 - C2 + con_bound) #mod con_bound, con(C).
