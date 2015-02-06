@@ -1,6 +1,7 @@
 module While where
 
 import Control.Monad
+import Control.Applicative
 import Data.List
 import Clingo
 
@@ -15,16 +16,22 @@ data Instr
   deriving Show
 
 data Expr
-  = ECon Integer
-  | EVar Var
-  | EAdd Var Var
-  | ESub Var Var
+  = ECon Integer -- ..., -1, 0, 1, 2, ...
+  | EVar Var     -- x
+  | EAdd Var Var -- x + y
+  | ESub Var Var -- x - y
+  | EMul Var Var -- x * y
+  | EDiv Var Var -- x / y
   deriving Show
 
 data Guard
-  = GLT Var Var
-  | GGT Var Var
-  | GNeg Guard
+  = GLT Var Var -- x <  y
+  | GLE Var Var -- x <= y
+  | GGT Var Var -- x >  y
+  | GGE Var Var -- x >= y
+  | GEQ Var Var -- x == y
+  | GNE Var Var -- x != y
+  | GNeg Guard  -- !(...)
   deriving Show
 
 --------------------------------------------------------------------------------
@@ -82,31 +89,52 @@ showExpr expr = case expr of
     EVar (Name x)          -> x
     EAdd (Name x) (Name y) -> x ++ " + " ++ y
     ESub (Name x) (Name y) -> x ++ " - " ++ y
+    EMul (Name x) (Name y) -> x ++ " * " ++ y
+    EDiv (Name x) (Name y) -> x ++ " / " ++ y
 
 readExpr :: Term -> Maybe Expr
-readExpr term = case term of
-    TFun (Name "con") [TInt int]                  -> return (ECon int)
-    TFun (Name "var") [TFun var []]               -> return (EVar var)
-    TFun (Name "add") [TFun var [], TFun var' []] -> return (EAdd var var')
-    TFun (Name "sub") [TFun var [], TFun var' []] -> return (ESub var var')
-    _                                             -> Nothing
+readExpr term
+  = readBinary (Name "add") EAdd term <|>
+    readBinary (Name "sub") ESub term <|>
+    readBinary (Name "mul") EMul term <|>
+    readBinary (Name "div") EDiv term <|>
+    readLeafExpr term
 
---------------------------------------------------------------------------------
+readLeafExpr :: Term -> Maybe Expr
+readLeafExpr term = case term of
+    TFun (Name "con") [TInt int]    -> return (ECon int)
+    TFun (Name "var") [TFun var []] -> return (EVar var)
+    _                               -> Nothing
+-------------------------------------------------------------------------------
 showGuard :: Guard -> String
 showGuard guard = case guard of
-    (GLT (Name x) (Name y))         -> x ++ " < " ++ y
-    (GGT (Name x) (Name y))         -> x ++ " > " ++ y
-    (GNeg (GLT (Name x) (Name y)))  -> x ++ " >= " ++ y
-    (GNeg (GGT (Name x) (Name y)))  -> x ++ " <= " ++ y
+    (GLT (Name x) (Name y)) -> x ++ " < " ++ y
+    (GGT (Name x) (Name y)) -> x ++ " > " ++ y
+    (GLE (Name x) (Name y)) -> x ++ " <= " ++ y
+    (GGE (Name x) (Name y)) -> x ++ " >= " ++ y
+    (GEQ (Name x) (Name y)) -> x ++ " == " ++ y
+    (GNE (Name x) (Name y)) -> x ++ " != " ++ y
+    (GNeg guard')           -> "!(" ++ showGuard guard' ++ ")"
 
 readGuard :: Term -> Maybe Guard
-readGuard term = case term of
-    TFun (Name "lt") [TFun var [], TFun var' []] -> do
-        return (GLT var var')
-    TFun (Name "gt") [TFun var [], TFun var' []] -> do
-        return (GGT var var')
-    TFun (Name "neg") [tBool] -> do
-        bool <- readGuard tBool
-        return (GNeg bool)
-    _ -> do
-        Nothing 
+readGuard term
+  = readBinary (Name "lt") GLT term <|>
+    readBinary (Name "gt") GGT term <|>
+    readBinary (Name "le") GLE term <|>
+    readBinary (Name "ge") GGE term <|>
+    readBinary (Name "eq") GEQ term <|>
+    readBinary (Name "ne") GNE term <|>
+    readNegation term
+
+readNegation :: Term -> Maybe Guard
+readNegation term = do
+    TFun (Name "neg") [guardTerm] <- return term
+    guard <- readGuard guardTerm
+    return (GNeg guard)
+
+-------------------------------------------------------------------------------
+readBinary :: Name -> (Var -> Var -> a) -> Term -> Maybe a
+readBinary name con term = do
+    TFun name' [TFun lVar [], TFun rVar []] <- return term
+    guard (name == name')
+    return (con lVar rVar)

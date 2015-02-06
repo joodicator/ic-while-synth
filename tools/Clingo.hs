@@ -18,7 +18,7 @@ data Term
 
 newtype Name
   = Name String
-  deriving Show
+  deriving (Eq, Show)
 
 type Parse a
   = String -> Maybe (a, String)
