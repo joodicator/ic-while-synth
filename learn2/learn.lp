@@ -1,7 +1,7 @@
-#const line_max=6.
-#const time_max=30.
+#const line_max=5.
+#const time_max=15.
 
-#const con_bound=16.
+#const con_bound=7.
 #const con_min=0.
 #const con_max=con_bound.
 
@@ -11,7 +11,10 @@
 
 % #show run_var_out/3.
 % #show line_set/2.
-% #show run_expr/4.
+#show run_line/3.
+
+timeout :- run_line(R,time_max,L), L != line_max+1.
+:- timeout.
 
 %-------------------------------------------------------------------------------
 % Variables.
@@ -35,7 +38,7 @@ ex(r0, 0, 0).
 ex(r1, 1, 1).
 ex(r2, 2, 3).
 ex(r3, 3, 6).
-ex(r4, 4, 10).
+%ex(r4, 4, 10).
 
 %-------------------------------------------------------------------------------
 % Constants, line numbers.
@@ -47,7 +50,9 @@ line(1..line_max).
 1{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
 
 line_instr(1, set(v1, con(1))).
-line_instr(2, while(gt(x, 0), line_max-2)).
+line_instr(2, while(lt(v0, x), line_max-2)).
+
+valid_line_instr(1, set(v1, con(1))).
 
 % All test examples must halt with the correct value.
 :- run_does_not_halt(R).
