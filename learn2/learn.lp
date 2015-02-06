@@ -1,7 +1,7 @@
-#const line_max=10.
-#const time_max=line_max+1.
+#const line_max=6.
+#const time_max=30.
 
-#const con_bound=8.
+#const con_bound=16.
 #const con_min=0.
 #const con_max=con_bound.
 
@@ -16,35 +16,26 @@
 %-------------------------------------------------------------------------------
 % Variables.
 
-var(a). var(b). var(c).
-var(y). var(z).
+var(x). % input
+var(v0).
+var(v1).
+var(y).
+var(z). % output: z = x(x+1)/2.
 
-write_var(y). write_var(z).
+write_var(y).
+write_var(z).
 
 %-------------------------------------------------------------------------------
 % Test examples.
 
- in(R,a,A) :- ex(R,A,_,_,_).
- in(R,b,B) :- ex(R,_,B,_,_).
- in(R,c,C) :- ex(R,_,_,C,_).
-out(R,z,Z) :- ex(R,_,_,_,Z).
+ in(R,x,X) :- ex(R,X,_).
+out(R,z,Z) :- ex(R,_,Z).
 
-ex(r00, 0,0,0, 0). %ex(r01, 1,1,1, 1). ex(r02, 2,2,2, 2).
-
-ex(r10, 7,1,1, 1). %ex(r11, 6,2,2, 2). ex(r12, 5,3,3, 3).
-ex(r20, 1,7,1, 1). %ex(r21, 2,6,2, 2). ex(r22, 3,5,3, 3).
-ex(r30, 1,1,7, 1). %ex(r31, 2,2,6, 2). ex(r32, 3,3,5, 3).
-
-ex(r40, 1,7,7, 7). %ex(r41, 2,6,6, 6). ex(r42, 3,5,5, 5).
-ex(r50, 7,1,7, 7). %ex(r51, 6,2,6, 6). ex(r52, 5,3,5, 5).
-ex(r60, 7,7,1, 7). %ex(r61, 6,6,2, 6). ex(r62, 5,5,3, 5).
-
-ex(r70, 1,2,3, 2). %ex(r71, 1,3,6, 3). ex(r72, 2,4,6, 4).
-ex(r80, 1,3,2, 2). %ex(r81, 1,6,3, 3). ex(r82, 2,6,4, 4).
-ex(r90, 2,1,3, 2). %ex(r91, 3,1,6, 3). ex(r92, 4,2,6, 4).
-ex(rA0, 3,2,1, 2). %ex(rA1, 6,3,1, 3). ex(rA2, 6,4,2, 4).
-ex(rB0, 2,3,1, 2). %ex(rB1, 3,6,1, 3). ex(rB2, 4,6,2, 4).
-ex(rC0, 3,1,2, 2). %ex(rC1, 6,1,3, 3). ex(rC2, 6,2,4, 4).
+ex(r0, 0, 0).
+ex(r1, 1, 1).
+ex(r2, 2, 3).
+ex(r3, 3, 6).
+ex(r4, 4, 10).
 
 %-------------------------------------------------------------------------------
 % Constants, line numbers.
@@ -55,9 +46,8 @@ line(1..line_max).
 % Exactly one instruction per line.
 1{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
 
-line_instr(1, set(y, var(a))).
-line_instr(2, if(lt(y, b), 1)).
-line_instr(3, set(y, var(b))).
+line_instr(1, set(v1, con(1))).
+line_instr(2, while(gt(x, 0), line_max-2)).
 
 % All test examples must halt with the correct value.
 :- run_does_not_halt(R).
@@ -74,15 +64,15 @@ valid_line_instr(L, while(B, 1..M)) :- line(L), bool(B), M=line_max-L.
 
 % block(L, M) if a code block starts after line L, and ends after line L+M.
 block(L, M) :- line_instr(L,    if(_, M)).
-%block(L, M) :- line_instr(L, while(_, M)).
+block(L, M) :- line_instr(L, while(_, M)).
 
 %-------------------------------------------------------------------------------
 % Arithmetic expressions. (Constants must be assigned to a variable to be used.)
 
 % expr(con(con_min..con_max)).
 expr(var(V)) :- var(V).
-% expr(sub(V1, V2)) :- var(V1), var(V2), V1 != V2.
-% expr(add(V1, V2)) :- var(V1), var(V2), V1 <= V2.
+expr(add(V1, V2)) :- var(V1), var(V2), V1 <= V2.
+expr(sub(V1, V2)) :- var(V1), var(V2), V1 != V2.
 % expr(mul(V1, V2)) :- var(V1), var(V2), V1 <= V2.
 % expr(div(V1, V2)) :- var(V1), var(V2), V1 != V2.
 
@@ -141,24 +131,25 @@ run_line(R,T+1,L+1) :- L<=line_max, run(R,T), run_line(R,T,L), not line_jump(L).
 
 % Run if statements.
 run_line(R,T+1,L+1) :-
-    run(R,T), run_line(R,T,L), line_instr_if(L,B), run_bool(R,T,B).
+    run(R,T), run_line(R,T,L), line_instr_if_guard(L,B), run_bool(R,T,B).
 run_line(R,T+1,L+BodyLength+1) :-
     run(R,T), run_line(R,T,L), line_instr(L,if(B,BodyLength)),
     not run_bool(R,T,B).
 
 % Run while loops.
 run_line(R,T+1,L+1) :-
-    run(R,T), run_line(R,T,L), line_instr_while(L,B), run_bool(R,T,B).
+    run(R,T), run_line(R,T,L), line_instr_while_guard(L,B), run_bool(R,T,B).
 run_line(R,T+1,L+BodyLength+1) :-
     run(R,T), run_line(R,T,L), line_instr(L,while(B,BodyLength)),
     not run_bool(R,T,B).
 run_line(R,T+1,HeadLine) :-
     run(R,T), run_line(R,T,L),
-    line_instr_while(HeadLine, BodyLength),
-    L = HeadLine + BodyLength.
+    line_instr_while_length(HeadLine, BodyLength),
+    L==HeadLine+BodyLength.
 
-line_instr_if(L, B)    :- line_instr(L, if(B, _)).
-line_instr_while(L, B) :- line_instr(L, while(B, _)).
+line_instr_if_guard(L, G)     :- line_instr(L, if(G, _)).
+line_instr_while_guard(L, G)  :- line_instr(L, while(G, _)).
+line_instr_while_length(L, B) :- line_instr(L, while(_, B)).
 
 line_jump(L) :- line_instr(L, if(_,_)).
 line_jump(L) :- line_instr(L, else(_)).
