@@ -29,22 +29,22 @@ write_var(y). write_var(z).
  in(R,c,C) :- ex(R,_,_,C,_).
 out(R,z,Z) :- ex(R,_,_,_,Z).
 
-ex(r00, 0,0,0, 0). ex(r01, 1,1,1, 1). ex(r02, 2,2,2, 2).
+ex(r00, 0,0,0, 0). %ex(r01, 1,1,1, 1). ex(r02, 2,2,2, 2).
 
-ex(r10, 7,1,1, 1). ex(r11, 6,2,2, 2). ex(r12, 5,3,3, 3).
-ex(r20, 1,7,1, 1). ex(r21, 2,6,2, 2). ex(r22, 3,5,3, 3).
-ex(r30, 1,1,7, 1). ex(r31, 2,2,6, 2). ex(r32, 3,3,5, 3).
+ex(r10, 7,1,1, 1). %ex(r11, 6,2,2, 2). ex(r12, 5,3,3, 3).
+ex(r20, 1,7,1, 1). %ex(r21, 2,6,2, 2). ex(r22, 3,5,3, 3).
+ex(r30, 1,1,7, 1). %ex(r31, 2,2,6, 2). ex(r32, 3,3,5, 3).
 
-ex(r40, 1,7,7, 7). ex(r41, 2,6,6, 6). ex(r42, 3,5,5, 5).
-ex(r50, 7,1,7, 7). ex(r51, 6,2,6, 6). ex(r52, 5,3,5, 5).
-ex(r60, 7,7,1, 7). ex(r61, 6,6,2, 6). ex(r62, 5,5,3, 5).
+ex(r40, 1,7,7, 7). %ex(r41, 2,6,6, 6). ex(r42, 3,5,5, 5).
+ex(r50, 7,1,7, 7). %ex(r51, 6,2,6, 6). ex(r52, 5,3,5, 5).
+ex(r60, 7,7,1, 7). %ex(r61, 6,6,2, 6). ex(r62, 5,5,3, 5).
 
-ex(r70, 1,2,3, 2). ex(r71, 1,3,6, 3). ex(r72, 2,4,6, 4).
-ex(r80, 1,3,2, 2). ex(r81, 1,6,3, 3). ex(r82, 2,6,4, 4).
-ex(r90, 2,1,3, 2). ex(r91, 3,1,6, 3). ex(r92, 4,2,6, 4).
-ex(rA0, 3,2,1, 2). ex(rA1, 6,3,1, 3). ex(rA2, 6,4,2, 4).
-ex(rB0, 2,3,1, 2). ex(rB1, 3,6,1, 3). ex(rB2, 4,6,2, 4).
-ex(rC0, 3,1,2, 2). ex(rC1, 6,1,3, 3). ex(rC2, 6,2,4, 4).
+ex(r70, 1,2,3, 2). %ex(r71, 1,3,6, 3). ex(r72, 2,4,6, 4).
+ex(r80, 1,3,2, 2). %ex(r81, 1,6,3, 3). ex(r82, 2,6,4, 4).
+ex(r90, 2,1,3, 2). %ex(r91, 3,1,6, 3). ex(r92, 4,2,6, 4).
+ex(rA0, 3,2,1, 2). %ex(rA1, 6,3,1, 3). ex(rA2, 6,4,2, 4).
+ex(rB0, 2,3,1, 2). %ex(rB1, 3,6,1, 3). ex(rB2, 4,6,2, 4).
+ex(rC0, 3,1,2, 2). %ex(rC1, 6,1,3, 3). ex(rC2, 6,2,4, 4).
 
 %-------------------------------------------------------------------------------
 % Constants, line numbers.
@@ -53,7 +53,11 @@ line(1..line_max).
 
 %-------------------------------------------------------------------------------
 % Exactly one instruction per line.
-1{ line_instr(L, I) : instr(I) }1 :- line(L).
+1{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
+
+line_instr(1, set(y, var(a))).
+line_instr(2, if(lt(y, b), 1)).
+line_instr(3, set(y, var(b))).
 
 % All test examples must halt with the correct value.
 :- run_does_not_halt(R).
@@ -61,37 +65,38 @@ line(1..line_max).
 
 %-------------------------------------------------------------------------------
 % Instructions.
-instr(set(V, E))            :- write_var(V), expr(E).
-instr(if(B,BodyLength))     :- bool_neg(B), line(BodyLength).
-% instr(while(B,DeltaEnd))    :- bool_neg(B), line(DeltaEnd).
-% instr(end_while(DeltaHead)) :- line(DeltaHead).
+valid_line_instr(L, set(V, E))      :- line(L), write_var(V), expr(E).
+valid_line_instr(L, if(B, 1..M))    :- line(L), bool(B), M=line_max-L.
+valid_line_instr(L, while(B, 1..M)) :- line(L), bool(B), M=line_max-L.
 
-% If statements may not end outside the program.
-:- line_instr(L,if(_,Len)), line(L), line(Len),
-   L+Len>line_max.
+% Forbid blocks that end outside of a block they start within.
+:- block(L,M), block(PL,PM), PL<L, L<=PL+PM, L+M>PL+PM.
 
-% Keep if statements inside parent if statements.
-:- line_instr(L1,if(_,Len1)), line(L1), line(Len1),
-   line_instr(L2,if(_,Len2)), line(L2), line(Len2),
-   L1 < L2, L2 <= L1+Len1, L2+Len2 >= L1+Len1.
+% block(L, M) if a code block starts after line L, and ends after line L+M.
+block(L, M) :- line_instr(L,    if(_, M)).
+%block(L, M) :- line_instr(L, while(_, M)).
 
 %-------------------------------------------------------------------------------
 % Arithmetic expressions. (Constants must be assigned to a variable to be used.)
-%expr(sub(V1, V2)) :- var(V1), var(V2).
-%expr(add(V1, V2)) :- var(V1), var(V2).
-expr(var(V)) :- var(V).
-%expr(con(con_min..con_max)).
 
-% expr(mul(V1, V2)) :- var(V1), var(V2).
-% expr(div(V1, V2)) :- var(V1), var(V2).
+% expr(con(con_min..con_max)).
+expr(var(V)) :- var(V).
+% expr(sub(V1, V2)) :- var(V1), var(V2), V1 != V2.
+% expr(add(V1, V2)) :- var(V1), var(V2), V1 <= V2.
+% expr(mul(V1, V2)) :- var(V1), var(V2), V1 <= V2.
+% expr(div(V1, V2)) :- var(V1), var(V2), V1 != V2.
 
 %-------------------------------------------------------------------------------
-% Boolean expressions (with and without negated versions).
-bool(lt(V1, V2)) :- var(V1), var(V2).
-bool(eq(V1, V2)) :- var(V1), var(V2).
+% Boolean expressions. Note that:
+%   x <  y  <=>  lt(x,y)
+%   x >  y  <=>  lt(y,x)
+%   x <= y  <=>  le(x,y)
+%   x >= y  <=>  le(y,x)
+%   x == y  <=>  le(x,y) AND le(y,x)
+%   x != y  <=>  lt(x,y) AND lt(y,x)
 
-bool_neg(B)      :- bool(B).
-bool_neg(neg(B)) :- bool(B).
+bool(lt(V1, V2)) :- var(V1), var(V2).
+bool(le(V1, V2)) :- var(V1), var(V2).
 
 %-------------------------------------------------------------------------------
 % Program interpreter.
@@ -134,25 +139,26 @@ line_set(L,X) :- line_instr(L, set(X,_)).
 run_line(R,0,1)     :- run(R).
 run_line(R,T+1,L+1) :- L<=line_max, run(R,T), run_line(R,T,L), not line_jump(L).
 
-% Move to the next line, given that a boolean guard is true.
+% Run if statements.
 run_line(R,T+1,L+1) :-
-    run(R,T), run_line(R,T,L), line_instr(L,if(B,_)), run_bool(R,T,B).
-run_line(R,T+1,L+1) :-
-    run(R,T), run_line(R,T,L), line_instr(L,while(B,_)), run_bool(R,T,B).
-
-% Jump by a certain distance, given that a boolean guard is false.
+    run(R,T), run_line(R,T,L), line_instr_if(L,B), run_bool(R,T,B).
 run_line(R,T+1,L+BodyLength+1) :-
     run(R,T), run_line(R,T,L), line_instr(L,if(B,BodyLength)),
     not run_bool(R,T,B).
-run_line(R,T+1,L+DeltaEnd+1) :-
-    run(R,T), run_line(R,T,L), line_instr(L,while(B,DeltaEnd)),
-    not run_bool(R,T,B),
-    line_instr(L+DeltaEnd,end_while(DeltaEnd)). % Partially verify integrity.
 
-% Automatically jump by a certain distance.
-run_line(R,T+1,L-DeltaHead) :-
-    run(R,T), run_line(R,T,L), line_instr(L,end_while(DeltaHead)),
-    line_instr(L_head, while(_,_)).
+% Run while loops.
+run_line(R,T+1,L+1) :-
+    run(R,T), run_line(R,T,L), line_instr_while(L,B), run_bool(R,T,B).
+run_line(R,T+1,L+BodyLength+1) :-
+    run(R,T), run_line(R,T,L), line_instr(L,while(B,BodyLength)),
+    not run_bool(R,T,B).
+run_line(R,T+1,HeadLine) :-
+    run(R,T), run_line(R,T,L),
+    line_instr_while(HeadLine, BodyLength),
+    L = HeadLine + BodyLength.
+
+line_instr_if(L, B)    :- line_instr(L, if(B, _)).
+line_instr_while(L, B) :- line_instr(L, while(B, _)).
 
 line_jump(L) :- line_instr(L, if(_,_)).
 line_jump(L) :- line_instr(L, else(_)).
@@ -171,24 +177,24 @@ run_expr(R,T,sub(V1,V2),C) :-
     run_var(R,T,V1,C1), run_var(R,T,V2,C2),
     C = (C1 - C2 + con_bound) #mod con_bound, con(C).
 
-% run_expr(R,T,mul(V1,V2),C) :-
-%     run_var(R,T,V1,C1), run_var(R,T,V2,C2),
-%     C = (C1 * C2) #mod con_bound, con(C).
+%run_expr(R,T,mul(V1,V2),C) :-
+%    run_var(R,T,V1,C1), run_var(R,T,V2,C2),
+%    C = (C1 * C2) #mod con_bound, con(C).
 
-% run_expr(R,T,div(V1,V2),C) :-
-%     run_var(R,T,V1,C1), run_var(R,T,V2,C2),
-%     C2 != 0, C = (C1 #div C2), con(C).
-% run_expr(R,T,div(V1,V2),0) :-
-%     run_var(R,T,V1,C1), run_var(R,T,V2,C2),
-%     C2 == 0.
+%run_expr(R,T,div(V1,V2),C) :-
+%    run_var(R,T,V1,C1), run_var(R,T,V2,C2),
+%    C2 != 0, C = (C1 #div C2), con(C).
+%run_expr(R,T,div(V1,V2),0) :-
+%    run_var(R,T,V1,C1), run_var(R,T,V2,C2),
+%    C2 == 0.
 
 % Evaluate boolean expressions.
 run_bool(R,T,lt(V1,V2)) :-
-    run_var(R,T,V1,C1), run_var(R,T,V2,C2), C1<C2.
-run_bool(R,T,eq(V1,V2)) :-
-    run_var(R,T,V1,C1), run_var(R,T,V2,C2), C1==C2.
+    run_var(R,T,V1,C1), run_var(R,T,V2,C2), C1 < C2.
+run_bool(R,T,le(V1,V2)) :-
+    run_var(R,T,V1,C1), run_var(R,T,V2,C2), C1 <= C2.
 
-run_bool(R,T,neg(lt(V1,V2))) :-
-    run_var(R,T,V1,C1), run_var(R,T,V2,C2), C1>=C2.
-run_bool(R,T,neg(eq(V1,V2))) :-
-    run_var(R,T,V1,C1), run_var(R,T,V2,C2), C1!=C2.
+% run_bool(R,T,neg(lt(V1,V2))) :-
+%     run_var(R,T,V1,C1), run_var(R,T,V2,C2), C1>=C2.
+% run_bool(R,T,neg(eq(V1,V2))) :-
+%     run_var(R,T,V1,C1), run_var(R,T,V2,C2), C1!=C2.
