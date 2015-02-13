@@ -21,6 +21,7 @@ var(v1). % constant 1
 var(z). % output: z = x(x+1)/2.
 
 write_var(x).
+write_var(v1).
 write_var(z).
 
 %-------------------------------------------------------------------------------
@@ -44,7 +45,7 @@ line(1..line_max).
 % Exactly one instruction per line.
 1{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
 
-preset_line_instr(1, set(v1, con(1))).
+%preset_line_instr(1, set(v1, con(1))).
 %preset_line_instr(2, while(lt(v0, x), line_max-3)).
 %preset_line_instr(3, set(z, add(z,x))).
 %preset_line_instr(4, set(x, sub(x,v1))).
@@ -86,7 +87,7 @@ line_instr_while_length(L, B) :- line_instr(L, while(_, B)).
 %-------------------------------------------------------------------------------
 % Arithmetic expressions. (Constants must be assigned to a variable to be used.)
 
-% expr(con(con_min..con_max)).
+expr(con(con_min..con_max)).
 expr(var(V)) :- var(V).
 expr(add(V1, V2)) :- var(V1), var(V2), V1 <= V2.
 expr(sub(V1, V2)) :- var(V1), var(V2), V1 != V2.
