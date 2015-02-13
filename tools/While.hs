@@ -17,22 +17,22 @@ data Instr
   deriving Show
 
 data Expr
-  = ECon Integer -- ..., -1, 0, 1, 2, ...
-  | EVar Var     -- x
-  | EAdd Var Var -- x + y
-  | ESub Var Var -- x - y
-  | EMul Var Var -- x * y
-  | EDiv Var Var -- x / y
+  = ECon Integer   -- ... -2, -1, 0, 1, 2 ...
+  | EVar Var       -- x
+  | EAdd Expr Expr -- E1 + E2
+  | ESub Expr Expr -- E1 - E2
+  | EMul Expr Expr -- E1 * E2
+  | EDiv Expr Expr -- E1 / E2
   deriving Show
 
 data Guard
-  = GLT Var Var -- x <  y
-  | GLE Var Var -- x <= y
-  | GGT Var Var -- x >  y
-  | GGE Var Var -- x >= y
-  | GEQ Var Var -- x == y
-  | GNE Var Var -- x != y
-  | GNeg Guard  -- !(...)
+  = GLT Expr Expr -- E1 <  E1
+  | GLE Expr Expr -- E1 <= E2
+  | GGT Expr Expr -- E1 >  E2
+  | GGE Expr Expr -- E1 >= E2
+  | GEQ Expr Expr -- E1 == E2
+  | GNE Expr Expr -- E1 != E2
+  | GNeg Guard  -- !( ... )
   deriving Show
 
 --------------------------------------------------------------------------------
@@ -89,13 +89,20 @@ readInstr term = case term of
 
 --------------------------------------------------------------------------------
 showExpr :: Expr -> String
-showExpr expr = case expr of
-    ECon n                 -> show n
-    EVar (Name x)          -> x
-    EAdd (Name x) (Name y) -> x ++ " + " ++ y
-    ESub (Name x) (Name y) -> x ++ " - " ++ y
-    EMul (Name x) (Name y) -> x ++ " * " ++ y
-    EDiv (Name x) (Name y) -> x ++ " / " ++ y
+showExpr = showExprPrec 0
+
+showExprPrec :: Int -> Expr -> String
+showExprPrec p expr
+  | p > q     = "(" ++ str ++ ")"
+  | otherwise = str
+  where
+    (q, str) = case expr of
+        ECon n          -> (1, show n)
+        EVar (Name x)   -> (1, x)
+        EAdd e1 e2      -> (0, showExprPrec q e1 ++ " + " ++ showExprPrec q e2)
+        ESub e1 e2      -> (0, showExprPrec q e1 ++ " - " ++ showExprPrec q e2)
+        EMul e1 e2      -> (0, showExprPrec q e1 ++ " * " ++ showExprPrec q e2)
+        EDiv e1 e2      -> (0, showExprPrec q e1 ++ " / " ++ showExprPrec q e2)
 
 readExpr :: Term -> Maybe Expr
 readExpr term
@@ -110,16 +117,17 @@ readLeafExpr term = case term of
     TFun (Name "con") [TInt int]    -> return (ECon int)
     TFun (Name "var") [TFun var []] -> return (EVar var)
     _                               -> Nothing
+
 -------------------------------------------------------------------------------
 showGuard :: Guard -> String
 showGuard guard = case guard of
-    (GLT (Name x) (Name y)) -> x ++ " < " ++ y
-    (GGT (Name x) (Name y)) -> x ++ " > " ++ y
-    (GLE (Name x) (Name y)) -> x ++ " <= " ++ y
-    (GGE (Name x) (Name y)) -> x ++ " >= " ++ y
-    (GEQ (Name x) (Name y)) -> x ++ " == " ++ y
-    (GNE (Name x) (Name y)) -> x ++ " != " ++ y
-    (GNeg guard')           -> "!(" ++ showGuard guard' ++ ")"
+    (GLT e1 e2)     -> showExpr e1 ++ " < "  ++ showExpr e2
+    (GGT e1 e2)     -> showExpr e1 ++ " > "  ++ showExpr e2
+    (GLE e1 e2)     -> showExpr e1 ++ " <= " ++ showExpr e2
+    (GGE e1 e2)     -> showExpr e1 ++ " >= " ++ showExpr e2
+    (GEQ e1 e2)     -> showExpr e1 ++ " == " ++ showExpr e2
+    (GNE e1 e2)     -> showExpr e1 ++ " != " ++ showExpr e2
+    (GNeg guard')   -> "!(" ++ showGuard guard' ++ ")"
 
 readGuard :: Term -> Maybe Guard
 readGuard term
@@ -138,8 +146,10 @@ readNegation term = do
     return (GNeg guard)
 
 -------------------------------------------------------------------------------
-readBinary :: Name -> (Var -> Var -> a) -> Term -> Maybe a
+readBinary :: Name -> (Expr -> Expr -> a) -> Term -> Maybe a
 readBinary name con term = do
-    TFun name' [TFun lVar [], TFun rVar []] <- return term
+    TFun name' [t1, t2] <- return term
     guard (name == name')
-    return (con lVar rVar)
+    e1 <- readExpr t1
+    e2 <- readExpr t2
+    return (con e1 e2)

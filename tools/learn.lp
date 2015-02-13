@@ -1,64 +1,14 @@
-#const line_max=4.
-#const time_max=30.
-#const con_max=1.
-
-#const int_bound=11.
 #const int_min=0.
-#const int_max=int_bound.
 
 #hide.
 #show line_instr/2.
-#show run_does_not_halt/1.
 
-% #show run_var_out/3.
-% #show line_set/2.
-% #show run_line/3.
-
-%-------------------------------------------------------------------------------
-% Variables.
-
-var(x). % input
-var(z). % output: z = x(x+1)/2.
-
-write_var(x).
-write_var(z).
-
-%-------------------------------------------------------------------------------
-% Constants.
-
-con(0).
-con(1).
-
-% 1{ con(N,int_min..int_max) }1 :- N=1..con_max.
-%
-% con(C) :- con(1, C).
-%
-% % Require constants to occur in strictly ascending order.
-% :- con(N1,C1), con(N2,C2), N1 < N2, C1 >= C2.
-
-%-------------------------------------------------------------------------------
-% Test examples.
-
- in(R,x,X) :- ex(R,X,_).
-out(R,z,Z) :- ex(R,_,Z).
-
-ex(r0, 0, 0).
-ex(r1, 1, 1).
-ex(r2, 2, 3).
-ex(r3, 3, 6).
-ex(r4, 4, 10).
+while_allowed :- not while_not_allowed.
+arithmetic_allowed :- not arithmetic_not_allowed.
 
 %-------------------------------------------------------------------------------
 % Exactly one instruction per line.
 1{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
-
-%preset_line_instr(2, while(lt(v0, x), line_max-3)).
-%preset_line_instr(3, set(z, add(z,x))).
-%preset_line_instr(4, set(x, sub(x,v1))).
-%preset_line_instr(line_max, end_while).
-
-valid_line_instr(L,I) :- preset_line_instr(L,I).
-line_instr(L,I) :- preset_line_instr(L,I).
 
 % All test examples must halt with the correct value.
 :- run_does_not_halt(R).
@@ -74,8 +24,11 @@ line(1..line_max).
 % Instructions.
 valid_line_instr(L, set(V, E))      :- line(L), write_var(V), expr(E).
 valid_line_instr(L, if(B, 1..M))    :- line(L), bool(B), M=line_max-L.
-valid_line_instr(L, while(B, 1..M)) :- line(L), bool(B), M=line_max-L-1.
-valid_line_instr(L, end_while)      :- line(L).
+valid_line_instr(L, while(B, 1..M)) :- line(L), bool(B), M=line_max-L-1, while_allowed.
+valid_line_instr(L, end_while)      :- line(L), while_allowed.
+
+valid_line_instr(L,I) :- preset_line_instr(L,I).
+line_instr(L,I)       :- preset_line_instr(L,I).
 
 % Require end_while statements to occur at exactly the correct positions.
 :- line_instr(L,end_while), not end_while_block(L).
@@ -102,12 +55,12 @@ line_instr_while_length(L, B) :- line_instr(L, while(_, B)).
 expr(con(C)) :- con(C).
 expr(var(X)) :- var(X).
 
-expr(add(var(X), con(C))) :- var(X), con(C), C != 0.
-expr(add(var(X), var(Y))) :- var(X), var(Y), X <= Y.
+expr(add(var(X), con(C))) :- var(X), con(C), C != 0, arithmetic_allowed.
+expr(add(var(X), var(Y))) :- var(X), var(Y), X <= Y, arithmetic_allowed.
 
-expr(sub(var(X), con(C))) :- var(X), con(C), C != 0.
-expr(sub(con(C), var(X))) :- var(X), con(C).
-expr(sub(var(X), var(Y))) :- var(X), var(Y), X != Y.
+expr(sub(var(X), con(C))) :- var(X), con(C), C != 0, arithmetic_allowed.
+expr(sub(con(C), var(X))) :- var(X), con(C),         arithmetic_allowed.
+expr(sub(var(X), var(Y))) :- var(X), var(Y), X != Y, arithmetic_allowed.
 
 % expr(mul(V1, V2)) :- var(V1), var(V2), V1 <= V2.
 % expr(div(V1, V2)) :- var(V1), var(V2), V1 != V2.
@@ -206,31 +159,27 @@ run_expr(R,T,E,C) :-
 
 run_expr(R,T,add(E1,E2),C) :-
     run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
-    C = (C1 + C2) #mod int_bound, int(C).
+    C = (C1 + C2) #mod int_max, int(C).
 
 run_expr(R,T,sub(E1,E2),C) :-
     run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
-    C = (C1 - C2 + int_bound) #mod int_bound, int(C).
+    C = (C1 - C2 + int_max) #mod int_max, int(C).
 
-run_expr(R,T,mul(E1,E2),C) :-
-    run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
-    C = (C1 * C2) #mod int_bound, int(C).
+%run_expr(R,T,mul(E1,E2),C) :-
+%    run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
+%    C = (C1 * C2) #mod int_max, int(C).
 
-run_expr(R,T,div(E1,E2),C) :-
-    run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
-    C2 != 0, C = (C1 #div C2), int(C).
+%run_expr(R,T,div(E1,E2),C) :-
+%    run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
+%    C2 != 0, C = (C1 #div C2), int(C).
 
 % Evaluate boolean expressions.
 run_bool(R,T,lt(E1,E2)) :-
     run_leaf_expr(R,T,E1,C1),
     run_leaf_expr(R,T,E2,C2),
     C1 < C2.
+
 run_bool(R,T,le(E1,E2)) :-
     run_leaf_expr(R,T,E1,C1),
     run_leaf_expr(R,T,E2,C2),
     C1 <= C2.
-
-% run_bool(R,T,neg(lt(V1,V2))) :-
-%     run_var(R,T,V1,C1), run_var(R,T,V2,C2), C1>=C2.
-% run_bool(R,T,neg(eq(V1,V2))) :-
-%     run_var(R,T,V1,C1), run_var(R,T,V2,C2), C1!=C2.
