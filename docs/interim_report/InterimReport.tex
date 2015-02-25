@@ -1,0 +1,142 @@
+\documentclass[a4paper,twoside,notitlepage]{article}
+
+\usepackage{parskip}
+\usepackage{hyperref}
+\usepackage{algorithmicx}
+\usepackage[numbib]{tocbibind}
+
+\renewcommand{\bibsection}{\section{\bibname}}
+
+\begin{document}
+
+\title{Synthesis of Simple While Programs Using Inductive Logic Programming:
+       Interim Report}
+\author{Joseph Crowe \\ Supervised by Krysia Broda and Mark Law}
+\date{27 Februrary 2015}
+\maketitle
+
+\tableofcontents
+\clearpage
+
+\section{Introduction}
+
+We shall address the problem of automatically writing computer programs in an 
+imperative programming language (see section~\ref{sec:outlng}, While Language) 
+given a specification of the program's behaviour written in a simple, abstract language 
+understandable by users without programming expertise.
+
+In particular, we have examined the notion of allowing the specification to consist of 
+a finite set of input/output pairs that the generated program should satisfy (see 
+section~\ref{sec:inplng}, Specification Language).
+
+As a simple example, the following specification:
+
+\begin{tabular}{ll}
+    \textbf{Input} & \textbf{Output}
+\\  $x = 0$        & $y = 0$
+\\  $x = 1$        & $y = 2$
+\\  $x = 2$        & $y = 4$
+\\  $x = 3$        & $y = 6$
+\end{tabular}
+
+is one that many programs could satisfy (there is an $n$-degree polynomial for each 
+integer $n \geq 3$ which interpolates these points), but the program which the user 
+probably has in mind, and that which we would hope to automatically synthesise, being a 
+``simplest'' program in some sense, is:
+
+\begin{algorithmic}[H]
+\State $y \gets x + x$
+\end{algorithmic}
+
+This has possible applications in Computing education: a teacher with students who are 
+learning how to program may wish to generate \emph{multiple} different programs, one 
+for each student, to be used by the student in an exercise by extending, analysing the 
+behaviour of, etc. If the teacher is able to quickly generate these multiple programs 
+without spending the time to write each one, this task becomes much more scalable in 
+the number of students.
+
+Another application is in data processing software tools (such as spreadsheets) whose 
+users are likely to be non-programmers, but whose usefulness could be greatly increased 
+by the automation of complex data processing tasks, representable as computer programs, 
+which could be specified by the user as a list of input/output examples.
+
+In previous work, this problem has been approached in many different ways, and several 
+systems have been built which are capable of synthesising programs in this manner (see 
+section~\ref{sec:prgsyn}, Related Work in Synthesis), but the problem has not in its 
+full generality been resolved. We hope to gain an insight into this by approaching it 
+with new tools and techniques.
+
+This can be viewed as a machine-learning problem, where the program generator 
+\emph{learns} the correct program by considering examples of its behaviour. Since the 
+discrete and exacting nature of computer programming seems to lend itself well to a 
+logic-based learning approach, we ask whether the paradigm of Inductive Logic 
+Programming (ILP)\cite{muggleton94} is well-suited to solve this problem. More 
+specifically, our working implementation consists of an Answer Set Program run using 
+tools from the Potsdam Answer Set Solving Collection\cite{potassco} (see 
+section~\ref{sec:asp}, Answer Set Programming).
+
+\section{Background}
+
+\subsection{Related Work in Synthesis} \label{sec:prgsyn}
+\emph{To be completed.}
+
+\subsection{Answer Set Programming} \label{sec:asp}
+
+Answer Set Programming (ASP) is a form of logic programming particularly suited to 
+search problems over large domains (such as the domain of all imperative programs of a 
+given length). An Answer Set Program distinguishes the result to be computed by a set 
+of propositional facts and rules in the domain. Importantly, ASP includes 
+\emph{negation as failure}, where a rule can be conditional on the inability of prove 
+that some proposition is true, which allows \emph{non-monotonic reasoning}. The result 
+of running an ASP is an \emph{answer set} of facts which is consistent with the 
+program, forms a \emph{stable model}, and is minimal in a certain sense. For further 
+details, see \cite{glimpse}, which gives a concise introduction to the paradigm.
+
+ASP was used by Muggleton et al.\ in 2014\cite{metagol} in their work on grammatical 
+inference: 
+
+\section{Current Work}
+
+\subsection{While Language} \label{sec:outlng}
+\emph{To be completed.}
+
+\subsection{Program Interpreter}
+\emph{To be completed.}
+
+\subsection{Program Synthesiser}
+\emph{To be completed.}
+
+\subsection{Specification Language} \label{sec:inplng}
+\emph{To be completed.}
+
+\section{Project Plan}
+\emph{To be completed.}
+
+\section{Evaluation Plan}
+\emph{To be completed.}
+
+\begin{thebibliography}{9}
+    \bibitem{muggleton94}
+        S Muggleton, Luc de Raedt (1994). \emph{Inductive Logic Programming: 
+        Theory and methods}. The Journal of Logic Programming, vol. 19-20, page 
+        629-679.
+    \bibitem{potassco}
+        Potassco, the Potsdam Answer Set Solving Collection. 
+        \url{http://potassco.sourceforge.net}
+    \bibitem{glimpse}
+        C Anger, K Konczak, T Linke, T Schaub (2005). \emph{A 
+        Glimpse of Answer Set Programming}. 
+        \url{http://www.cs.uni-potsdam.de/wv/pdfformat/ankolisc05.pdf}
+    \bibitem{metagol}
+        S Muggleton, D Lin, N Pahlavi, A Tamaddoni-Nezhad (2014). 
+        \emph{Meta-interpretive learning: application to grammatical inference}.
+        MACHINE LEARNING, vol. 94, page 25-49.
+    \bibitem{ilasp}
+        M Law, A Russo, K Broda (2014). \emph{Inductive learning of answer set 
+        programs}. \url{https://www.doc.ic.ac.uk/~ml1909/ILASP_Paper.pdf}
+    \bibitem{law13}
+        M Law (2013). \emph{General Card Game Playing}.
+        \url{http://www.doc.ic.ac.uk/teaching/distinguished-projects/2013/m.law.pdf}
+\end{thebibliography}
+
+\end{document}
