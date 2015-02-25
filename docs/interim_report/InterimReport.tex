@@ -92,8 +92,17 @@ of running an ASP is an \emph{answer set} of facts which is consistent with the
 program, forms a \emph{stable model}, and is minimal in a certain sense. For further 
 details, see \cite{glimpse}, which gives a concise introduction to the paradigm.
 
-ASP was used by Muggleton et al.\ in 2014\cite{metagol} in their work on grammatical 
-inference: 
+ASP was used in 2014 by Muggleton et al.\cite{metagol} as one of two approaches to 
+learning finite automata from positive and negative example sentences from the formal 
+language the automata is desired to represent. In solving this problem in ASP (and in 
+ILP in general), it was found to be necessary to implement \emph{predicate invention} 
+by building a logical \emph{meta-interpreter} in the host language.
+
+As another example of ASP's usage, Mark Law et al.\ in 2014 developed a system called 
+ILASP\cite{ilasp} implementing a form of ILP where an Answer Set Program representing 
+the solution is learned inductively from positive and negative examples, with 
+applications in agent planning. The same idea is used by Mark Law in 2013 in 
+\cite{law13} to learn general card game playing strategies.
 
 \section{Current Work}
 
