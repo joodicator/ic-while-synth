@@ -3,8 +3,16 @@
 #hide.
 #show line_instr/2.
 
-while_allowed :- not while_not_allowed.
-arithmetic_allowed :- not arithmetic_not_allowed.
+%-------------------------------------------------------------------------------
+% Features allowed in the program.
+subfeature(all,        if; while; arithmetic).
+subfeature(arithmetic, add; sub; mul; div; mod).
+
+feature(F) :- subfeature(F,_).
+feature(G) :- subfeature(_,G).
+
+disallow(G) :- subfeature(F,G), disallow(F).
+allow(F)    :- feature(F), not disallow(F).
 
 %-------------------------------------------------------------------------------
 % Exactly one instruction per line.
@@ -22,10 +30,14 @@ line(1..line_max).
 
 %-------------------------------------------------------------------------------
 % Instructions.
-valid_line_instr(L, set(V, E))      :- line(L), write_var(V), expr(E).
-valid_line_instr(L, if(B, 1..M))    :- line(L), bool(B), M=line_max-L.
-valid_line_instr(L, while(B, 1..M)) :- line(L), bool(B), M=line_max-L-1, while_allowed.
-valid_line_instr(L, end_while)      :- line(L), while_allowed.
+valid_line_instr(L, set(V, E)) :-
+    line(L), write_var(V), expr(E).
+valid_line_instr(L, if(B, 1..M)) :-
+    line(L), allow(if), bool(B), M=line_max-L.
+valid_line_instr(L, while(B, 1..M)) :-
+    line(L), allow(while), bool(B), M=line_max-L-1.
+valid_line_instr(L, end_while) :-
+    line(L), allow(while).
 
 valid_line_instr(L,I) :- preset_line_instr(L,I).
 line_instr(L,I)       :- preset_line_instr(L,I).
@@ -55,15 +67,36 @@ line_instr_while_length(L, B) :- line_instr(L, while(_, B)).
 expr(con(C)) :- con(C).
 expr(var(X)) :- var(X).
 
-expr(add(var(X), con(C))) :- var(X), con(C), C != 0, arithmetic_allowed.
-expr(add(var(X), var(Y))) :- var(X), var(Y), X <= Y, arithmetic_allowed.
+% add: commutative; disallow x+0; allow x+x iff not 2*x, x+(-|c|) iff not x-|c|.
+expr(add(var(X), con(C))) :- allow(add), var(X), con(C), C > 0.
+expr(add(var(X), con(C))) :- allow(add), var(X), con(C), C < 0, not allow(sub).
+expr(add(var(X), con(C))) :- allow(add), var(X), con(C), C < 0, not con(-C).
+expr(add(var(X), var(Y))) :- allow(add), var(X), var(Y), X < Y.
+expr(add(var(X), var(X))) :- allow(add), var(X), not allow(mul).
+expr(add(var(X), var(X))) :- allow(add), var(X), not con(2).
 
-expr(sub(var(X), con(C))) :- var(X), con(C), C != 0, arithmetic_allowed.
-expr(sub(con(C), var(X))) :- var(X), con(C),         arithmetic_allowed.
-expr(sub(var(X), var(Y))) :- var(X), var(Y), X != Y, arithmetic_allowed.
+% sub: disallow x-0, x-x; allow x-(-|c|) iff not x+|c|, 0-x iff not -1*x.
+expr(sub(var(X), var(Y))) :- allow(sub), var(X), var(Y), X != Y.
+expr(sub(var(X), con(C))) :- allow(sub), var(X), con(C), C > 0.
+expr(sub(var(X), con(C))) :- allow(sub), var(X), con(C), C < 0, not allow(add).
+expr(sub(var(X), con(C))) :- allow(sub), var(X), con(C), C < 0, not con(-C).
+expr(sub(con(C), var(X))) :- allow(sub), var(X), con(C), C != 0.
+expr(sub(con(0), var(X))) :- allow(sub), var(X), not allow(mul).
+expr(sub(con(0), var(X))) :- allow(sub), var(X), not con(-1).
 
-% expr(mul(V1, V2)) :- var(V1), var(V2), V1 <= V2.
-% expr(div(V1, V2)) :- var(V1), var(V2), V1 != V2.
+% mul: commutative; disallow 0*x, 1*x.
+expr(mul(var(X), var(Y))) :- allow(mul), var(X), var(Y), X <= Y.
+expr(mul(con(C), var(X))) :- allow(mul), var(X), con(C), C != 0, C != 1.
+
+% div: disallow x/x; disallow c/x and x/c for all c < 2.
+expr(div(var(X), var(Y))) :- allow(div), var(X), var(Y), X != Y.
+expr(div(con(C), var(X))) :- allow(div), con(C), var(X), C > 1.
+expr(div(var(X), con(C))) :- allow(div), var(X), con(C), C > 1.
+
+% mod: disallow x%x, disallow c%x for all c < 2, x%c for all c < 1.
+expr(mod(var(X), var(Y))) :- allow(mod), var(X), var(Y), x != y.
+expr(mod(con(C), var(X))) :- allow(mod), var(X), con(C), c > 1.
+expr(mod(var(X), con(C))) :- allow(mod), var(X), con(C), c > 0.
 
 %-------------------------------------------------------------------------------
 % Boolean expressions. Note that:
@@ -74,11 +107,11 @@ expr(sub(var(X), var(Y))) :- var(X), var(Y), X != Y, arithmetic_allowed.
 %   x == y  <=>  le(x,y) AND le(y,x)
 %   x != y  <=>  lt(x,y) AND lt(y,x)
 
-bool(lt(var(X), var(Y))) :- var(X), var(Y).
+bool(lt(var(X), var(Y))) :- var(X), var(Y), X != Y.
 bool(lt(var(X), con(C))) :- var(X), con(C).
 bool(lt(con(C), var(X))) :- var(X), con(C).
 
-bool(le(var(X), var(Y))) :- var(X), var(Y).
+bool(le(var(X), var(Y))) :- var(X), var(Y), X != Y.
 bool(le(var(X), con(C))) :- var(X), con(C).
 bool(le(con(C), var(X))) :- var(X), con(C).
 
@@ -116,12 +149,19 @@ run_var(R,T+1,X,C) :-
     run_line(R,T,L), not line_set(L,X), run_var(R,T,X,C), int(C).
 run_var(R,T+1,X,C) :-
     run_line(R,T,L), line_set(L,X), line_instr(L,set(X,E)), run_expr(R,T,E,C), int(C).
+run_fail(R,T) :-
+    run_line(R,T,L), line_set(L,X), line_instr(L,set(X,E)),
+    not run_expr_not_fail(R,T,E).
+run_expr_not_fail(R,T,E) :- run_expr(R,T,E,_).
 
 line_set(L,X) :- line_instr(L, set(X,_)).
 
 % Start at line 1, and, by default, move to the next line at each step.
-run_line(R,0,1)     :- run(R).
-run_line(R,T+1,L+1) :- L<=line_max, run(R,T), run_line(R,T,L), not line_jump(L).
+run_line(R,0,1) :-
+    run(R).
+run_line(R,T+1,L+1) :-
+    L <= line_max, run(R,T), run_line(R,T,L),
+    not line_jump(L), not run_fail(R,T).
 
 % Run if statements.
 run_line(R,T+1,L+1) :-
@@ -149,37 +189,48 @@ line_jump(L) :- line_instr(L, while(_,_)).
 line_jump(L) :- line_instr(L, end_while).
 
 % Evaluate arithmetic expressions.
-run_leaf_expr(R,T,con(C),C) :-
-    run(R,T), int(C).
-run_leaf_expr(R,T,var(V),C) :-
-    run_var(R,T,V,C), int(C).
+run_leaf_expr(R,T,E,C) :-
+    E=con(C), con(C), expr(E), run(R,T).
+run_leaf_expr(R,T,E,C) :-
+    E=var(V), var(V), expr(E), run_var(R,T,V,C).
 
 run_expr(R,T,E,C) :-
     run_leaf_expr(R,T,E,C).
 
-run_expr(R,T,add(E1,E2),C) :-
+run_expr(R,T,E,C) :-
+    E=add(E1,E2), expr(E),
     run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
     C = (C1 + C2) #mod int_max, int(C).
 
-run_expr(R,T,sub(E1,E2),C) :-
+run_expr(R,T,E,C) :-
+    E=sub(E1,E2), expr(E),
     run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
     C = (C1 - C2 + int_max) #mod int_max, int(C).
 
-%run_expr(R,T,mul(E1,E2),C) :-
-%    run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
-%    C = (C1 * C2) #mod int_max, int(C).
+run_expr(R,T,E,C) :-
+    E=mul(E1,E2), expr(E),
+    run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
+    C = (C1 * C2) #mod int_max, int(C).
 
-%run_expr(R,T,div(E1,E2),C) :-
-%    run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
-%    C2 != 0, C = (C1 #div C2), int(C).
+run_expr(R,T,E,C) :-
+    E=div(E1,E2), expr(E),
+    run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
+    C2 != 0, C = (C1 #div C2), int(C).
+
+run_expr(R,T,E,C) :-
+    E=mod(E1,E2), expr(E),
+    run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
+    C2 != 0, C = (C1 #mod C2), int(C).
 
 % Evaluate boolean expressions.
-run_bool(R,T,lt(E1,E2)) :-
+run_bool(R,T,B) :-
+    B=lt(E1,E2), bool(B),
     run_leaf_expr(R,T,E1,C1),
     run_leaf_expr(R,T,E2,C2),
     C1 < C2.
 
-run_bool(R,T,le(E1,E2)) :-
+run_bool(R,T,B) :-
+    B=le(E1,E2), bool(B),
     run_leaf_expr(R,T,E1,C1),
     run_leaf_expr(R,T,E2,C2),
     C1 <= C2.

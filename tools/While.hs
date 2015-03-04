@@ -23,6 +23,7 @@ data Expr
   | ESub Expr Expr -- E1 - E2
   | EMul Expr Expr -- E1 * E2
   | EDiv Expr Expr -- E1 / E2
+  | EMod Expr Expr -- E1 % E2
   deriving Show
 
 data Guard
@@ -103,6 +104,7 @@ showExprPrec p expr
         ESub e1 e2      -> (0, showExprPrec q e1 ++ " - " ++ showExprPrec q e2)
         EMul e1 e2      -> (0, showExprPrec q e1 ++ " * " ++ showExprPrec q e2)
         EDiv e1 e2      -> (0, showExprPrec q e1 ++ " / " ++ showExprPrec q e2)
+        EMod e1 e2      -> (0, showExprPrec q e1 ++ " % " ++ showExprPrec q e2)
 
 readExpr :: Term -> Maybe Expr
 readExpr term
@@ -110,6 +112,7 @@ readExpr term
     readBinary (Name "sub") ESub term <|>
     readBinary (Name "mul") EMul term <|>
     readBinary (Name "div") EDiv term <|>
+    readBinary (Name "mod") EMod term <|>
     readLeafExpr term
 
 readLeafExpr :: Term -> Maybe Expr

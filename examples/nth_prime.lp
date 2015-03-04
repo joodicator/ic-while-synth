@@ -5,12 +5,16 @@
 con(1).
 
 % Additional constraints:
-disallow(if; mul; div; mod).
+disallow(if; mul; div).
 
 % Allowed variables, which variables are writable:
-var(x; y; z). write_var(x; y; z).
+var(x). var(y). var(z).
+write_var(x). write_var(y). write_var(z).
 
 % Input/output pairs specifying the program:
-in(r1,x,1). out(r1,z,1).  in(r2,x,2). out(r2,z,1).
-in(r3,x,3). out(r3,z,2).  in(r4,x,4). out(r4,z,3).
-in(r5,x,5). out(r5,z,5).  in(r6,x,6). out(r6,z,8).
+in(r1,x,1). out(r1,y,2).
+in(r2,x,2). out(r2,y,3).
+in(r3,x,3). out(r3,y,5).
+in(r4,x,4). out(r4,y,7).
+in(r5,x,5). out(r5,y,11).
+in(r6,x,6). out(r6,y,13).

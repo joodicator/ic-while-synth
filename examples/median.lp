@@ -6,8 +6,7 @@ var(y). var(z).
 
 write_var(y). write_var(z).
 
-while_not_allowed.
-arithmetic_not_allowed.
+disallow(while, arithmetic).
 
 preset_line_instr(1, set(y, var(a))).
 preset_line_instr(2, if(lt(var(y), var(b)), 1)).
