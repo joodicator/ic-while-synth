@@ -4,8 +4,12 @@
 \usepackage{hyperref}
 \usepackage{algorithmicx}
 \usepackage[numbib]{tocbibind}
+\usepackage[fleqn]{amsmath}
 
 \renewcommand{\bibsection}{\section{\bibname}}
+
+\newcommand{\ttt}{\texttt}
+\newcommand{\trm}{\textrm}
 
 \begin{document}
 
@@ -60,11 +64,11 @@ users are likely to be non-programmers, but whose usefulness could be greatly in
 by the automation of complex data processing tasks, representable as computer programs, 
 which could be specified by the user as a list of input/output examples.
 
-In previous work, this problem has been approached in many different ways, and several 
-systems have been built which are capable of synthesising programs in this manner (see 
-section~\ref{sec:prgsyn}, Related Work in Synthesis), but the problem has not in its 
-full generality been resolved. We hope to gain an insight into this by approaching it 
-with new tools and techniques.
+In previous work, this problem has been approached in many different ways, 
+and several systems have been built which are capable of synthesising 
+programs in this manner, but the problem has not in its full generality 
+been resolved. We hope to gain an insight into this by approaching it with 
+new tools and techniques.
 
 This can be viewed as a machine-learning problem, where the program generator 
 \emph{learns} the correct program by considering examples of its behaviour. Since the 
@@ -77,52 +81,303 @@ section~\ref{sec:asp}, Answer Set Programming).
 
 \section{Background}
 
-\subsection{Related Work in Synthesis} \label{sec:prgsyn}
-\emph{To be completed.}
-
 \subsection{Answer Set Programming} \label{sec:asp}
 
-Answer Set Programming (ASP) is a form of logic programming particularly suited to 
-search problems over large domains (such as the domain of all imperative programs of a 
-given length). An Answer Set Program distinguishes the result to be computed by a set 
-of propositional facts and rules in the domain. Importantly, ASP includes 
-\emph{negation as failure}, where a rule can be conditional on the inability of prove 
-that some proposition is true, which allows \emph{non-monotonic reasoning}. The result 
-of running an ASP is an \emph{answer set} of facts which is consistent with the 
-program, forms a \emph{stable model}, and is minimal in a certain sense. For further 
-details, see \cite{glimpse}, which gives a concise introduction to the paradigm.
+Answer Set Programming (ASP) is a form of logic programming particularly 
+suited to search problems over large domains (such as the domain of all 
+imperative programs of a given length). An Answer Set Program 
+distinguishes the result to be computed by a set of propositional facts 
+and rules in the domain. Importantly, ASP includes \emph{negation as 
+failure}, where a rule can be conditional on the inability of prove that 
+some proposition is true, which allows \emph{non-monotonic reasoning}. The 
+result of running an ASP is an \emph{answer set} of facts which is 
+consistent with the program, forms a \emph{stable model}, and is minimal 
+in a certain sense. For further details, see \cite{glimpse}, which gives a 
+concise introduction to the paradigm.
 
-ASP was used in 2014 by Muggleton et al.\cite{metagol} as one of two approaches to 
-learning finite automata from positive and negative example sentences from the formal 
-language the automata is desired to represent. In solving this problem in ASP (and in 
-ILP in general), it was found to be necessary to implement \emph{predicate invention} 
-by building a logical \emph{meta-interpreter} in the host language.
+ASP was used in 2014 by Muggleton et al.\cite{metagol} as one of two 
+approaches to learning finite automata from positive and negative example 
+sentences from the formal language the automata is desired to represent. 
+In solving this problem in ASP (and in ILP in general), it was found to be 
+necessary to implement \emph{predicate invention} by building a logical 
+\emph{meta-interpreter} in the host language.
 
-As another example of ASP's usage, Mark Law et al.\ in 2014 developed a system called 
-ILASP\cite{ilasp} implementing a form of ILP where an Answer Set Program representing 
-the solution is learned inductively from positive and negative examples, with 
-applications in agent planning. The same idea is used by Mark Law in 2013 in 
-\cite{law13} to learn general card game playing strategies.
+As another example of ASP's usage, Mark Law et al.\ in 2014 developed a 
+system called ILASP\cite{ilasp} implementing a form of ILP where an Answer 
+Set Program representing the solution is learned inductively from positive 
+and negative examples, with applications in agent planning.
 
 \section{Current Work}
 
+We have begun development of a utility, based on the Potassco\cite{potassco} 
+tools for Answer Set Programming, which reads a user-written specification 
+including a language bias and test examples, and produces imperative programs 
+in a simple ``While'' language.
+
 \subsection{While Language} \label{sec:outlng}
-\emph{To be completed.}
+
+The following context-free grammar gives the (abstract) syntax of the While 
+language. The basic elements of a program are (at the moment) integer 
+constants and named variables. The exact set of possible constants and 
+variables is specific to the program being generated, is given by the language 
+bias.
+\begin{align*}
+   \trm{Const} \to\ & ... \mid -2 \mid -1 \mid 0 \mid 1 \mid 2 \mid ...
+\\ \trm{Var}   \to\ & a \mid b \mid c \mid ... \mid x \mid y \mid z \mid ...
+\end{align*}
+A While program is a possible empty sequence of \emph{commands}, where a 
+\emph{command} assigns a value to a variable, or takes the form of an \ttt{if} 
+or \ttt{while} statement with a boolean guard and a further sequence of 
+commands:
+\begin{align*}
+   \trm{Prog}  \to\ & \trm{Cmds}
+\\ \trm{Cmds}  \to\ & \varepsilon \mid \trm{Cmd} \ttt{; } \trm{Cmds}
+\\ \trm{Cmd}   \to\ & \trm{Var} \ \ttt{=} \ \trm{Expr}
+\\            \mid\ & \ttt{if (} \trm{Bool} \ttt{) \char`\{\ } \trm{Cmds} \ttt{ \char`\}}
+\\            \mid\ & \ttt{while (} \trm{Bool} \ttt{) \char`\{\ } \trm{Cmds} \ttt{ \char`\}}
+\end{align*}
+An arithmetic expression is a sum, difference, product, or integer quotient of 
+two constants and/or variables. A boolean guard can test the relation 
+less-than ($<$) or less-than-or-equal ($\leq$) on constants and variables. The 
+structure of expressions is deliberately kept as simple as possible, to reduce 
+the search space of programs:
+\begin{align*}
+   \trm{Expr}  \to\ & \trm{LExpr}\ (\ \ttt{+} \mid \ttt{-} \mid \ttt{*} \mid \ttt{/}\ )\ \trm{LExpr}
+\\ \trm{Bool}  \to\ & \trm{LExpr}\ (\ \ttt{<} \mid \ttt{<=}\ )\ \trm{LExpr}
+\\ \trm{LExpr} \to\ & \trm{Const} \mid \trm{Var}
+\end{align*}
+Input and output is achieved by setting the initial values of certain 
+\emph{input variables} before the program runs, and reading the values of 
+certain \emph{output variables} after it has terminated.
+
+The semantics of a While program are the same as C programs with the same 
+syntax, except:
+\begin{enumerate}
+    \item Execution starts at the first command of the program, and ends when 
+    the last command has been executed.
+    \item All variables exist in the same global scope throughout the 
+    execution of the program.
+    \item Except for input variables, the initial value of every variable is 0.
+    \item The results of arithmetical operations wrap around so that all 
+    values remain within the range of possible integer constants. This is done 
+    mainly to reduce the complexity of simulating programs using ASP.
+    \item Division by zero causes the program to formally not terminate.
+\end{enumerate}
 
 \subsection{Program Interpreter}
-\emph{To be completed.}
 
-\subsection{Program Synthesiser}
-\emph{To be completed.}
+We have written in ASP an interpreter for the While language which, given 
+facts specifying the initial values of input variables and the contents of 
+each \emph{line} of the program, includes in the answer set facts saying 
+(among other things) whether the program terminated, and if it did, what the 
+final values of the output variables are.
+
+The interpreter is capable of running at multiple traces of execution at once, 
+each with possibly different input values, so the relevant facts about 
+execution are also parameterised by a \emph{run identifier}. This 
+functionality is essential to be able to learn programs that satisfy at once 
+multiple test examples, as will be seen in section~\ref{sec:prgsyn}, Program 
+Synthesiser.
+
+The following facts specify a program which has an input variable $x$, and 
+computes $z = \textrm{Fib}(x)$, the $x$th Fibonacci number, and also specifies 
+6 different runs to perform:
+\begin{verbatim}
+    #const line_max=6.      % Maximum line number.
+    var(x). var(y). var(z). % All variables used.
+    
+    line_instr(1, set(z, con(1))).               % z = 1;
+    line_instr(2, while(lt(con(1), var(x)), 3)). % while (1 < x) {
+    line_instr(3, set(z, add(var(y), var(z)))).  %    z = y + z;
+    line_instr(4, set(y, sub(var(z), var(y)))).  %    y = z - y;
+    line_instr(5, set(x, sub(var(x), con(1)))).  %    x = x - 1;
+    line_instr(6, end_while).                    % }
+    
+    % Run the program with 6 different initial values of x:
+    in(r1,x,1). in(r2,x,2). in(r3,x,3).
+    in(r4,x,4). in(r5,x,5). in(r6,x,6).
+\end{verbatim}
+The second parameter of the function symbol \texttt{while/2} gives the 
+length of its body, i.e.\ the number of instructions it contains, 
+excluding the \ttt{while} and \ttt{end\_while} lines.
+
+When run with the While interpreter, this produces an answer set including the 
+following facts:
+\begin{verbatim}
+    run_var_out(r1,x,1) run_var_out(r1,y,0) run_var_out(r1,z,1) 
+    run_var_out(r2,x,1) run_var_out(r2,y,1) run_var_out(r2,z,1) 
+    run_var_out(r3,x,1) run_var_out(r3,y,1) run_var_out(r3,z,2) 
+    run_var_out(r4,x,1) run_var_out(r4,y,2) run_var_out(r4,z,3)
+    run_var_out(r5,x,1) run_var_out(r5,y,3) run_var_out(r5,z,5)
+    run_var_out(r6,x,1) run_var_out(r6,y,5) run_var_out(r6,z,8) 
+\end{verbatim}
+The first column gives the final value of $x$ for each run and is not 
+interesting, as this is just always 1 (or less), by the loop's guard. The 
+second and third columns gives the final values of $y$ and $z$, and we can see 
+that, as we hoped, $z=\textrm{Fib}(x_0)$ and $y=\textrm{Fib}(x_0-1)$, where 
+$x_0$ is the initial value of $x$ for run $r_{x_0}$.
+
+\subsection{Program Synthesiser} \label{sec:prgsyn}
+
+The example in the previous section shows how the program interpreter 
+works, but it is not how the system is intended to be used. In actuality, 
+the user specifies what the output values should be for various inputs, 
+and the solver abducts a program satisfying those constraints.
+
+This is achieved by including an aggregate defining the domain of 
+admissable programs, and integrity constraints to enforce the test 
+examples:
+\begin{verbatim}
+    % Exactly one instruction per line.
+    1{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
+    
+    valid_line_instr(L, set(V, E))      :- line(L), write_var(V), expr(E).
+    valid_line_instr(L, if(B, 1..M))    :- line(L), bool(B), M=line_max-L.
+    valid_line_instr(L, while(B, 1..M)) :- line(L), bool(B), M=line_max-L-1.
+    valid_line_instr(L, end_while)      :- line(L).
+    
+    % All test examples must halt with the correct value.
+    :- run_does_not_halt(R).
+    :- run_var_out(R,X,Actual), out(R,X,Expected), Actual != Expected.
+\end{verbatim}
+The predicate \ttt{out/3} is the counterpart to \ttt{in/3}, which was 
+earlier used to specify the values of input variables, that asserts what 
+the final value of a certain variable must be. The predicate 
+\ttt{run\_does\_not\_halt/1} holds when a given run exceeds the time 
+limit, or for some other reason does not formally terminate (e.g.\ when 
+division by zero occurs). Further integrity constraints are included that 
+ensure the generated program has a sensible structure, but for the sake of 
+brevity are not shown here.
+
+If we fix some facts in addition to the main program that includes the 
+above machinery, we can immediately synthesise some simple programs:
+\begin{verbatim}
+    #const line_max=1.  % Number of lines.
+    #const int_max=10.  % Maximum integer value.
+
+    % Allowed explicit constants, variables, and writable variables:
+    con(1). con(2). var(x). var(y). write_var(y).
+    
+    % Test examples:
+    in(r0,x,0). out(r0,y,0).
+    in(r1,x,1). out(r1,y,2).
+    in(r2,x,2). out(r2,y,4).
+    in(r3,x,3). out(r3,y,6).
+\end{verbatim}
+The answer set of which includes:
+\begin{verbatim}
+    line_instr(1,set(y,add(var(x),var(x))))
+\end{verbatim}
+Which is the program we expected, $y \gets x + x$.
+
+As a slightly less trivial example, we can make the following 
+specification of a program that computes $y = \sum_{i=0}^x i$, the $x$th 
+triangular number:
+\begin{verbatim}
+    #const line_max=4.
+    #const int_max=11. 
+    con(1). var(x). var(y). write_var(x). write_var(y).
+    
+    in(r0,x,0). out(r0,y,0).
+    in(r1,x,1). out(r1,y,1).
+    in(r2,x,2). out(r2,y,3).
+    in(r3,x,3). out(r3,y,6).
+    in(r4,x,4). out(r4,y,10).
+\end{verbatim}
+This program is solved in 12 seconds on a 3.4GHz machine, yielding:
+\begin{verbatim}
+line_instr(1,while(le(con(1),var(x)),2)) % while (1 <= x) {
+line_instr(2,set(y,add(var(x),var(y))))  %    y = x + y
+line_instr(3,set(x,sub(var(x),con(1))))  %    x = x - 1
+line_instr(4,end_while)                  % }
+\end{verbatim}
+Which is easily verified to generalise the examples in the intended way.
 
 \subsection{Specification Language} \label{sec:inplng}
-\emph{To be completed.}
+For longer and more complicated programs, it is currently necessary to cut 
+down the search space by enforcing stronger constraints on the structure 
+or contents of the programs. These are currently specified in the same 
+syntax as the ASP program, but it would not be difficult to devise a more 
+user-friendly format.
 
-\section{Project Plan}
-\emph{To be completed.}
+To make it easier to interpret the output of the system, we have a utility 
+that converts relevant parts of the answer set into a more traditional 
+human-readable listing of the program it represents. Another utility 
+automates an incremental search for the smallest possible program, by 
+first trying to find a program of 1 line, then incrementing the number of 
+lines after each failure until a solution is found.
 
-\section{Evaluation Plan}
-\emph{To be completed.}
+Following are some examples of inputs to the system and their 
+corresponding output, illustrating its full functionality.
+
+We can compute the median of three input values:
+\begin{verbatim}
+    #const time_max=line_max+1.
+    #const int_max=8.
+    var(a). var(b). var(c). var(y). var(z).
+    write_var(y). write_var(z).
+    
+    % Omit from the search space some features we know are not needed:
+    while_not_allowed.
+    arithmetic_not_allowed.
+    
+    % Predefine the first three lines of the program, to help the solver:
+    preset_line_instr(1, set(y, var(a))).
+    preset_line_instr(2, if(lt(var(y), var(b)), 1)).
+    preset_line_instr(3, set(y, var(b))).
+    
+    % Examples given in shorthand: ex(r, a,b,c, z).
+    ex(r0, 0,0,0, 0).
+    ex(r1, 7,1,1, 1). ex(r5, 1,7,1, 1). ex(r9, 1,1,7, 1).
+    ex(r2, 1,7,7, 7). ex(r6, 7,1,7, 7). ex(rA, 7,7,1, 7).
+    ex(r3, 1,2,3, 2). ex(r7, 1,3,2, 2). ex(rB, 2,1,3, 2).
+    ex(r4, 3,2,1, 2). ex(r8, 2,3,1, 2). ex(rC, 3,1,2, 2).
+\end{verbatim}
+This program is solved in 44 seconds on a 3.4GHz machine, yielding:
+\begin{verbatim}
+   1. y = a
+   2. if (y < b):
+   3.     y = b
+   4. if (c < b):
+   5.     y = b
+   6.     z = a
+   7. if (z < c):
+   8.     z = c
+   9. if (y <= z):
+  10.     z = y
+\end{verbatim}
+Which can be verified to indeed compute $z = \textrm{median}(a,b,c) = 
+\textrm{min}(\textrm{max}(a,b), \textrm{max}(b,c), \textrm{max}(c,a))$.
+
+Finally, the earlier Fibonacci program can be learned from test examples, 
+when some help is given with the program structure:
+\begin{verbatim}
+    #const time_max=30.
+    #const int_max=10.
+    con(1). var(x). var(y). var(z).
+    write_var(x). write_var(y). write_var(z).
+    
+    % Predefine the looping structure of the program,
+    % and forbid the solver from generating any further structure:
+    preset_line_instr(2, while(lt(con(1), var(x)), line_max-3)).
+    preset_line_instr(line_max, end_while).
+    
+    if_not_allowed. while_not_allowed.
+    
+    in(r1,x,1). out(r1,z,1).  in(r2,x,2). out(r2,z,1).
+    in(r3,x,3). out(r3,z,2).  in(r4,x,4). out(r4,z,3).
+    in(r5,x,5). out(r5,z,5).  in(r6,x,6). out(r6,z,8).
+\end{verbatim}
+This solves in 113 seconds on a 3.4GHz machine, yielding:
+\begin{verbatim}
+   1. z = 1
+   2. while (1 < x):
+   3.     z = y + z
+   4.     x = x - 1
+   5.     y = z - y
+   6. end_while
+\end{verbatim}
+As expected.
 
 \begin{thebibliography}{9}
     \bibitem{muggleton94}
@@ -143,9 +398,6 @@ applications in agent planning. The same idea is used by Mark Law in 2013 in
     \bibitem{ilasp}
         M Law, A Russo, K Broda (2014). \emph{Inductive learning of answer set 
         programs}. \url{https://www.doc.ic.ac.uk/~ml1909/ILASP_Paper.pdf}
-    \bibitem{law13}
-        M Law (2013). \emph{General Card Game Playing}.
-        \url{http://www.doc.ic.ac.uk/teaching/distinguished-projects/2013/m.law.pdf}
 \end{thebibliography}
 
 \end{document}
