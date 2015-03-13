@@ -5,6 +5,12 @@
 \usepackage{algorithmicx}
 \usepackage[numbib]{tocbibind}
 \usepackage[fleqn]{amsmath}
+\usepackage{comment}
+\usepackage{qtree}
+\usepackage{float}
+
+\floatstyle{boxed}
+\restylefloat{figure}
 
 \renewcommand{\bibsection}{\section{\bibname}}
 
@@ -16,7 +22,7 @@
 \title{Synthesis of Simple While Programs Using Inductive Logic Programming:
        Interim Report}
 \author{Joseph Crowe \\ Supervised by Krysia Broda and Mark Law}
-\date{27 Februrary 2015}
+\date{09 March 2015}
 \maketitle
 
 \tableofcontents
@@ -26,12 +32,21 @@
 
 We shall address the problem of automatically writing computer programs in an 
 imperative programming language (see section~\ref{sec:outlng}, While Language) 
-given a specification of the program's behaviour written in a simple, abstract language 
-understandable by users without programming expertise.
+given a specification of the program's behaviour written in a simple, abstract 
+language understandable by users without programming expertise.
 
-In particular, we have examined the notion of allowing the specification to consist of 
-a finite set of input/output pairs that the generated program should satisfy (see 
-section~\ref{sec:inplng}, Specification Language).
+In particular, we have examined the notion of allowing the specification to 
+consist of a finite set of input/output pairs that the generated program 
+should satisfy (see section~\ref{sec:inplng}, Specification Language).
+
+This can be viewed as a machine-learning problem, where the program generator 
+\emph{learns} the correct program by considering examples of its behaviour. Since the 
+discrete and exacting nature of computer programming seems to lend itself well to a 
+logic-based learning approach, we ask whether the paradigm of Inductive Logic 
+Programming (ILP)\cite{muggleton94} is well-suited to solve this problem. More 
+specifically, our working implementation consists of an Answer Set Program run using 
+tools from the Potsdam Answer Set Solving Collection\cite{potassco} (see 
+section~\ref{sec:asp}, Answer Set Programming).
 
 As a simple example, the following specification:
 
@@ -44,13 +59,17 @@ As a simple example, the following specification:
 \end{tabular}
 
 is one that many programs could satisfy (there is an $n$-degree polynomial for each 
-integer $n \geq 3$ which interpolates these points), but the program which the user 
-probably has in mind, and that which we would hope to automatically synthesise, being a 
-``simplest'' program in some sense, is:
+integer $n \geq 4$ which interpolates these points), but the program which the user 
+probably has in mind is:
 
 \begin{algorithmic}[H]
-\State $y \gets x + x$
+\State $y \gets 2 \times x$
 \end{algorithmic}
+
+This could be (informally) verified by testing the program against additional 
+examples not used to generate the program, or perhaps formally verified using 
+automated proof techniques, if the program's specification were available in a 
+suitable form.
 
 This has possible applications in Computing education: a teacher with students who are 
 learning how to program may wish to generate \emph{multiple} different programs, one 
@@ -64,48 +83,54 @@ users are likely to be non-programmers, but whose usefulness could be greatly in
 by the automation of complex data processing tasks, representable as computer programs, 
 which could be specified by the user as a list of input/output examples.
 
-In previous work, this problem has been approached in many different ways, 
-and several systems have been built which are capable of synthesising 
-programs in this manner, but the problem has not in its full generality 
-been resolved. We hope to gain an insight into this by approaching it with 
-new tools and techniques.
-
-This can be viewed as a machine-learning problem, where the program generator 
-\emph{learns} the correct program by considering examples of its behaviour. Since the 
-discrete and exacting nature of computer programming seems to lend itself well to a 
-logic-based learning approach, we ask whether the paradigm of Inductive Logic 
-Programming (ILP)\cite{muggleton94} is well-suited to solve this problem. More 
-specifically, our working implementation consists of an Answer Set Program run using 
-tools from the Potsdam Answer Set Solving Collection\cite{potassco} (see 
-section~\ref{sec:asp}, Answer Set Programming).
+In previous work, this problem has been approached in many different ways, and 
+several systems have been built which are capable of synthesising programs in 
+this manner (see section~\ref{sec:prvsyn}, Previous Work in Program 
+Synthesis), but the problem has not in its full generality been resolved. We 
+hope to gain an insight into this by approaching it with new tools and 
+techniques.
 
 \section{Background}
+
+\subsection{Previous Work in Program Synthesis} \label{sec:prvsyn}
+
+Saurabh Srivastava, Sumit Gulwani, et al.\ in 2010 showed\cite{popl10syn} 
+that, given a functional specification of an imperative program, relating its 
+inputs and outputs with logical formulae, and given also the looping structure 
+of the the program, it is possible to infer a program satisfying these 
+constraints, using techniques previously used for program verification.
+
+David Perelman, Sumit Gulwani, et al.\ in 2014 developed a system\cite{tds} 
+based on the principle of ``programming by example,'' which generates and 
+iteratively refines a program from a sequence of increasingly more general 
+sets of input/output examples. Notably, their system is not limited to 
+imperative programs, but allows arbitrary domain-specific languages to be 
+defined and used with the system.
 
 \subsection{Answer Set Programming} \label{sec:asp}
 
 Answer Set Programming (ASP) is a form of logic programming particularly 
 suited to search problems over large domains (such as the domain of all 
-imperative programs of a given length). An Answer Set Program 
-distinguishes the result to be computed by a set of propositional facts 
-and rules in the domain. Importantly, ASP includes \emph{negation as 
-failure}, where a rule can be conditional on the inability of prove that 
-some proposition is true, which allows \emph{non-monotonic reasoning}. The 
-result of running an ASP is an \emph{answer set} of facts which is 
-consistent with the program, forms a \emph{stable model}, and is minimal 
-in a certain sense. For further details, see \cite{glimpse}, which gives a 
-concise introduction to the paradigm.
+imperative programs of a given length). An Answer Set Program distinguishes 
+the result to be computed by a set of propositional facts and rules in the 
+domain. Importantly, ASP includes \emph{aggregates}, \emph{integrity 
+constraints}, and \emph{negation as failure}, where a rule can be conditional 
+on the inability of prove that some proposition is true, which allows 
+\emph{non-monotonic reasoning}. The result of running an ASP is an 
+\emph{answer set} of facts which is consistent with the program, forms a 
+\emph{stable model}, and is minimal in a certain sense. For further details, 
+see \cite{glimpse}, which gives a concise introduction to the paradigm.
 
-ASP was used in 2014 by Muggleton et al.\cite{metagol} as one of two 
-approaches to learning finite automata from positive and negative example 
-sentences from the formal language the automata is desired to represent. 
-In solving this problem in ASP (and in ILP in general), it was found to be 
-necessary to implement \emph{predicate invention} by building a logical 
-\emph{meta-interpreter} in the host language.
+In 2013, Domenico Corapi et al.\ developed ASPAL\cite{aspal}, a system written 
+in ASP for solving classical Inductive Logic Programming tasks, which brings 
+to bear against these problems the efficiency of existing ASP solvers, and 
+allows their optimisation features to be used to direct the search towards a 
+desired optimal solution.
 
-As another example of ASP's usage, Mark Law et al.\ in 2014 developed a 
-system called ILASP\cite{ilasp} implementing a form of ILP where an Answer 
-Set Program representing the solution is learned inductively from positive 
-and negative examples, with applications in agent planning.
+Building on this, in 2014, Mark Law et al.\ in 2014 developed 
+ILASP\cite{ilasp}, implementing a form of ILP where an Answer Set Program 
+representing the solution is learned inductively from positive and negative 
+examples, with applications in agent planning.
 
 \section{Current Work}
 
@@ -136,13 +161,14 @@ commands:
 \\            \mid\ & \ttt{if (} \trm{Bool} \ttt{) \char`\{\ } \trm{Cmds} \ttt{ \char`\}}
 \\            \mid\ & \ttt{while (} \trm{Bool} \ttt{) \char`\{\ } \trm{Cmds} \ttt{ \char`\}}
 \end{align*}
-An arithmetic expression is a sum, difference, product, or integer quotient of 
-two constants and/or variables. A boolean guard can test the relation 
-less-than ($<$) or less-than-or-equal ($\leq$) on constants and variables. The 
-structure of expressions is deliberately kept as simple as possible, to reduce 
-the search space of programs:
+An arithmetic expression is a sum, difference, product, integer quotient, or 
+integer remainder of two constants and/or variables. A boolean guard can test 
+the relation less-than ($<$) or less-than-or-equal ($\leq$) on constants and 
+variables. The structure of expressions is deliberately kept as simple as 
+possible, to reduce the search space of programs:
 \begin{align*}
-   \trm{Expr}  \to\ & \trm{LExpr}\ (\ \ttt{+} \mid \ttt{-} \mid \ttt{*} \mid \ttt{/}\ )\ \trm{LExpr}
+   \trm{Expr}  \to\ & \trm{LExpr}\ (\ \ttt{+} \mid \ttt{-} \mid \ttt{*} \mid
+                                      \ttt{/} \mid \ttt{\%} \ )\ \trm{LExpr}
 \\ \trm{Bool}  \to\ & \trm{LExpr}\ (\ \ttt{<} \mid \ttt{<=}\ )\ \trm{LExpr}
 \\ \trm{LExpr} \to\ & \trm{Const} \mid \trm{Var}
 \end{align*}
@@ -154,15 +180,62 @@ The semantics of a While program are the same as C programs with the same
 syntax, except:
 \begin{enumerate}
     \item Execution starts at the first command of the program, and ends when 
-    the last command has been executed.
+    the last command has been executed. For simplicity, there is currently no 
+    other way to halt execution, but we acknowledge that a \ttt{stop} command 
+    may be needed for some programs, and may be added in future.
     \item All variables exist in the same global scope throughout the 
     execution of the program.
     \item Except for input variables, the initial value of every variable is 0.
+    We change this in the future this so that variables may not be used unless 
+    they are explicitly initialised.
     \item The results of arithmetical operations wrap around so that all 
     values remain within the range of possible integer constants. This is done 
-    mainly to reduce the complexity of simulating programs using ASP.
-    \item Division by zero causes the program to formally not terminate.
+    mainly to reduce the complexity of simulating programs using ASP. An 
+    alternative would be to cause the program to fail when this happens, which 
+    might be more desirable in eliminating spurious programs taking advantage 
+    of integer overflow.
+    \item Division by zero, and taking the remainder of division by zero,
+    cause the program to formally not terminate.
 \end{enumerate}
+
+Here is an example of a program satisfying this grammar, which takes an input 
+integer $x$ and computes the output integer $z=\trm{Fib}(x)$, the $x$th 
+Fibonacci number:
+\begin{verbatim}
+    z = 1;
+    while (1 < x) {
+        z = x + z;
+        y = z - y;
+        x = x - 1;
+    };
+\end{verbatim}
+
+A parse tree corresponding to this program (with intermediate non-terminals 
+omitted when unambiguous) is given in Figure~\ref{fig:fibtree}.
+
+\begin{figure}[h]
+  \caption{The parse tree of a While program.}
+  \label{fig:fibtree}
+  \Tree[ .Prog [ .Cmds
+    [ .\ttt{=} \ttt{x} \ttt{1} ]
+    [ .Cmds
+      [ .\ttt{while}
+        [ .Bool [ .\ttt{<} \ttt{1} \ttt{x} ] ]
+        [ .Cmds
+          [ .\ttt{=} \ttt{z} [ .\ttt{+} \ttt{x} \ttt{z} ] ]
+            [ .Cmds
+              [ .\ttt{=} \ttt{y} [ .\ttt{-} \ttt{z} \ttt{y} ] ]
+              [ .Cmds
+                [ .\ttt{=} \ttt{x} [ .\ttt{-} \ttt{x} \ttt{1} ] ]
+                $\varepsilon$
+              ]
+            ]
+          ]
+        ]
+      $\varepsilon$
+    ]
+  ]]
+\end{figure}
 
 \subsection{Program Interpreter}
 
@@ -379,25 +452,111 @@ This solves in 113 seconds on a 3.4GHz machine, yielding:
 \end{verbatim}
 As expected.
 
+\section{Project Plan} \label{sec:projplan}
+
+Considering that much is still unknown about what the result of the project 
+will look like, and that various ideas are being considered and tested, it is 
+hard to write down a timetable of what work is going to be done by when. 
+However, we can identify several avenues to be explored:
+\begin{itemize}
+
+    \item Instead of trying to learn whole programs at once, it has been 
+    suggested that we might determine, either manually or automatically, the 
+    \emph{midconditions} to be satisfied by the variables at points in 
+    execution between the start and end of the program; it would then be 
+    possible to split the the program into multiple subprograms with 
+    corresponding pre- and post-conditions, and search for these subprograms 
+    separately, possibly in parallel.
+    
+    This would certainly offer a dramatic increase in the speed of the solver 
+    and the domain of programs we are able to generate, and if a way were 
+    found to generate the midconditions automatically, would provide a very 
+    promising direction for the project.
+
+    \item Instead of requiring the user to supply only a finite list of 
+    input/output examples, it would be beneficial to accept a functional 
+    specification of the computation to be performed by the program, in the 
+    form of logical formulae relating the input and output variable values.
+    
+    It would then be possible to generate as many test examples as needed 
+    (limited by the domain of input values) for an iterative approach to 
+    generating the program.
+    
+    Challenges here include defining a representation of the formulae that can 
+    express all programs we would want to learn, and extracting test examples 
+    from the formulae, if they are not trivially solved equations such as $y = 
+    f(x)$.
+
+    \item A limit to the size and complexity of (sub-)programs learned is 
+    currently the time taken to solve the ASP. This is strongly related to the 
+    size of the \emph{grounding} generated as part of this process, where 
+    variables in each rule are substituted with all possible values. The 
+    solver could be optimised by reducing the size of this grounding (by 
+    inspecting the code and seeing where it could be improved), or by applying 
+    other optimisations that eliminate redundant programs from the search 
+    space to reduce its size.
+
+\end{itemize}
+
+\section{Evaluation Plan}
+
+As with the Project Plan (see section~\ref{sec:projplan}), it is difficult to 
+say exactly what form will be taken by the benchmarks and tests used to 
+measure the effectiveness of the system will have developed, but we can 
+identify some measurable features that relate to its effectiveness:
+
+\begin{itemize}
+    \item Most importantly, perhaps, we must ask whether the generated 
+    programs are \emph{correct} in that they exhibit the behaviour that we 
+    expected. This could be heuristicically verified by testing particular 
+    generated programs against additional test examples, or, perhaps, formally 
+    proven for particular programs, using logical pre- and post-conditions.
+
+    \item We can measure the time taken to solve for particular programs, and 
+    compare this to existing program-generating systems. Relatedly, we can ask 
+    what is the longest or most complex program that our system can generate 
+    in a reasonable length of time, or what features in addition to plain 
+    arithmetic can be supported in generated programs. Choosing a 
+    representative sample of programs for these tests will be important to 
+    expose any biases.
+
+    \item We can ask how the number of test examples needed to generate the 
+    correct program relates to the program's length or time complexity. It 
+    would be expected that longer or more complex programs require more 
+    examples, but if the number of examples needed can be minimised, then the 
+    system (when used in such a way that the user must provide examples) is 
+    more intelligent and less reliant on the user for guidance, and probably 
+    also more efficient.
+\end{itemize}
+
 \begin{thebibliography}{9}
     \bibitem{muggleton94}
-        S Muggleton, Luc de Raedt (1994). \emph{Inductive Logic Programming: 
-        Theory and methods}. The Journal of Logic Programming, vol. 19-20, page 
-        629-679.
+        Muggleton S, De Raedt L (1994).
+        \emph{Inductive Logic Programming: Theory and methods}.
+        The Journal of Logic Programming, vol. 19-20, page 629-679.
     \bibitem{potassco}
         Potassco, the Potsdam Answer Set Solving Collection. 
         \url{http://potassco.sourceforge.net}
     \bibitem{glimpse}
-        C Anger, K Konczak, T Linke, T Schaub (2005). \emph{A 
-        Glimpse of Answer Set Programming}. 
+        Anger C, Konczak K, Linke T, Schaub T (2005).
+        \emph{A Glimpse of Answer Set Programming}. 
         \url{http://www.cs.uni-potsdam.de/wv/pdfformat/ankolisc05.pdf}
-    \bibitem{metagol}
-        S Muggleton, D Lin, N Pahlavi, A Tamaddoni-Nezhad (2014). 
-        \emph{Meta-interpretive learning: application to grammatical inference}.
-        MACHINE LEARNING, vol. 94, page 25-49.
+    \bibitem{popl10syn}
+        Srivastava S, Gulwani S, Foster J S (2010).
+        \emph{From Program Verification to Program Synthesis}.
+        \url{http://www.cs.umd.edu/~saurabhs/pubs/popl10-syn.html}
+    \bibitem{tds}
+        Perelman D, Gulwani S, Grossman D, Provost P (2014).
+        \emph{Test-Driven Synthesis}.
+        \url{http://research.microsoft.com/en-us/um/people/sumitg/pubs/pldi14-tds.pdf}
+    \bibitem{aspal}
+        Corapi D, Russo A, Lupu E (2011)
+        \emph{Inductive Logic Programming in Answer Set Programming}. 
+        \url{http://ilp11.doc.ic.ac.uk/short_papers/ilp2011_submission_20.pdf}
     \bibitem{ilasp}
-        M Law, A Russo, K Broda (2014). \emph{Inductive learning of answer set 
-        programs}. \url{https://www.doc.ic.ac.uk/~ml1909/ILASP_Paper.pdf}
+        Law M, Russo A, Broda K (2014).
+        \emph{Inductive learning of answer set programs}.
+        \url{https://www.doc.ic.ac.uk/~ml1909/ILASP_Paper.pdf}
 \end{thebibliography}
 
 \end{document}
