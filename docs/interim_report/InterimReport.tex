@@ -8,6 +8,7 @@
 \usepackage{comment}
 \usepackage{qtree}
 \usepackage{float}
+\usepackage{fancyvrb}
 
 \floatstyle{boxed}
 \restylefloat{figure}
@@ -201,14 +202,14 @@ syntax, except:
 Here is an example of a program satisfying this grammar, which takes an input 
 integer $x$ and computes the output integer $z=\trm{Fib}(x)$, the $x$th 
 Fibonacci number:
-\begin{verbatim}
+\begin{Verbatim}[samepage=true]
     z = 1;
     while (1 < x) {
         z = x + z;
         y = z - y;
         x = x - 1;
     };
-\end{verbatim}
+\end{Verbatim}
 
 A parse tree corresponding to this program (with intermediate non-terminals 
 omitted when unambiguous) is given in Figure~\ref{fig:fibtree}.
@@ -255,7 +256,7 @@ Synthesiser.
 The following facts specify a program which has an input variable $x$, and 
 computes $z = \textrm{Fib}(x)$, the $x$th Fibonacci number, and also specifies 
 6 different runs to perform:
-\begin{verbatim}
+\begin{Verbatim}[samepage=true]
     #const line_max=6.      % Maximum line number.
     var(x). var(y). var(z). % All variables used.
     
@@ -269,21 +270,21 @@ computes $z = \textrm{Fib}(x)$, the $x$th Fibonacci number, and also specifies
     % Run the program with 6 different initial values of x:
     in(r1,x,1). in(r2,x,2). in(r3,x,3).
     in(r4,x,4). in(r5,x,5). in(r6,x,6).
-\end{verbatim}
+\end{Verbatim}
 The second parameter of the function symbol \texttt{while/2} gives the 
 length of its body, i.e.\ the number of instructions it contains, 
 excluding the \ttt{while} and \ttt{end\_while} lines.
 
 When run with the While interpreter, this produces an answer set including the 
 following facts:
-\begin{verbatim}
+\begin{Verbatim}[samepage=true]
     run_var_out(r1,x,1) run_var_out(r1,y,0) run_var_out(r1,z,1) 
     run_var_out(r2,x,1) run_var_out(r2,y,1) run_var_out(r2,z,1) 
     run_var_out(r3,x,1) run_var_out(r3,y,1) run_var_out(r3,z,2) 
     run_var_out(r4,x,1) run_var_out(r4,y,2) run_var_out(r4,z,3)
     run_var_out(r5,x,1) run_var_out(r5,y,3) run_var_out(r5,z,5)
     run_var_out(r6,x,1) run_var_out(r6,y,5) run_var_out(r6,z,8) 
-\end{verbatim}
+\end{Verbatim}
 The first column gives the final value of $x$ for each run and is not 
 interesting, as this is just always 1 (or less), by the loop's guard. The 
 second and third columns gives the final values of $y$ and $z$, and we can see 
@@ -300,7 +301,7 @@ and the solver abducts a program satisfying those constraints.
 This is achieved by including an aggregate defining the domain of 
 admissable programs, and integrity constraints to enforce the test 
 examples:
-\begin{verbatim}
+\begin{Verbatim}[samepage=true]
     % Exactly one instruction per line.
     1{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
     
@@ -312,7 +313,7 @@ examples:
     % All test examples must halt with the correct value.
     :- run_does_not_halt(R).
     :- run_var_out(R,X,Actual), out(R,X,Expected), Actual != Expected.
-\end{verbatim}
+\end{Verbatim}
 The predicate \ttt{out/3} is the counterpart to \ttt{in/3}, which was 
 earlier used to specify the values of input variables, that asserts what 
 the final value of a certain variable must be. The predicate 
@@ -324,7 +325,7 @@ brevity are not shown here.
 
 If we fix some facts in addition to the main program that includes the 
 above machinery, we can immediately synthesise some simple programs:
-\begin{verbatim}
+\begin{Verbatim}[samepage=true]
     #const line_max=1.  % Number of lines.
     #const int_max=10.  % Maximum integer value.
 
@@ -336,17 +337,17 @@ above machinery, we can immediately synthesise some simple programs:
     in(r1,x,1). out(r1,y,2).
     in(r2,x,2). out(r2,y,4).
     in(r3,x,3). out(r3,y,6).
-\end{verbatim}
+\end{Verbatim}
 The answer set of which includes:
-\begin{verbatim}
+\begin{Verbatim}[samepage=true]
     line_instr(1,set(y,add(var(x),var(x))))
-\end{verbatim}
+\end{Verbatim}
 Which is the program we expected, $y \gets x + x$.
 
 As a slightly less trivial example, we can make the following 
 specification of a program that computes $y = \sum_{i=0}^x i$, the $x$th 
 triangular number:
-\begin{verbatim}
+\begin{Verbatim}[samepage=true]
     #const line_max=4.
     #const int_max=11. 
     con(1). var(x). var(y). write_var(x). write_var(y).
@@ -356,14 +357,14 @@ triangular number:
     in(r2,x,2). out(r2,y,3).
     in(r3,x,3). out(r3,y,6).
     in(r4,x,4). out(r4,y,10).
-\end{verbatim}
+\end{Verbatim}
 This program is solved in 12 seconds on a 3.4GHz machine, yielding:
-\begin{verbatim}
-line_instr(1,while(le(con(1),var(x)),2)) % while (1 <= x) {
-line_instr(2,set(y,add(var(x),var(y))))  %    y = x + y
-line_instr(3,set(x,sub(var(x),con(1))))  %    x = x - 1
-line_instr(4,end_while)                  % }
-\end{verbatim}
+\begin{Verbatim}[samepage=true]
+    line_instr(1,while(le(con(1),var(x)),2)) % while (1 <= x) {
+    line_instr(2,set(y,add(var(x),var(y))))  %    y = x + y
+    line_instr(3,set(x,sub(var(x),con(1))))  %    x = x - 1
+    line_instr(4,end_while)                  % }
+\end{Verbatim}
 Which is easily verified to generalise the examples in the intended way.
 
 \subsection{Specification Language} \label{sec:inplng}
@@ -384,7 +385,7 @@ Following are some examples of inputs to the system and their
 corresponding output, illustrating its full functionality.
 
 We can compute the median of three input values:
-\begin{verbatim}
+\begin{Verbatim}[samepage=true]
     #const time_max=line_max+1.
     #const int_max=8.
     var(a). var(b). var(c). var(y). var(z).
@@ -405,9 +406,9 @@ We can compute the median of three input values:
     ex(r2, 1,7,7, 7). ex(r6, 7,1,7, 7). ex(rA, 7,7,1, 7).
     ex(r3, 1,2,3, 2). ex(r7, 1,3,2, 2). ex(rB, 2,1,3, 2).
     ex(r4, 3,2,1, 2). ex(r8, 2,3,1, 2). ex(rC, 3,1,2, 2).
-\end{verbatim}
+\end{Verbatim}
 This program is solved in 44 seconds on a 3.4GHz machine, yielding:
-\begin{verbatim}
+\begin{Verbatim}[samepage=true]
    1. y = a
    2. if (y < b):
    3.     y = b
@@ -418,13 +419,13 @@ This program is solved in 44 seconds on a 3.4GHz machine, yielding:
    8.     z = c
    9. if (y <= z):
   10.     z = y
-\end{verbatim}
+\end{Verbatim}
 Which can be verified to indeed compute $z = \textrm{median}(a,b,c) = 
 \textrm{min}(\textrm{max}(a,b), \textrm{max}(b,c), \textrm{max}(c,a))$.
 
 Finally, the earlier Fibonacci program can be learned from test examples, 
 when some help is given with the program structure:
-\begin{verbatim}
+\begin{Verbatim}[samepage=true]
     #const time_max=30.
     #const int_max=10.
     con(1). var(x). var(y). var(z).
@@ -440,16 +441,16 @@ when some help is given with the program structure:
     in(r1,x,1). out(r1,z,1).  in(r2,x,2). out(r2,z,1).
     in(r3,x,3). out(r3,z,2).  in(r4,x,4). out(r4,z,3).
     in(r5,x,5). out(r5,z,5).  in(r6,x,6). out(r6,z,8).
-\end{verbatim}
+\end{Verbatim}
 This solves in 113 seconds on a 3.4GHz machine, yielding:
-\begin{verbatim}
+\begin{Verbatim}[samepage=true]
    1. z = 1
    2. while (1 < x):
    3.     z = y + z
    4.     x = x - 1
    5.     y = z - y
    6. end_while
-\end{verbatim}
+\end{Verbatim}
 As expected.
 
 \section{Project Plan} \label{sec:projplan}
