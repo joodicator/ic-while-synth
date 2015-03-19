@@ -1,7 +1,11 @@
 #!/bin/bash
 
-ARG=$1
-shift
-ARG=$PWD/$ARG
-cd `dirname $0`
-exec ./Learn.hs "$ARG" "$@" | ./format
+if [[ $# > 0 ]]; then
+    ARG=$1
+    shift
+    ARG=$PWD/$ARG
+    cd `dirname $0`
+    exec ./Learn.hs "$ARG" "$@" | ./format
+else
+    exec `dirname $0`/Learn.hs
+fi

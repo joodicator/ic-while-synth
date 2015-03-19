@@ -21,6 +21,7 @@ data ClingoResult
   = Satisfiable | Unsatisfiable
 
 main = do
+    hSetBuffering stdout NoBuffering
     conf <- getConf
     learn State{
         lineCount      = 1,
@@ -38,11 +39,10 @@ getConf = getArgs >>= \args -> case args of
 learn :: State -> IO ()
 learn state = do
     putStrLn $ "\ESC[1m=== line_max=" ++ show (lineCount state) ++ " ===\ESC[0m"
-    let args = ["-", paramFile (conf state), "learn.lp"]
+    let args = ["-", paramFile (conf state), "learn.lp"] ++ clingoArgs (conf state)
     let spec = (proc "clingo" args) { std_in=CreatePipe, std_out=CreatePipe }
     (Just clingoIn, Just clingoOut, _, clingoProc) <- createProcess spec
     hPutStrLn clingoIn $ "#const line_max=" ++ show (lineCount state) ++ "."
-    hClose clingoIn
     result <- readClingo clingoOut
     waitForProcess clingoProc
     putStrLn $ ""

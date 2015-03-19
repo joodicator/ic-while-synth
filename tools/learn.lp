@@ -2,6 +2,7 @@
 
 #hide.
 #show line_instr/2.
+#show run_var_out/3.
 
 %-------------------------------------------------------------------------------
 % Features allowed in the program.
