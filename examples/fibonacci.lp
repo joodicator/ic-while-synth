@@ -5,10 +5,14 @@
 con(1).
 
 % Additional constraints:
-disallow(if; mul; div; mod).
+disallow(if; while; mul; div; mod).
 
 % Allowed variables, which variables are writable:
 var(x; y; z). write_var(x; y; z).
+
+% Predefined program structure:
+preset_line_instr(2, while(lt(con(1), var(x)), line_max-3)).
+preset_line_instr(line_max, end_while).
 
 % Input/output pairs specifying the program:
 in(r1,x,1). out(r1,z,1).

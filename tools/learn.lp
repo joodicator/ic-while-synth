@@ -1,3 +1,17 @@
+% The following constants MUST be defined in file before this one:
+% #const line_max=LM.   % The number of lines in the program.
+% #const time_max=TM.   % Maximum time steps to simulate before failure.
+% #const int_max=IM.    % Maximum integer allowed to exist.
+
+% In specifying a program to be learned, the following facts MAY be given:
+% preset_line_instr(L,I) % At line L, the instruction I is forced to occur.
+% con(N).       % N is a constant that may occur as a literal in the code.
+% var(V).       % V is a variable thay may be used in the program.
+% write_var(V). % The variable V may be written to in the program.
+% disallow(F).  % Feature F may not be used (see feature/1).
+% in(R,V,C).    % In run R, the variable V starts with the value C.
+% out(R,V,C).   % In run R, the variable V must finish with the value C.
+
 #const int_min=0.
 
 #hide.

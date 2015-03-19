@@ -1,17 +1,12 @@
 #const time_max=20. % Maximum number of time steps to simulate.
 #const int_max=10.  % Maximum integer value.
 
-% Constants allowed to occur in the code:
 con(1).
+var(n; p; k; r).
+write_var(n; p; k; r).
 
-% Additional constraints:
 disallow(if; mul; div).
 
-% Allowed variables, which variables are writable:
-var(x). var(y). var(z).
-write_var(x). write_var(y). write_var(z).
-
-% Input/output pairs specifying the program:
 in(r1,x,1). out(r1,y,2).
 in(r2,x,2). out(r2,y,3).
 in(r3,x,3). out(r3,y,5).
