@@ -1,27 +1,62 @@
 module Clingo where
 
+import System.IO
+import System.Process
 import Control.Monad
 import Control.Applicative
 import Data.Maybe
 import Data.List
 import Data.Char
 
-data Fact
-  = Fact Name [Term]
-  deriving Show
+type Parse a = String -> Maybe (a, String)
+newtype Name = Name String deriving (Eq, Show)
+data Fact = Fact Name [Term] deriving Show
+data Term = TInt Integer | TStr String | TFun Name [Term] deriving Show
 
-data Term
-  = TInt Integer
-  | TStr String
-  | TFun Name [Term]
-  deriving Show
+type ClingoArg = String
+type Answer = [Fact]
 
-newtype Name
-  = Name String
-  deriving (Eq, Show)
+data ClingoInput
+   = CICode String | CIFile FilePath
+   deriving Show
 
-type Parse a
-  = String -> Maybe (a, String)
+data ClingoResult
+   = Satisfiable [Answer] | Unsatisfiable
+   deriving Show
+
+--------------------------------------------------------------------------------
+runClingo :: [ClingoArg] -> [ClingoInput] -> IO ClingoResult
+runClingo postArgs inputs = do
+    let args = "-" : postArgs
+    let spec = (proc "clingo" args) { std_in=CreatePipe, std_out=CreatePipe }
+    (Just clingoIn, Just clingoOut, _, clingoProc) <- createProcess spec
+    forM inputs $ \input -> case input of
+        CICode code -> hPutStr clingoIn code
+        CIFile path -> hPutStr clingoIn =<< readFile path
+    hClose clingoIn
+    result <- readClingo [] clingoOut
+    waitForProcess clingoProc
+    return result
+  where
+    readClingo :: [[Fact]] -> Handle -> IO ClingoResult
+    readClingo rAnswers clingoOut = do
+        line <- ehGetLine clingoOut
+        case line of
+            _ | "Answer: " `isPrefixOf` line -> do
+                line <- ehGetLine clingoOut
+                let Just (answer, "") = readFacts line
+                readClingo (answer : rAnswers) clingoOut
+            "SATISFIABLE" ->
+                return (Satisfiable $ reverse rAnswers)
+            "UNSATISFIABLE" ->
+                return Unsatisfiable
+            _ ->
+                readClingo rAnswers clingoOut
+    ehGetLine :: Handle -> IO String
+    ehGetLine handle = do
+        line <- hGetLine handle
+        putStrLn line
+        return line
 
 --------------------------------------------------------------------------------
 -- Read a space-separated list of facts.
