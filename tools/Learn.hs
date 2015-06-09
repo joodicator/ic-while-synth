@@ -12,24 +12,24 @@ import Data.List hiding (dropWhileEnd)
 import Clingo
 
 data Conf = Conf{
-    clingoArgs :: [String],
-    paramFile  :: FilePath }
+    cfClingoArgs :: [String],
+    cfParamFile  :: FilePath }
 
 data State = State{
-    lineCount      :: Int,
-    conf           :: Conf }
+    stLineCount :: Int,
+    stConf      :: Conf }
 
 main = do
     hSetBuffering stdout NoBuffering
     conf <- getConf
     learn State{
-        lineCount      = 1,
-        conf           = conf }
+        stLineCount = 1,
+        stConf      = conf }
 
 getConf :: IO Conf
 getConf = getArgs >>= \args -> case args of
     paramFile : clingoArgs -> do
-        return Conf{ paramFile=paramFile, clingoArgs=clingoArgs }
+        return Conf{ cfParamFile=paramFile, cfClingoArgs=clingoArgs }
     _ -> do
         progName <- getProgName
         hPutStrLn stderr $ "Usage: " ++ progName ++ " PARAM_FILE CLINGO_ARGS..."
@@ -37,12 +37,14 @@ getConf = getArgs >>= \args -> case args of
 
 learn :: State -> IO ()
 learn state = do
-    putStrLn $ "\ESC[1m=== line_max=" ++ show (lineCount state) ++ " ===\ESC[0m"
-    result <- runClingo (clingoArgs $ conf state) [
-        CICode ("#const line_max=" ++ show (lineCount state) ++ "."),
-        CIFile (paramFile $ conf state),
+    putStrLn $ "\ESC[1m=== line_max=" ++ show (stLineCount state) ++ " ===\ESC[0m"
+    let options = runClingoOptions{
+        rcClingoArgs = cfClingoArgs (stConf state) }
+    result <- runClingo options [
+        CICode ("#const line_max=" ++ show (stLineCount state) ++ "."),
+        CIFile (cfParamFile $ stConf state),
         CIFile "learn.lp"]
     putStrLn ""
     case result of
-        Satisfiable _ -> exitSuccess
-        Unsatisfiable -> learn state{ lineCount = lineCount state + 1 }
+        CRSatisfiable _ -> exitSuccess
+        CRUnsatisfiable -> learn state{ stLineCount = stLineCount state + 1 }

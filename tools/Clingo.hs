@@ -9,25 +9,43 @@ import Data.List
 import Data.Char
 
 type Parse a = String -> Maybe (a, String)
+
 newtype Name = Name String deriving (Eq, Show)
 data Fact = Fact Name [Term] deriving Show
 data Term = TInt Integer | TStr String | TFun Name [Term] deriving Show
 
-type ClingoArg = String
+-- ASP code passed to runClingo.
+data ClingoInput
+   = CICode String
+   | CIFile FilePath
+   deriving Show
+
+-- Return value of runClingo.
+data ClingoResult
+   = CRSatisfiable [Answer]
+   | CRUnsatisfiable
+   deriving Show
 type Answer = [Fact]
 
-data ClingoInput
-   = CICode String | CIFile FilePath
-   deriving Show
+-- Options passed to runClingo.
+data RunClingoOptions = RunClingoOptions{
+    rcClingoArgs :: [String], -- Additional arguments to be passed to Clingo.
+    rcEchoStdout :: Bool }    -- If True, Clingo's stdout is copied to stdout.
 
-data ClingoResult
-   = Satisfiable [Answer] | Unsatisfiable
-   deriving Show
+-- RunClingoOptions with default values.
+runClingoOptions = RunClingoOptions{
+    rcClingoArgs = [],
+    rcEchoStdout = True}
 
 --------------------------------------------------------------------------------
-runClingo :: [ClingoArg] -> [ClingoInput] -> IO ClingoResult
-runClingo postArgs inputs = do
-    let args = "-" : postArgs
+-- Run Clingo 3, which is assumed to be present on the search path as 'clingo',
+-- with the given input strings/files, and with the given arguments appended.
+-- Returns either CRSatisfiable [answer1, answer2, ...], where the answerN are
+-- given in reverse order, or CRUnsatisfiable. In particular, if an optimum
+-- is reported by Clingo, this is given as the first answer in the list.
+runClingo :: RunClingoOptions -> [ClingoInput] -> IO ClingoResult
+runClingo options inputs = do
+    let args = "-" : extraArgs
     let spec = (proc "clingo" args) { std_in=CreatePipe, std_out=CreatePipe }
     (Just clingoIn, Just clingoOut, _, clingoProc) <- createProcess spec
     forM inputs $ \input -> case input of
@@ -38,24 +56,27 @@ runClingo postArgs inputs = do
     waitForProcess clingoProc
     return result
   where
+    RunClingoOptions{rcClingoArgs=extraArgs, rcEchoStdout=echoStdout} = options
     readClingo :: [[Fact]] -> Handle -> IO ClingoResult
-    readClingo rAnswers clingoOut = do
+    readClingo answers clingoOut = do
         line <- ehGetLine clingoOut
         case line of
             _ | "Answer: " `isPrefixOf` line -> do
                 line <- ehGetLine clingoOut
                 let Just (answer, "") = readFacts line
-                readClingo (answer : rAnswers) clingoOut
+                readClingo (answer : answers) clingoOut
             "SATISFIABLE" ->
-                return (Satisfiable $ reverse rAnswers)
+                return (CRSatisfiable answers)
+            "OPTIMUM FOUND" ->
+                return (CRSatisfiable answers)
             "UNSATISFIABLE" ->
-                return Unsatisfiable
+                return CRUnsatisfiable
             _ ->
-                readClingo rAnswers clingoOut
+                readClingo answers clingoOut
     ehGetLine :: Handle -> IO String
     ehGetLine handle = do
         line <- hGetLine handle
-        putStrLn line
+        when echoStdout $ putStrLn line
         return line
 
 --------------------------------------------------------------------------------
