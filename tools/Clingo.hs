@@ -25,17 +25,20 @@ data ClingoResult
    = CRSatisfiable [Answer]
    | CRUnsatisfiable
    deriving Show
+
 type Answer = [Fact]
 
 -- Options passed to runClingo.
 data RunClingoOptions = RunClingoOptions{
     rcClingoArgs :: [String], -- Additional arguments to be passed to Clingo.
-    rcEchoStdout :: Bool }    -- If True, Clingo's stdout is copied to stdout.
+    rcEchoStdout :: Bool,     -- If True, Clingo's stdout is copied to stdout.
+    rcEchoInput  :: Bool }    -- If True, the input ASP is copied to stdout.
 
 -- RunClingoOptions with default values.
 runClingoOptions = RunClingoOptions{
     rcClingoArgs = [],
-    rcEchoStdout = True}
+    rcEchoStdout = True,
+    rcEchoInput  = False }
 
 --------------------------------------------------------------------------------
 -- Run Clingo 3, which is assumed to be present on the search path as 'clingo',
@@ -48,15 +51,21 @@ runClingo options inputs = do
     let args = "-" : extraArgs
     let spec = (proc "clingo" args) { std_in=CreatePipe, std_out=CreatePipe }
     (Just clingoIn, Just clingoOut, _, clingoProc) <- createProcess spec
-    forM inputs $ \input -> case input of
-        CICode code -> hPutStr clingoIn code
-        CIFile path -> hPutStr clingoIn =<< readFile path
+    forM inputs $ \input -> do
+        code <- case input of
+            CICode code -> return code
+            CIFile path -> readFile path
+        when (echoInput) $ putStrLn code
+        hPutStr clingoIn code
     hClose clingoIn
     result <- readClingo [] clingoOut
     waitForProcess clingoProc
     return result
   where
-    RunClingoOptions{rcClingoArgs=extraArgs, rcEchoStdout=echoStdout} = options
+    RunClingoOptions{
+        rcClingoArgs = extraArgs,
+        rcEchoStdout = echoStdout,
+        rcEchoInput  = echoInput } = options
     readClingo :: [[Fact]] -> Handle -> IO ClingoResult
     readClingo answers clingoOut = do
         line <- ehGetLine clingoOut
@@ -82,6 +91,8 @@ runClingo options inputs = do
 --------------------------------------------------------------------------------
 -- Read a space-separated list of facts.
 readFacts :: Parse [Fact]
+readFacts "" = do
+    return ([], "")
 readFacts str = do
     (fact, str) <- readFact str
     (_,str) <- return (span isSpace str)
@@ -90,6 +101,9 @@ readFacts str = do
 
 showFacts :: [Fact] -> String
 showFacts facts = concat (intersperse " " (map showFact facts))
+
+showFactLines :: [Fact] -> [String]
+showFactLines facts = map ((++ ".") . showFact) facts
 
 --------------------------------------------------------------------------------
 -- Read a fact: a predicate symbol with 0 or more term arguments.
@@ -137,14 +151,18 @@ readName str = do
 readArgs :: Parse [Term]
 readArgs str = do
     '(':str <- return str
+    (_,str) <- return (span isSpace str)
     (arg, str) <- readTerm str
     (args, str) <- readArgs' str <|> return ([], str)
+    (_,str) <- return (span isSpace str)
     ')':str <- return str
     return (arg:args, str)
 
 readArgs' :: Parse [Term]
 readArgs' str = do
+    (_,str) <- return (span isSpace str)
     ',':str <- return str
+    (_,str) <- return (span isSpace str)
     (arg, str) <- readTerm str
     (args, str) <- readArgs' str <|> return ([], str)
     return (arg:args, str)

@@ -1,12 +1,11 @@
 % The following constants MUST be defined in file a before this one:
 % #const time_max=TM.   % Maximum time steps to simulate before failure.
-% #const int_max=IM.    % Maximum integer allowed to exist.
+% #const int_min=IMN.   % Least integer allowed to exist.
+% #const int_max=IMX.   % Greatest integer allowed to exist.
 
 % In specifying the program to run, the following facts may be given:
 % line_instr(L,I)   % The instruction on line L >= 1 is I (see learn.lp).
 % in(R,V,C).        % In run R, the variable V starts with the value C.
-
-#const int_min=0.
 
 %------------------------------------------------------------------------------- 
 % Require all runs to halt.
@@ -62,12 +61,13 @@ run_does_halt(R) :- run_halt(R,_).
 run_does_not_halt(R) :- run(R), not run_does_halt(R).
 
 % run_var_out(R,X,C) if the final value of X in run R is C.
-run_var_out(R,X,C) :- run_var(R,T,X,C), not run(R,T).
+run_var_out(R,X,C)     :- run_var(R,T,X,C), not run(R,T).
+run_var_out(R,X,unset) :- run(R), var(X), not run_var_out_set(R,X).
+run_var_out_set(R,X) :- run_var_out(R,X,C), C != unset.
 
-% Initialise variables to their input value or, by default, 0.
+% Initialise variables to their input value, if any.
 run_var_in(R,X)  :- in(R,X,_).
 run_var(R,0,X,C) :- in(R,X,C), int(C).
-run_var(R,0,X,0) :- run(R), var(X), not run_var_in(R,X).
 
 % On a set statement, update variables; otherwise, leave them constant.
 run_var(R,T+1,X,C) :-

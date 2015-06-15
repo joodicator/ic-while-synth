@@ -7,6 +7,7 @@
 \usepackage{qtree}
 \usepackage{float}
 \usepackage{fancyvrb}
+\usepackage{comment}
 
 \floatstyle{boxed}
 \restylefloat{figure}
@@ -21,22 +22,18 @@
 \maketitle
 \clearpage
 
-\section*{Abstract}
-\textbf{To be completed.}
-
-\section*{Acknowledgements}
-\textbf{To be completed.}
-
+\tableofcontents
 \clearpage
 
-\tableofcontents
-
-\section{Introduction}
+\section{Introduction} \label{sec:intro}
 
 One of the aims of computer science is to make it easier for people to 
 generate \emph{computer programs}, which are the machine-readable 
 representations of desired behaviour executed by a computer in order to 
 perform some useful computation.
+
+\textbf{Something about motivation to be inserted here; I haven't decided on 
+the wording.}
 
 This project concerns the generation of \emph{imperative} computer 
 programs, consisting of sequences of instructions to be executed in order, 
@@ -46,10 +43,12 @@ most computing devices without further processing.
 In particular, we restrict our attention to a \emph{simple while language} 
 containing the minimal features for computation involving whole numbers: 
 branching, using \emph{if statements}; looping, using \emph{while loops}, 
-and some basic arithmetic operators such as addition and multiplication. 
+and some basic arithmetic operators such as addition and multiplication.
 See Section~\ref{sec:whilan} for a formal description of this language.
 
-An example of such a program is:
+An example of such a program is the following, which takes as input an initial 
+value of \texttt{x}, say $x_0 \ge 0$, and leaves \texttt{y} equal to the 
+$x_0$th power of 2, $y = 2^{x_0}$:
 \begin{Verbatim}[samepage=true]
     y = 1;
     while (x > 0) {
@@ -57,11 +56,6 @@ An example of such a program is:
        x = x - 1;
     }
 \end{Verbatim}
-If we denote by $x$ the initial value of the variable \texttt{x} 
-(non-negative) and by $y$ the final value of \texttt{y} after running this 
-program, we can see that its effect is to double a value starting at 1, 
-$x$ times, $x$ and leave the result in $y$, or in other words to compute 
-the $x$th power of two, $y = 2^x$.
 
 We now have a way to instruct a computer to calculate the powers of two, 
 but is it necessary for a person to write out the program in full? It 
@@ -70,7 +64,7 @@ time-consuming, error prone, and dependent on specialised knowledge.
 
 Lacking the inclination to write a program in the above form, we might 
 wish instead to specify its behaviour as mathematical relation between 
-its input and output variables, such as $y = 2^x$; or perhaps we do not 
+its input and output variables, such as $y = 2^{x_0}$; or perhaps we do not 
 even have a mathematical expression in mind, but simply wish to provide a 
 list of examples of what the program should do:
 \begin{center}
@@ -92,16 +86,17 @@ domain of input/output values.
 
 There is a significant body of previous work in the automatic synthesis of 
 programs (see Section~\ref{sec:bkgsyn}). Most can be classified as 
-\emph{inductive}, which take a machine-learning approach to generalising a 
-set of input/output examples with a program in a particular language; or 
-\emph{deductive}, which seek to construct a program which provably 
-satisfies a high-level representation of desired behaviour.
+\emph{inductive}, which take a machine-learning approach to generalising a set 
+of input/output examples with a program in a particular language; or 
+\emph{deductive}\cite{cheatham86}\cite{bundy90}\cite{colon05}, which seek to 
+construct a program which provably satisfies a high-level representation of 
+desired behaviour.
 
-There have been recent successes in inductive program synthesis, which 
-have inspired this project to take an inductive approach to generating 
-imperative programs; however, the problem in its full generality is far 
-from solved, and with the application of new tools and techniques, we hope 
-to break new ground and document their effectiveness.
+There have been recent successes in inductive program synthesis\cite{tds}, 
+which have inspired this project to take an inductive approach to generating 
+imperative programs; however, the problem in its full generality is far from 
+solved, and with the application of new tools and techniques, we hope to break 
+new ground and document their effectiveness.
 
 In particular, we use a type of logic programming called Answer Set 
 Programming (see Section~\ref{sec:bkgasp}), which was previously used for 
@@ -124,14 +119,58 @@ as needed. See Section~\ref{sec:synfrm}.
 \clearpage
 
 \section{Background: Automatic Program Synthesis} \label{sec:bkgsyn}
-\textbf{To be expanded.}
 
-Saurabh Srivastava, Sumit Gulwani, et al.\ in 2010 showed\cite{popl10syn} 
-that, given a functional specification of an imperative program, relating 
-its inputs and outputs with logical formulae, and given also the looping 
-structure of the the program, it is possible to infer a program satisfying 
-these constraints, using techniques previously used for program 
-verification.
+The notion of automatic programming, in the sense of 
+allowing a computer to take part in the writing of a computer program, has its 
+roots in the design of optimising compilers to translate a high-level program 
+into an efficient low-level program while preserving behaviour. The 
+\emph{Fortran I} compiler\cite{fortran} is a well known early example of this. 
+Since then, researchers have attempted to bridge increasingly wider gaps 
+between specification language and output language. More detailed surveys of 
+the subject can be found at e.g.\ 
+\cite{goldberg86}\cite{deville94}\cite{basin04}.
+
+\subsection{Deductive Program Synthesis}
+
+In the \emph{deductive} variety of program synthesis, in which the task is to 
+derive a correct program from a formal specification, there are several 
+documented approaches. The oldest is \emph{transformational synthesis}, which 
+seeks to transform the specification into a correct program through multiple 
+correctness-preserving changes. See \cite{cheatham86} for an example.
+
+Also used in deductive synthesis is the methodology of \emph{schema-guided 
+synthesis}, in which templates for program fragments in the target language, 
+called \emph{schemas}, are used to build a larger program. This reduces the 
+complexity of the task, as the work of constructing and proving the 
+correctness of the schema has already been done. For example, a theoretical 
+system is developed at \cite{flener97}, and a more recent application to 
+numerical computation is given at \cite{colon05}.
+
+Finally, the \emph{constructive} approach to deductive program synthesis uses 
+the fact that the specification can be written as a formula whose 
+satisfiability asserts the existence of a program with the specified 
+behaviour; and a proof of the formula's satisfiability is equivalent to the 
+construction of a such a program. Constructive program synthesis therefore 
+borrows the power of theorem-proving techniques to perform the difficult part 
+of program synthesis. An example of this applied to the synthesis of logic 
+programs is given at \cite{bundy90}.
+
+More recent advances in deductive program synthesis use combinations of the 
+above techniques For example, in \cite{popl10syn}, it is shown that given a 
+functional specification of an imperative program, relating its inputs and 
+outputs with logical formulae, and given also the looping structure of the the 
+program, it is possible to infer a program satisfying these constraints, using 
+techniques previously used for program verification.
+
+\subsection{Inductive Program Synthesis}
+
+On the other hand, in \emph{inductive} program synthesis, the task is to 
+produce a hypothetical program, given an incomplete specification of its 
+behaviour, which usually takes the form of a list of input/output examples. 
+This can be viewed as a form of machine learning, where the synthesised 
+program is a hypothesis generalising the given examples.
+
+\textbf{More references to be added.}
 
 David Perelman, Sumit Gulwani, et al.\ in 2014 developed a system\cite{tds} 
 based on the principle of ``programming by example,'' which generates and 
@@ -141,49 +180,24 @@ imperative programs, but allows arbitrary domain-specific languages to be
 defined and used with the system.
 
 \section{Background: Answer Set Programming} \label{sec:bkgasp}
-Answer Set Programming (ASP) is a form of logic programming particularly 
-suited to search problems over large domains (such as the domain of all 
-imperative programs of a given length). An Answer Set Program distinguishes 
-the result to be computed by a set of propositional facts and rules in the 
-domain. Importantly, ASP includes \emph{aggregates}, \emph{integrity 
-constraints}, and \emph{negation as failure}, where a rule can be conditional 
-on the inability of prove that some proposition is true, which allows 
-\emph{non-monotonic reasoning}. The result of running an ASP is an 
-\emph{answer set} of facts which is consistent with the program, forms a 
-\emph{stable model}, and is minimal in a certain sense. For further details, 
-see \cite{glimpse}, which gives a concise introduction to the paradigm.
-
-\subsection{Definitions}
-\textbf{To be completed.}
-
-\subsection{Previous Work using ASP}
-\textbf{To be expanded.}
-
-In 2013, Domenico Corapi et al.\ developed ASPAL\cite{aspal}, a system 
-written in ASP for solving classical Inductive Logic Programming tasks, 
-which brings to bear against these problems the efficiency of existing ASP 
-solvers, and allows their optimisation features to be used to direct the 
-search towards a desired optimal solution.
-
-Building on this, in 2014, Mark Law et al.\ in 2014 developed 
-ILASP\cite{ilasp}, implementing a form of ILP where an Answer Set Program 
-representing the solution is learned inductively from positive and negative 
-examples, with applications in agent planning.
-
-\clearpage
 
 \section{Language Definitions}
+
 \subsection{While Language} \label{sec:whilan}
 
-\subsubsection{Syntax}
-\textbf{This is just copied from the Interim Report; I intend to make some 
-changes to make it read better with the rest of the report.}
+The output language of our system is an imperative programming language that 
+can be described as a ``simple while language''. A running program's state is 
+kept in a fixed number of global integer variables, and the execution path is 
+controlled by \emph{if} and \emph{while} statements. This language is 
+therefore Turing complete, its expressive power in principle no less than any 
+other programming language.
 
+\subsubsection{Syntax}
 The following context-free grammar gives the (abstract) syntax of the While 
-language. The basic elements of a program are (at the moment) integer 
-constants and named variables. The exact set of possible constants and 
-variables is specific to the program being generated, is given by the language 
-bias.
+language. The basic elements of a program are integer constants and named 
+variables. The exact set of possible constants and variables is specific to 
+the program being generated, is given by the language bias (see 
+Section~\ref{sec:spclng}).
 \begin{align*}
    \trm{Const} \to\ & ... \mid -2 \mid -1 \mid 0 \mid 1 \mid 2 \mid ...
 \\ \trm{Var}   \to\ & a \mid b \mid c \mid ... \mid x \mid y \mid z \mid ...
@@ -214,235 +228,237 @@ Input and output is achieved by setting the initial values of certain
 \emph{input variables} before the program runs, and reading the values of 
 certain \emph{output variables} after it has terminated.
 
-Here is an example of a program satisfying this grammar, which takes an input 
-integer $x$ and computes the output integer $z=\trm{Fib}(x)$, the $x$th 
-Fibonacci number:
+\subsubsection{Example Program}
+
+Recall the example program from Section~\ref{sec:intro}:
 \begin{Verbatim}[samepage=true]
-    z = 1;
-    while (1 < x) {
-        z = x + z;
-        y = z - y;
-        x = x - 1;
-    };
+    y = 1;
+    while (x > 0) {
+       y = y * 2;
+       x = x - 1;
+    }
 \end{Verbatim}
 
 A parse tree corresponding to this program (with intermediate non-terminals 
-omitted when unambiguous) is given in Figure~\ref{fig:fibtree}.
+omitted when unambiguous) is given in Figure~\ref{fig:parsetree}.
 
 \begin{figure}[h]
   \caption{The parse tree of a While program.}
-  \label{fig:fibtree}
+  \label{fig:parsetree}
   \Tree[ .Prog [ .Cmds
-    [ .\ttt{=} \ttt{x} \ttt{1} ]
+    [ .\ttt{=} \ttt{y} \ttt{1} ]
     [ .Cmds
       [ .\ttt{while}
-        [ .Bool [ .\ttt{<} \ttt{1} \ttt{x} ] ]
+        [ .Bool [ .\ttt{>} \ttt{x} \ttt{0} ] ]
         [ .Cmds
-          [ .\ttt{=} \ttt{z} [ .\ttt{+} \ttt{x} \ttt{z} ] ]
-            [ .Cmds
-              [ .\ttt{=} \ttt{y} [ .\ttt{-} \ttt{z} \ttt{y} ] ]
-              [ .Cmds
-                [ .\ttt{=} \ttt{x} [ .\ttt{-} \ttt{x} \ttt{1} ] ]
-                $\varepsilon$
-              ]
-            ]
+          [ .\ttt{=} \ttt{y} [ .\ttt{*} \ttt{y} \ttt{2} ] ]
+          [ .Cmds
+            [ .\ttt{=} \ttt{x} [ .\ttt{-} \ttt{x} \ttt{1} ] ]
+            $\varepsilon$
           ]
         ]
+      ]
       $\varepsilon$
     ]
   ]]
 \end{figure}
 
 \subsubsection{Semantics}
-\textbf{This is just copied from the Interim Report, but it's not 
-currently correct; I intend to make several changes to reflect further 
-work I've done on the interpreter.}
-
-The semantics of a While program are the same as C programs with the same 
+The semantics of While programs are the same as C programs with the same 
 syntax, except:
 \begin{enumerate}
     \item Execution starts at the first command of the program, and ends when 
     the last command has been executed. For simplicity, there is currently no 
     other way to halt execution, but we acknowledge that a \ttt{stop} command 
-    may be needed for some programs, and may be added in future.
+    may be needed for some programs, and may be added in the future.
     \item All variables exist in the same global scope throughout the 
     execution of the program.
-    \item Except for input variables, the initial value of every variable is 0.
-    We change this in the future this so that variables may not be used unless 
-    they are explicitly initialised.
-    \item The results of arithmetical operations wrap around so that all 
-    values remain within the range of possible integer constants. This is done 
-    mainly to reduce the complexity of simulating programs using ASP. An 
-    alternative would be to cause the program to fail when this happens, which 
-    might be more desirable in eliminating spurious programs taking advantage 
-    of integer overflow.
+    \item If a time limit is defined in the language bias (in the current 
+    system, one must be defined) and the number of instructions executed by 
+    the program exceeds that limit, the program will be considered to have 
+    failed to terminate, and such programs will not be considered as 
+solutions.
+    \item A program attempting to perform arithmetic using a variable to which
+    no value has been assigned will formally fail to terminate, therefore 
+    excluding such programs from being generated.
+    \item Arithmetic results exceeding the range of integers allowed by the 
+    language bias cause the program to formally fail to terminate.
     \item Division by zero, and taking the remainder of division by zero,
-    cause the program to formally not terminate.
+    cause the program to formally fail to terminate.
 \end{enumerate}
 
-\subsection{Program Specification Language} \label{sec:spclng}
-\textbf{To be completed.}
+\subsection{Task Specification Language} \label{sec:spclng}
+
+The user specifies a program synthesis task by writing a configuration file 
+containing the relevant parameters. The format chosen for this file is an 
+Answer Set Program whose answer set contains facts giving the parameters. 
+Although it is possible to perform computation in this file, the normal usage 
+is to simply list the parameters as individual facts; the ASP format was 
+chosen for ease of integration with the other tools used.
+
+The following categories of parameters may be given:
+
+\subsubsection{Functional Specification}
+
+\begin{verbatim}
+input_variable(V1; ...; Vn).
+\end{verbatim}
+The \ttt{n} variables $\{\ttt{V1}, ..., \ttt{Vm}\}$ are declared as input 
+variables, meaning that they are initialised with values to parameterise an 
+individual execution of the program.
+
+\begin{verbatim}
+output_variable(V1; ...; Vn).
+\end{verbatim}
+The \ttt{n} variables $\{\ttt{V1}, ..., \ttt{Vm}\}$ are declared as output
+variables, meaning that their values when the program terminates are recorded
+and possibly compared with the input values to determine correctness.
+
+\begin{verbatim}
+ in(ExampleID, InputVariable,  InitialValue).
+out(ExampleID, OutputVariable, ExpectedFinalValue).
+\end{verbatim}
+These parameters allow the user to list input/output examples that the program 
+is required to satisfy. Any number of examples may be given, and each set of 
+examples should have a unique \ttt{ExampleID}, with which each 
+\ttt{InputVariable} and \ttt{OutputVariable} is associated with an 
+\ttt{InitialValue} or \ttt{ExpectedFinalValue}.
+
+\begin{verbatim}
+precondition(PreconditionString).   % Optional; default: true.
+postcondition(PostconditionString). % Optional; default: true.
+\end{verbatim}
+If a precondition and/or postcondition are given, the task is to synthesise a 
+program whose output values satisfy the postcondition whenever its input 
+values satisfy the precondition, in addition to any constraints given by 
+input/output examples.
+
+Preconditions and postconditions are given as ASP \verb|"strings"|
+containing propositional formulae written in the same syntax as the body of an 
+ASP rule. Preconditions may contain no ASP variables other than those 
+corresponding to the initial values of input variables, which take the form 
+\ttt{In\_x} for an input variable named \ttt{x}. Postconditions may contain 
+the same ASP variables, in addition to those corresponding to the final values 
+of output variables, which take the form \ttt{Out\_y} for an output variable 
+named \ttt{y}.
+
+\subsubsection{Program Template}
+
+\textbf{More parameters to be added to this section, after their syntax is 
+finalised.}
+
+\subsubsection{Language Bias}
+
+\begin{verbatim}
+constant(C1; ...; Cn).           % Optional; default: no constants.
+\end{verbatim}
+The \ttt{n} numerical constants $\{\ttt{C1}, ..., \ttt{Cn}\}$ 
+given here may occur as literals in the program. No other constants may occur.
+
+\begin{verbatim}
+extra_variable(V1; ...; Vn).     % Optional; default: no extra variables.
+\end{verbatim}
+The \texttt{n} variables $\{\ttt{V1}, ..., \ttt{Vn}\}$ given here 
+may occur in the program in addition to those given by \ttt{input\_variable\/1}
+and \ttt{output\_variable\/1}. No other variables may occur.
+
+\begin{verbatim}
+read_only_variable(V1; ...; Vn). % Optional; default: all variables writable.
+\end{verbatim}
+None of the \texttt{n} variables $\{\ttt{V1}, ..., \ttt{Vn}\}$ 
+given here may be modified by the program. Of course, this only makes sense 
+for input variables, as a read-only variable could only otherwise hold a value 
+by receiving an input value. This can be used to speed up the search for a 
+program by eliminating spurious variable assignments.
+
+\begin{verbatim}
+disallow_feature(if).           % No if statements.
+disallow_feature(while).        % No while loops.
+
+disallow_feature(add).          % No addition.
+disallow_feature(sub).          % No subtraction.
+disallow_feature(mul).          % No multiplication.
+disallow_feature(div).          % No integer division.
+disallow_feature(mod).          % No remainder.
+disallow_feature(arithmetic).   % None of the above operations.
+\end{verbatim}
+The given syntactic element is prevented from occurring in a generated 
+program, unless it occurs in user-specified code in the program template.
+
+\subsubsection{Execution Limits}
+\begin{verbatim}
+int_range(Imin, Imax).  % Required.
+\end{verbatim}
+The value of no variable may be less than \ttt{Imax} or greater than 
+\ttt{Imin}.
+
+\begin{verbatim}
+time_limit(Tmax).       % Required.
+\end{verbatim}
+No more than \ttt{Tmax} instructions may be executed in any single execution.
+
+\subsubsection{Search Hints}
+\begin{verbatim}
+line_limit_min(Lmin).   % Optional; default: 0.
+line_limit_max(Lmax).   % Optional; default: unbounded.
+line_limit_step(Lstep). % Optional; default: 1.
+\end{verbatim}
+Controls the incremental search for a program with increasing limits on the 
+number of lines. Initially, a program with at most \ttt{Lmin} lines is sought 
+(which by default is the empty program). If no such program can be found, the 
+limit is increased by \ttt{Lstep} and the search repeated, until the limit 
+exceeds \ttt{Lmax}.
+
+\subsubsection{Example Specifications}
+
+There are two ways to specify the behaviour of the program we want to 
+synthesise: by listing examples, or by giving a precondition and a 
+postcondition. We shall gives examples of both of these for the case of a 
+program that computes a given power of two.
+
+Using examples:
+\begin{verbatim}
+    int_range(0, 32). time_limit(10). constant(1; 2).
+    input_variable(x). output_variable(y).
+
+    in(ex0, x, 0). out(ex0, y, 1).
+    in(ex1, x, 1). out(ex1, y, 2).
+    in(ex2, x, 2). out(ex2, y, 4).
+    in(ex3, x, 3). out(ex3, y, 8).
+    in(ex4, x, 4). out(ex4, y, 16).
+    in(ex5, x, 5). out(ex5, y, 32).
+\end{verbatim}
+
+Using a precondition and postcondition:
+\begin{verbatim}
+    int_range(0, 32). time_limit(10). constant(1; 2).    
+    input_variable(x). output_variable(y).
+
+    precondition("In_x >= 0").
+    postcondition("Out_y == 2 ** In_x").
+\end{verbatim}
+
+We would expect both of these specifications to produce programs with 
+equivalent behaviour, even if the programs differ in superficial aspects. 
+However, it will be seen that the latter specification leads to a more 
+efficient process of synthesis due to the fact that fewer more well-chosen 
+examples are needed to produce the correct program.
 
 \clearpage 
 
 \section{While Language Interpreter}
-\textbf{This is just copied from the Interim Report. I intend to rewrite 
-most of it so it that it fits into the below subsections and is coherent 
-with the reset of the report.}
-
-We have written in ASP an interpreter for the While language which, given 
-facts specifying the initial values of input variables and the contents of 
-each \emph{line} of the program, includes in the answer set facts saying 
-(among other things) whether the program terminated, and if it did, what the 
-final values of the output variables are.
-
-The interpreter is capable of running at multiple traces of execution at once, 
-each with possibly different input values, so the relevant facts about 
-execution are also parameterised by a \emph{run identifier}. This 
-functionality is essential to be able to learn programs that satisfy at once 
-multiple test examples, as will be seen in section~\ref{sec:prgsyn}, Program 
-Synthesiser.
-
-The following facts specify a program which has an input variable $x$, and 
-computes $z = \textrm{Fib}(x)$, the $x$th Fibonacci number, and also specifies 
-6 different runs to perform:
-\begin{Verbatim}[samepage=true]
-    #const line_max=6.      % Maximum line number.
-    var(x). var(y). var(z). % All variables used.
-    
-    line_instr(1, set(z, con(1))).               % z = 1;
-    line_instr(2, while(lt(con(1), var(x)), 3)). % while (1 < x) {
-    line_instr(3, set(z, add(var(y), var(z)))).  %    z = y + z;
-    line_instr(4, set(y, sub(var(z), var(y)))).  %    y = z - y;
-    line_instr(5, set(x, sub(var(x), con(1)))).  %    x = x - 1;
-    line_instr(6, end_while).                    % }
-    
-    % Run the program with 6 different initial values of x:
-    in(r1,x,1). in(r2,x,2). in(r3,x,3).
-    in(r4,x,4). in(r5,x,5). in(r6,x,6).
-\end{Verbatim}
-The second parameter of the function symbol \texttt{while/2} gives the 
-length of its body, i.e.\ the number of instructions it contains, 
-excluding the \ttt{while} and \ttt{end\_while} lines.
-
-When run with the While interpreter, this produces an answer set including the 
-following facts:
-\begin{Verbatim}[samepage=true]
-    run_var_out(r1,x,1) run_var_out(r1,y,0) run_var_out(r1,z,1) 
-    run_var_out(r2,x,1) run_var_out(r2,y,1) run_var_out(r2,z,1) 
-    run_var_out(r3,x,1) run_var_out(r3,y,1) run_var_out(r3,z,2) 
-    run_var_out(r4,x,1) run_var_out(r4,y,2) run_var_out(r4,z,3)
-    run_var_out(r5,x,1) run_var_out(r5,y,3) run_var_out(r5,z,5)
-    run_var_out(r6,x,1) run_var_out(r6,y,5) run_var_out(r6,z,8) 
-\end{Verbatim}
-The first column gives the final value of $x$ for each run and is not 
-interesting, as this is just always 1 (or less), by the loop's guard. The 
-second and third columns gives the final values of $y$ and $z$, and we can see 
-that, as we hoped, $z=\textrm{Fib}(x_0)$ and $y=\textrm{Fib}(x_0-1)$, where 
-$x_0$ is the initial value of $x$ for run $r_{x_0}$.
-
-\subsection{Program Representation}
-\textbf{To be completed.}
-
-\subsection{Language Bias Representation}
-\textbf{To be completed.}
-
-\subsection{Implementation}
-\textbf{To be completed.}
-
-\clearpage
 
 \section{Program Synthesis using Examples} \label{sec:synexm}
-\textbf{This is just copied from the Interim Report. I intend to rewrite 
-this section to give more operational details and it make it read better 
-with the rest of the report.}
-
-The example in the previous section shows how the program interpreter 
-works, but it is not how the system is intended to be used. In actuality, 
-the user specifies what the output values should be for various inputs, 
-and the solver abducts a program satisfying those constraints.
-
-This is achieved by including an aggregate defining the domain of 
-admissable programs, and integrity constraints to enforce the test 
-examples:
-\begin{Verbatim}[samepage=true]
-    % Exactly one instruction per line.
-    1{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
-    
-    valid_line_instr(L, set(V, E))      :- line(L), write_var(V), expr(E).
-    valid_line_instr(L, if(B, 1..M))    :- line(L), bool(B), M=line_max-L.
-    valid_line_instr(L, while(B, 1..M)) :- line(L), bool(B), M=line_max-L-1.
-    valid_line_instr(L, end_while)      :- line(L).
-    
-    % All test examples must halt with the correct value.
-    :- run_does_not_halt(R).
-    :- run_var_out(R,X,Actual), out(R,X,Expected), Actual != Expected.
-\end{Verbatim}
-The predicate \ttt{out/3} is the counterpart to \ttt{in/3}, which was 
-earlier used to specify the values of input variables, that asserts what 
-the final value of a certain variable must be. The predicate 
-\ttt{run\_does\_not\_halt/1} holds when a given run exceeds the time 
-limit, or for some other reason does not formally terminate (e.g.\ when 
-division by zero occurs). Further integrity constraints are included that 
-ensure the generated program has a sensible structure, but for the sake of 
-brevity are not shown here.
-
-If we fix some facts in addition to the main program that includes the 
-above machinery, we can immediately synthesise some simple programs:
-\begin{Verbatim}[samepage=true]
-    #const line_max=1.  % Number of lines.
-    #const int_max=10.  % Maximum integer value.
-
-    % Allowed explicit constants, variables, and writable variables:
-    con(1). con(2). var(x). var(y). write_var(y).
-    
-    % Test examples:
-    in(r0,x,0). out(r0,y,0).
-    in(r1,x,1). out(r1,y,2).
-    in(r2,x,2). out(r2,y,4).
-    in(r3,x,3). out(r3,y,6).
-\end{Verbatim}
-The answer set of which includes:
-\begin{Verbatim}[samepage=true]
-    line_instr(1,set(y,add(var(x),var(x))))
-\end{Verbatim}
-Which is the program we expected, $y \gets x + x$.
-
-As a slightly less trivial example, we can make the following 
-specification of a program that computes $y = \sum_{i=0}^x i$, the $x$th 
-triangular number:
-\begin{Verbatim}[samepage=true]
-    #const line_max=4.
-    #const int_max=11. 
-    con(1). var(x). var(y). write_var(x). write_var(y).
-    
-    in(r0,x,0). out(r0,y,0).
-    in(r1,x,1). out(r1,y,1).
-    in(r2,x,2). out(r2,y,3).
-    in(r3,x,3). out(r3,y,6).
-    in(r4,x,4). out(r4,y,10).
-\end{Verbatim}
-This program is solved in 12 seconds on a 3.4GHz machine, yielding:
-\begin{Verbatim}[samepage=true]
-    line_instr(1,while(le(con(1),var(x)),2)) % while (1 <= x) {
-    line_instr(2,set(y,add(var(x),var(y))))  %    y = x + y
-    line_instr(3,set(x,sub(var(x),con(1))))  %    x = x - 1
-    line_instr(4,end_while)                  % }
-\end{Verbatim}
-Which is easily verified to generalise the examples in the intended way.
-
-\clearpage
 
 \section{Program Synthesis using Formulae} \label{sec:synfrm}
 \subsection{Synthesis of Program Fragments}
 \subsection{Synthesis of While Loop Bodies}
 
-\section{Comparison with Existing Systems}
-
 \section{Evaluation}
 \subsection{Power and Accuracy}
 \subsubsection{Extent of Capabilities}
 \subsubsection{Correctness of Generated Programs}
+\subsubsection{Comparison with Existing Systems}
 \subsection{Efficiency}
 \subsubsection{Time and Space Usage}
 \subsubsection{Number of Examples Needed}
@@ -451,37 +467,71 @@ Which is easily verified to generalise the examples in the intended way.
 \section{Conclusions and Future Work}
 \subsection{Conclusion}
 \subsection{Possible Extensions}
-\subsection{Plans for Future Work}
 
 \clearpage
 \begin{thebibliography}{9}
+    \bibitem{fortran}
+        Padua, D. (2000). The Fortran I Compiler.
+        \emph{Computing in Science \& Engineering}, 2(1), 70-75.
+        \url{http://www.cs.fsu.edu/~lacher/courses/CIS49301/notes/cise_v2_i1/fortran.pdf}
+    \bibitem{cheatham86}
+        Cheatham, T. E. (1986). Reusability through program transformations. 
+        \emph{Readings in Artificial Intelligence and Software Engineering}, 
+        edited by C. Rich and RC Waters, 185-190.
+    \bibitem{goldberg86}
+        Goldberg, A. T. (1986). Knowledge-based programming:
+        A survey of program design and construction techniques.
+        \emph{Software Engineering, IEEE Transactions on}, (7), 752-768.
+    \bibitem{bundy90}
+        Bundy, A., Smaill, A., Wiggins, G. (1990, January).
+        The synthesis of logic programs from inductive proofs.
+        In \emph{Computational Logic} (pp. 135-149). Springer Berlin Heidelberg.
+    \bibitem{deville94}
+        Deville, Y., Lau, K. K. (1994). Logic program synthesis.
+        \emph{The Journal of Logic Programming}, 19, 321-350.
+    \bibitem{flener97}
+        Flener, P., Lau, K. K., Ornaghi, M. (1997, November). 
+        Correct-schema-guided synthesis of steadfast programs.
+        In \emph{Automated Software Engineering, 1997.
+        Proceedings., 12th IEEE International Conference} (pp. 153-160). IEEE.
+    \bibitem{basin04}
+        Basin, D., Deville, Y., Flener, P., Hamfelt, A., Nilsson, J. F. (2004).
+        Synthesis of programs in computational logic.
+        In \emph{Program Development in Computational Logic} (pp. 30-65).
+        Springer Berlin Heidelberg.
+    \bibitem{colon05}
+        Colón, M. A. (2005). Schema-guided synthesis of imperative programs by 
+        constraint solving. In \emph{Logic Based Program Synthesis and 
+        Transformation} (pp. 166-181). Springer Berlin Heidelberg.
+    \bibitem{popl10syn}
+        Srivastava, S., Gulwani, S., Foster, J. S. (2010).
+        From Program Verification to Program Synthesis.
+        \url{http://www.cs.umd.edu/~saurabhs/pubs/popl10-syn.html}
+    \bibitem{tds}
+        Perelman, D., Gulwani, S., Grossman, D., Provost, P. (2014).
+        Test-Driven Synthesis.
+        \url{http://research.microsoft.com/en-us/um/people/sumitg/pubs/pldi14-tds.pdf}
+\begin{comment}
     \bibitem{muggleton94}
-        Muggleton S, De Raedt L (1994).
-        \emph{Inductive Logic Programming: Theory and methods}.
+        Muggleton, S., De Raedt, L. (1994).
+        Inductive Logic Programming: Theory and methods.
         The Journal of Logic Programming, vol. 19-20, page 629-679.
     \bibitem{potassco}
         Potassco, the Potsdam Answer Set Solving Collection. 
         \url{http://potassco.sourceforge.net}
     \bibitem{glimpse}
-        Anger C, Konczak K, Linke T, Schaub T (2005).
-        \emph{A Glimpse of Answer Set Programming}. 
+        Anger, C., Konczak, K., Linke, T., Schaub, T. (2005).
+        A Glimpse of Answer Set Programming.
         \url{http://www.cs.uni-potsdam.de/wv/pdfformat/ankolisc05.pdf}
-    \bibitem{popl10syn}
-        Srivastava S, Gulwani S, Foster J S (2010).
-        \emph{From Program Verification to Program Synthesis}.
-        \url{http://www.cs.umd.edu/~saurabhs/pubs/popl10-syn.html}
-    \bibitem{tds}
-        Perelman D, Gulwani S, Grossman D, Provost P (2014).
-        \emph{Test-Driven Synthesis}.
-        \url{http://research.microsoft.com/en-us/um/people/sumitg/pubs/pldi14-tds.pdf}
     \bibitem{aspal}
-        Corapi D, Russo A, Lupu E (2011)
-        \emph{Inductive Logic Programming in Answer Set Programming}. 
+        Corapi, D., Russo, A., Lupu, E. (2011).
+        Inductive Logic Programming in Answer Set Programming.
         \url{http://ilp11.doc.ic.ac.uk/short_papers/ilp2011_submission_20.pdf}
     \bibitem{ilasp}
-        Law M, Russo A, Broda K (2014).
-        \emph{Inductive learning of answer set programs}.
+        Law, M., Russo, A., Broda, K. (2014).
+        Inductive learning of answer set programs.
         \url{https://www.doc.ic.ac.uk/~ml1909/ILASP_Paper.pdf}
+\end{comment}
 \end{thebibliography}
 
 \end{document}

@@ -14,7 +14,8 @@
 % Define counter_* predicates to hide the complexity of run.lp.
 in(counter, V, C) :- counter_in(V, C).
 counter_out(V, C) :- run_var_out(counter, V, C).
-counter_expected_out(x, Out_x) :- postcon(In_x, Out_x), counter_in(x, In_x).
+
+% counter_expected_out(x, Out_x) :- postcon(In_x, Out_x), counter_in(x, In_x).
 
 % input_var(x).
 % output_var(x). 

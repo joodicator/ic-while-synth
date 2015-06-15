@@ -1,7 +1,8 @@
 % The following constants MUST be defined in file before this one:
-% #const line_max=LM.   % The number of lines in the program.
+% #const line_max=LM.   % The maximum number of lines in the program.
 % #const time_max=TM.   % Maximum time steps to simulate before failure.
-% #const int_max=IM.    % Maximum integer allowed to exist.
+% #const int_min=IMN.   % Minimum integer allowed to exist.
+% #const int_max=IMX.   % Maximum integer allowed to exist.
 
 % In specifying a program to be learned, the following facts MAY be given:
 % preset_line_instr(L,I) % At line L, the instruction I is forced to occur.
@@ -12,11 +13,8 @@
 % in(R,V,C).    % In run R, the variable V starts with the value C.
 % out(R,V,C).   % In run R, the variable V must finish with the value C.
 
-#const int_min=0.
-
 #hide.
 #show line_instr/2.
-#show run_var_out/3.
 
 %-------------------------------------------------------------------------------
 % Features allowed in the program.
@@ -31,7 +29,11 @@ allow(F)    :- feature(F), not disallow(F).
 
 %-------------------------------------------------------------------------------
 % Exactly one instruction per line.
-1{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
+{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
+any_line_instr(L) :- line_instr(L, _).
+
+:- line(L), not any_line_instr(L), any_line_instr(L+1).
+#minimize { any_line_instr(L) }.
 
 % All test examples must halt with the correct value.
 :- run_does_not_halt(R).
@@ -41,6 +43,7 @@ allow(F)    :- feature(F), not disallow(F).
 % Line numbers and integer bounds.
 
 int(int_min..int_max).
+
 line(1..line_max).
 
 %-------------------------------------------------------------------------------
@@ -50,12 +53,12 @@ valid_line_instr(L, set(V, E)) :-
 valid_line_instr(L, if(B, 1..M)) :-
     line(L), allow(if), bool(B), M=line_max-L.
 valid_line_instr(L, while(B, 1..M)) :-
-    line(L), allow(while), bool(B), M=line_max-L-1.
+    line(L), allow(while), bool(B), M=line_max-1.
 valid_line_instr(L, end_while) :-
     line(L), allow(while).
 
-valid_line_instr(L,I) :- preset_line_instr(L,I).
-line_instr(L,I)       :- preset_line_instr(L,I).
+%valid_line_instr(L,I) :- preset_line_instr(L,I).
+%line_instr(L,I)       :- preset_line_instr(L,I).
 
 % Require end_while statements to occur at exactly the correct positions.
 :- line_instr(L,end_while), not end_while_block(L).
@@ -143,21 +146,22 @@ run(R) :- in(R,_,_).
 run(R) :- out(R,_,_).
 
 % run(R,T) if test case R runs to at least time T.
-run(R,T) :- run_line(R,T,L), T<time_max, L<=line_max.
+run(R,T) :- run_line(R,T,L), T<time_max, any_line_instr(L).
 
 % run_halt(R,T) if test case R halts normally at time T.
-run_halt(R,T) :- run_line(R,T,L), T<time_max, L>line_max.
+run_halt(R,T) :- run_line(R,T,L), T<time_max, not any_line_instr(L).
 
 run_does_halt(R) :- run_halt(R,_).
 run_does_not_halt(R) :- run(R), not run_does_halt(R).
 
 % run_var_out(R,X,C) if the final value of X in run R is C.
-run_var_out(R,X,C) :- run_var(R,T,X,C), not run(R,T).
+run_var_out(R,X,C)     :- run_var(R,T,X,C), not run(R,T).
+run_var_out(R,X,unset) :- run(R), var(X), not run_var_out_set(R,X).
+run_var_out_set(R,X) :- run_var_out(R,X,C), C != unset.
 
-% Initialise variables to their input value or, by default, 0.
+% Initialise variables to their input value, if any.
 run_var_in(R,X)  :- in(R,X,_).
 run_var(R,0,X,C) :- in(R,X,C), int(C).
-run_var(R,0,X,0) :- run(R), var(X), not run_var_in(R,X).
 
 % On a set statement, update variables; otherwise, leave them constant.
 run_var(R,T+1,X,C) :-
@@ -175,7 +179,7 @@ line_set(L,X) :- line_instr(L, set(X,_)).
 run_line(R,0,1) :-
     run(R).
 run_line(R,T+1,L+1) :-
-    L <= line_max, run(R,T), run_line(R,T,L),
+    any_line_instr(L), run(R,T), run_line(R,T,L),
     not line_jump(L), not run_fail(R,T).
 
 % Run if statements.
@@ -215,17 +219,17 @@ run_expr(R,T,E,C) :-
 run_expr(R,T,E,C) :-
     E=add(E1,E2), expr(E),
     run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
-    C = (C1 + C2) #mod int_max, int(C).
+    C = C1 + C2, int(C).
 
 run_expr(R,T,E,C) :-
     E=sub(E1,E2), expr(E),
     run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
-    C = (C1 - C2 + int_max) #mod int_max, int(C).
+    C = C1 - C2, int(C).
 
 run_expr(R,T,E,C) :-
     E=mul(E1,E2), expr(E),
     run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
-    C = (C1 * C2) #mod int_max, int(C).
+    C = C1 * C2, int(C).
 
 run_expr(R,T,E,C) :-
     E=div(E1,E2), expr(E),
