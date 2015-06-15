@@ -17,6 +17,12 @@
 #show line_instr/2.
 
 %-------------------------------------------------------------------------------
+% Silence certain warnings for undefined predicates:
+in(never,never,never)           :- out(never,never,never).
+out(never,never,never)          :- preset_line_instr(never,never).
+preset_line_instr(never,never)  :- in(never,never,never).
+
+%-------------------------------------------------------------------------------
 % Features allowed in the program.
 subfeature(all,        if; while; arithmetic).
 subfeature(arithmetic, add; sub; mul; div; mod).

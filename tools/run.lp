@@ -8,8 +8,16 @@
 % in(R,V,C).        % In run R, the variable V starts with the value C.
 
 %------------------------------------------------------------------------------- 
+% Silence certain warnings due to undefined predicates.
+line_instr(never,never) :- in(never,never,never).
+in(never,never,never)   :- line_instr(never,never).
+
+%------------------------------------------------------------------------------- 
 % Require all runs to halt.
 :- run_does_not_halt(R), run(R).
+
+#hide.
+#show run_var_out/3.
 
 %------------------------------------------------------------------------------- 
 % Domain predicates derived from constants and line_instr/2.
@@ -33,7 +41,7 @@ line_binop_occurs(L, A, B) :- line_expr_occurs(L, mul(A,B)).
 line_binop_occurs(L, A, B) :- line_expr_occurs(L, div(A,B)).
 line_binop_occurs(L, A, B) :- line_expr_occurs(L, mod(A,B)).
 line_binop_occurs(L, A, B) :- line_bool_occurs(L, lt(A,B)).
-line_binop_occurs(L, A, B) :- line_bool_occurs(L, gt(A,B)).
+line_binop_occurs(L, A, B) :- line_bool_occurs(L, le(A,B)).
 
 % Projection of if/while parameters.
 line_instr_if_guard(L, G)     :- line_instr(L, if(G, _)).

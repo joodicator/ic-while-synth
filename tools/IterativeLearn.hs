@@ -142,7 +142,8 @@ main = do
 iterativeLearn :: [Example] -> Limits -> Conf -> IO ()
 iterativeLearn exs lims conf = do
     putStrLn $ "Searching for a program with at most " ++ show (lmLineMax lims)
-            ++ " lines that satisfies all previous examples..."
+            ++ " lines that satisfies " ++ show (length exs) ++ " known"
+            ++ " example(s)..."
     mProg <- findProgram exs lims conf
     case mProg of
       Just prog -> do
@@ -152,8 +153,8 @@ iterativeLearn exs lims conf = do
         let lineMax = lmLineMax lims + cfLineLimitStep conf
         case cfLineLimitMax conf of
             Just limit | lineMax > limit ->
-                putStrLn "Failure: no such program can be found within the"
-                      ++ "configured line limits."
+                putStrLn ("Failure: no such program can be found within the"
+                       ++ "configured line limits.")
             _  ->
                 iterativeLearn exs (lims{lmLineMax=lineMax}) conf
         
@@ -171,19 +172,21 @@ iterativeLearn' prog exs lims conf = do
                 ceActualOutput   = actual,
                 ceExpectedOutput = expected } = cex
             putStrLn "Counter-example found:"
-            putStrLn $ "\tInput: " ++ intercalate ", " [
-                v++"="++show c | let Input xs = input, (v,c) <- xs ] ++ "."
-            putStrLn $ "\tActual output:   " ++ intercalate ", " [
-                v++"="++show c | let Output xs = actual, (v,c) <- xs ] ++ "."
-            putStrLn $ "\tExpected output: " ++ intercalate ", " [
-                v++"="++show c | let Output xs = expected, (v,c) <- xs ] ++ "."
+            putStrLn $ "   Input:    " ++ intercalate ", " [
+                v++" = "++show c | let Input xs = input, (v,c) <- xs ]
+            putStrLn $ "   Output:   " ++ case actual of {
+                Output [] -> "(none)";
+                Output xs -> intercalate ", " [v++" = "++show c | (v,c) <- xs ] }
+            putStrLn $ "   Expected: " ++ intercalate ", " [
+                v++" = "++show c | let Output xs = expected, (v,c) <- xs ]
             let ex = Example{
                 exID     = head $ map (("cex"++) . show) [1..] \\ map exID exs,
                 exInput  = input,
-                exOutput = actual }
+                exOutput = expected }
             iterativeLearn (ex : exs) lims conf
         Nothing ->
-            putStrLn "Solution complete: no counter-example can be found."
+            putStrLn ("Solution complete: no counter-example can be found to"
+                  ++ " falsify the postcondition.")
 
 --------------------------------------------------------------------------------
 findProgram :: [Example] -> Limits -> Conf -> IO (Maybe Program)
@@ -252,14 +255,17 @@ findCounterexample prog conds conf = do
             let inputs = do
                 Fact (Name "counter_in") args <- answer
                 let [TFun (Name name) [], TInt value] = args
+                guard $ name `elem` cfInputVars conf
                 return (name, value)
             let outputs = do
                 Fact (Name "counter_out") args <- answer
-                let [TFun (Name name) [], TInt value] = args
+                [TFun (Name name) [], TInt value] <- [args]
+                guard $ name `elem` cfOutputVars conf
                 return (name, value)
             let expected = do
                 Fact (Name "counter_expected_out") args <- answer
                 let [TFun (Name name) [], TInt value] = args
+                guard $ name `elem` cfOutputVars conf
                 return (name, value)
             return $ Just $ Counterexample{
                 ceInput          = Input inputs,
@@ -278,15 +284,15 @@ findCounterexampleASP prog conds conf
         "#const int_min=" ++ show intMin ++ ".",
         "#const int_max=" ++ show intMax ++ ".",
         "#include \"counterexample.lp\".",      
-        "input_var("  ++ intercalate "; " (map ("var_"++) inputVars)  ++ ").",
-        "output_var(" ++ intercalate "; " (map ("var_"++) outputVars) ++ ")."]
+        "input_var("  ++ intercalate "; " inputVars  ++ ").",
+        "output_var(" ++ intercalate "; " outputVars ++ ")."]
 
     programLines =
         let Program instrs = prog in Clingo.showFactLines instrs
 
     preCondLines =
         let preVars = filter ((`isInfixOf` preCond) . ("In_"++)) inputVars in
-        let inDom   = ["counter_in(var_"++v++", In_"++v++")" | v<-preVars] in [
+        let inDom   = ["counter_in("++v++", In_"++v++")" | v<-preVars] in [
         let preConds = filter (not . null) [preCond] in
         "precon :- "++ intercalate ", " (preConds ++ inDom) ++".",
         ":- not precon."]
@@ -297,8 +303,8 @@ findCounterexampleASP prog conds conf
         let args = case outVars of {
             [] -> "";
             _  -> "(" ++ intercalate ", " (map ("Out_"++) outVars) ++ ")" } in
-        let inDom = ["counter_in(var_"++v++", In_"++v++")" | v<-inVars] in
-        let actOutDom = ["counter_out(var_"++v++", Out_"++v++")" | v<-outVars] in
+        let inDom = ["counter_in("++v++", In_"++v++")" | v<-inVars] in
+        let actOutDom = ["counter_out("++v++", Out_"++v++")" | v<-outVars] in
         let expOutDom = ["int(Out_"++v++")" | v<-outVars] in
         let postConds = filter (not . null) [postCond] in
         let ruleBody = intercalate ", " (postConds ++ inDom ++ expOutDom) in
@@ -311,7 +317,7 @@ findCounterexampleASP prog conds conf
         v <- outVars
         let args = [if v == v' then "Out_"++v else "_" | v' <- outVars]
         let body = "postcon("++ intercalate ", " args ++")"
-        return $ "counter_expected_out(var_"++v++", Out_"++v++") :- "++body++"."
+        return $ "counter_expected_out("++v++", Out_"++v++") :- "++body++"."
 
     Conf{ cfIntRange=(intMin, intMax), cfTimeMax=timeMax,
           cfInputVars=inputVars, cfOutputVars=outputVars } = conf
@@ -320,7 +326,7 @@ findCounterexampleASP prog conds conf
 --------------------------------------------------------------------------------
 showProgram :: Program -> [String]
 showProgram (Program [])
-  = ["(empty program)"]
+  = ["   (empty program)"]
 showProgram (Program facts)
   = While.showProgram . catMaybes . map While.readLineInstr $ facts
 
