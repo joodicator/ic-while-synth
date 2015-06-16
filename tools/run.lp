@@ -12,12 +12,9 @@
 line_instr(never,never) :- in(never,never,never).
 in(never,never,never)   :- line_instr(never,never).
 
-%------------------------------------------------------------------------------- 
-% Require all runs to halt.
-:- run_does_not_halt(R), run(R).
-
 #hide.
 #show run_var_out/3.
+#show run_does_not_halt/1.
 
 %------------------------------------------------------------------------------- 
 % Domain predicates derived from constants and line_instr/2.
