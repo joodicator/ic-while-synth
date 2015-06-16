@@ -8,6 +8,7 @@
 \usepackage{float}
 \usepackage{fancyvrb}
 \usepackage{comment}
+\usepackage{tabularx}
 
 \floatstyle{boxed}
 \restylefloat{figure}
@@ -447,6 +448,134 @@ examples are needed to produce the correct program.
 \clearpage 
 
 \section{While Language Interpreter}
+
+In order to generate programs in our While language 
+(Section~\ref{sec:whilan}) using Answer Set Programming, we need an 
+encoding of programs in ASP, and a way to evaluate the result of running a 
+program with a given input, subject to the configured execution limits 
+(Section~\ref{sec:spclng}).
+
+\subsection{Program Encoding} \label{sec:progenc}
+
+Programs are represented as sequences of numbered \emph{lines}, where each 
+line contains an \emph{instruction}. The fact that the instruction 
+\verb|Instr| occurs on line \verb|L|, where \verb|L| ranges from 1 to some 
+maximum line number, is represented by:
+\begin{verbatim}
+    line_instr(L, Instr).
+\end{verbatim}
+
+The instruction \verb|Instr| may be any of the following terms:
+
+\begin{tabularx}{\textwidth}{lX}
+    \verb|   set(Var, Expr)|
+&   The value of expression \verb|Expr| is assigned to variable \verb|Var|.
+\\
+\\  \verb|   if(Bool, Length)|
+&   If the boolean guard \verb|Bool| evaluates as true, the next \verb|Length|
+    instructions are executed; otherwise, they are skipped.
+\\
+\\  \verb|   while(Bool, Length)|
+&   The next \verb|Length| instructions are executed as many times as the 
+    guard \verb|Bool| remains true.
+\\
+\\  \verb|   end_while|
+&   This special instruction marks the end of \verb|while| loop, and must 
+    be present immediately after the instructions encompassed by each loop.
+\end{tabularx}
+
+Expressions \verb|Expr|, which may occur on the right-hand side of 
+\verb|set| instructions and inside boolean guards, take the following 
+forms, where \verb|Expr1| and \verb|Expr2| are also expressions:
+
+\begin{tabular}{lll}
+    \verb|   var(Var)|          & The value of a variable \verb|Var|
+\\  \verb|   con(Con)|          & The constant value \verb|Con|
+\\  \verb|   add(Expr1, Expr2)| & The sum \verb|Expr1 + Expr2|
+\\  \verb|   sub(Expr1, Expr2)| & The difference \verb|Expr1 - Expr2|
+\\  \verb|   mul(Expr1, Expr2)| & The product \verb|Expr1 * Expr2|
+\\  \verb|   div(Expr1, Expr2)| & The quotient \verb|Expr1 / Expr2|
+\\  \verb|   mod(Expr1, Expr2)| & The remainder \verb|Expr1 % Expr2|
+\end{tabular}
+
+Boolean guards \verb|Bool|, which control the execution of \verb|if| and 
+\verb|while| instructions, take the following forms, where \verb|Expr1| 
+and \verb|Expr2| are expressions:
+
+\begin{tabular}{lll}
+    \verb|   lt(Expr1, Expr2)| & less than:          & \verb|Expr1 <  Expr2|
+\\  \verb|   le(Expr1, Expr2)| & less than or equal: & \verb|Expr1 <= Expr2|
+\end{tabular}
+
+Below is an example of the program from Section~\ref{sec:intro}, which 
+computes powers of two, represented in this encoding, with comments on 
+the right giving the represented instruction in the familiar form:
+\begin{verbatim}
+    line_instr(1, set(y, con(1))).                % y = 1;
+    line_instr(2, while(lt(con(0), var(x)), 2)).  % while (0 < x) {
+    line_instr(3, set(y, mul(var(y), con(2))).    %     y = y * 2;
+    line_instr(4, set(x, sub(var(x), con(1))).    %     x = x - 1;
+    line_instr(5, end_while).                     % }
+\end{verbatim}
+
+\subsection{Implementation}
+
+We have implemented in ASP an interpreter for the While language, 
+\verb|run.lp|, which when combined with a set of facts giving a program 
+such as the above, and further facts specifying the initial values of 
+variables, computes an answer set containing facts giving the final values 
+of variables after running the program. The constants \verb|time_max|, 
+\verb|int_min| and \verb|int_max| must also be specified by the user, to 
+effect suitable execution limits and to allow the program's grounding to 
+be finite.
+
+Note that although these parameters are related to the ones given in 
+Section~\ref{sec:spclng}, Task Specification Language, they are not given 
+in the same form here, for reasons of efficiency. The Specification 
+Language will be used by higher-level components of the system.
+
+\verb|run.lp| allows multiple execution traces to be computed at once, 
+using the predicate \verb|in/3|, which takes the following form:
+\begin{verbatim}
+    in(RunID, Variable, InitialValue).
+\end{verbatim}
+For each execution trace a unique \verb|RunID| is assigned, and one or 
+more instances of \verb|in/3| are defined, one for each input variable.
+
+The answer set contains facts of the following form:
+\begin{verbatim}
+    run_var_out(RunID, Variable, FinalValue)
+    run_does_not_halt(RunID)
+\end{verbatim}
+The former signifies that \verb|RunID| terminated successfully with the 
+given final values for each variable; and the latter signifies that the 
+run did not successfully terminate, which could be because the number of 
+instructions executed exceeded \verb|time_max| (which would happen if the 
+program contained an infinite loop, for example), or because the value of 
+a variable exceeded the range defined by \verb|int_min| and 
+\verb|int_max|, or because of another illegal operation such as division 
+by zero.
+
+As an example, when we run \verb|run.lp| with the constants 
+\verb|time_max=99|, \verb|int_min=0|, \verb|int_max=32|, with the facts 
+from the example at the end of the previous 
+section \ref{sec:progenc}, and with the following additional facts:
+\begin{verbatim}
+    in(run0,x,0). in(run1,x,1). in(run2,x,2).
+    in(run3,x,3). in(run4,x,4). in(run5,x,5).
+\end{verbatim}
+Then the resulting answer set computed by Clingo 3 contains the following 
+instances of \verb|run_var_out/3|:
+\begin{verbatim}
+    run_var_out(run0,x,0)  run_var_out(run0,y,1)
+    run_var_out(run1,x,0)  run_var_out(run1,y,2)
+    run_var_out(run2,x,0)  run_var_out(run2,y,4)
+    run_var_out(run5,x,0)  run_var_out(run5,y,8)
+    run_var_out(run3,x,0)  run_var_out(run3,y,16) 
+    run_var_out(run4,x,0)  run_var_out(run4,y,32)
+\end{verbatim}
+Which as we would expect gives the correct result, with \verb|y| equal to 
+two raised to the power of the initial value of \verb|x|.
 
 \section{Program Synthesis using Examples} \label{sec:synexm}
 
