@@ -11,6 +11,9 @@
 % Produce an expected output value if at all possible.
 #maximize{ counter_expected_out(_,_) }.
 
+% Subject to the above, also try to avoid inputs causing nontermination.
+#minimize{ run_does_not_halt(_) }.
+
 % Define counter_* predicates to hide the complexity of run.lp.
 in(counter, V, C) :- counter_in(V, C).
 counter_out(V, C) :- run_var_out(counter, V, C).

@@ -13,7 +13,7 @@ line_instr( 8,     set(l, con(2))).                 %     l = 2
 line_instr( 9,     while(lt(var(l), var(p)), 4)).   %     while (l < p):
 line_instr(10,       set(j, mod(var(p), var(l)))).  %       j = p % l
 line_instr(11,       set(l, add(var(l), con(1)))).  %       l = l + 1
-line_instr(12,       if(le(var(j), con(0), 1))).    %       if (j <= 0):
+line_instr(12,       if(le(var(j), con(0)), 1)).    %       if (j <= 0):
 line_instr(13,         set(l, var(p))).             %         l = p
 line_instr(14,     end_while).                      %     end_while
 line_instr(15,   end_while).                        %   end_while
@@ -21,7 +21,7 @@ line_instr(16, end_while).                          % end_while
 
 #include "../../tools/run.lp".
 
-#hide run_var_out/3.
-#show r/2.
-r(N,P) :- run_var_out(r(N),n,P).
-in(r(N), n, N) :- N=1..5.
+#hide.
+#show run_line/3.
+
+in(r0, n, 5).

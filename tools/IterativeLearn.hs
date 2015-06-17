@@ -1,3 +1,5 @@
+#!/usr/bin/env runhaskell
+
 import Clingo
 import qualified While
 
@@ -52,6 +54,7 @@ data Conf = Conf{
     cfExamples      :: [Example],
     cfPreCondition  :: Condition,
     cfPostCondition :: Condition,
+    cfConfFile      :: FilePath,
     cfEchoClingo    :: Bool,
     cfEchoASP       :: Bool }
   deriving Show
@@ -71,6 +74,7 @@ defaultConf = Conf{
     cfExamples      = [],
     cfPreCondition  = "",
     cfPostCondition = "",
+    cfConfFile      = undefined,
     cfEchoClingo    = False,
     cfEchoASP       = False }
 
@@ -79,8 +83,11 @@ readConfFile filePath = do
     let options = runClingoOptions{ rcEchoStdout=False }
     result <- runClingo options [CIFile filePath]
     case result of
-        CRSatisfiable (answer:_) -> return $ readConfFacts answer
-        CRUnsatisfiable          -> error $ filePath ++ " unsatisfiable."
+        CRSatisfiable (answer:_) -> do
+            let conf = readConfFacts answer
+            return $ conf{ cfConfFile=filePath }
+        CRUnsatisfiable ->
+            error $ filePath ++ " unsatisfiable."
 
 readConfFacts :: [Fact] -> Conf
 readConfFacts facts = conf where
@@ -125,10 +132,8 @@ readConfFacts facts = conf where
             readConfFacts' (conf{ cfEchoClingo=True }) facts
         Fact (Name "echo_asp") [] ->
             readConfFacts' (conf{ cfEchoASP=True }) facts
-        Fact (Name name) _ | name `elem` ["in", "out"] ->
+        _ ->
             readConfFacts' conf facts
-        fact ->
-            error $ "unrecognised configuration entry: " ++ showFact fact
     readConfFacts' conf [] = conf
 
 --------------------------------------------------------------------------------
@@ -147,20 +152,23 @@ iterativeLearn exs lims conf = do
     mProg <- findProgram exs lims conf
     case mProg of
       Just prog -> do
+        putStrLn "Found the following program:"
         printProgram prog
         iterativeLearn' prog exs lims conf
       Nothing -> do
         let lineMax = lmLineMax lims + cfLineLimitStep conf
         case cfLineLimitMax conf of
-            Just limit | lineMax > limit ->
-                putStrLn ("Failure: no such program can be found within the"
-                       ++ "configured line limits.")
-            _  ->
+            Just limit | lineMax > limit -> do
+                putStrLn $ "Failure: no such program can be found within the"
+                        ++ " configured line limits."
+            _ -> do
+                putStrLn "No such program found."
                 iterativeLearn exs (lims{lmLineMax=lineMax}) conf
         
 
 iterativeLearn' :: Program -> [Example] -> Limits -> Conf -> IO ()
 iterativeLearn' prog exs lims conf = do
+    putStrLn "Searching for a counter-example to falsify the postcondition..."
     let conds = Conditions{
         cnPreCondition  = cfPreCondition conf,
         cnPostCondition = cfPostCondition conf}
@@ -168,34 +176,43 @@ iterativeLearn' prog exs lims conf = do
     case mCounter of
         Just cex -> do
             let Counterexample{
-                ceInput          = input,
-                ceActualOutput   = actual,
-                ceExpectedOutput = expected } = cex
-            putStrLn "Counter-example found:"
-            putStrLn $ "   Input:    " ++ intercalate ", " [
-                v++" = "++show c | let Input xs = input, (v,c) <- xs ]
+                ceInput          = Input input,
+                ceActualOutput   = Output actual,
+                ceExpectedOutput = Output expected } = cex
+
+            let deficient = not . null $ map fst actual \\ map fst expected
+            case deficient of
+                True  -> putStrLn $ "Failure: counterexamples were found, but"
+                    ++ " none with input values admitting a solution to the"
+                    ++ " postcondition. Either the postcondition is unsatisfiable"
+                    ++ " for some valid inputs, or the allowed range of integers"
+                    ++ " too small."
+                False -> putStrLn "Found the following counterexample:"
+
+            putStrLn $ "   Input:    " ++ (intercalate ", "
+                     $ [v++" = "++show c | (v,c) <- input ])
+            putStrLn $ "   Expected: " ++ case expected of {
+                [] -> "(none)";
+                _ -> intercalate ", " [v++" = "++show c | (v,c) <- expected ] }
             putStrLn $ "   Output:   " ++ case actual of {
-                Output [] -> "(none)";
-                Output xs -> intercalate ", " [v++" = "++show c | (v,c) <- xs ] }
-            putStrLn $ "   Expected: " ++ intercalate ", " [
-                v++" = "++show c | let Output xs = expected, (v,c) <- xs ]
+                [] -> "(none)";
+                _  -> intercalate ", " [v++" = "++show c | (v,c) <- actual ] }
+
+            when deficient exitFailure
+
             let ex = Example{
-                exID     = head $ map (("cex"++) . show) [1..] \\ map exID exs,
-                exInput  = input,
-                exOutput = expected }
+                exID     = head $ map (("cx"++) . show) [1..] \\ map exID exs,
+                exInput  = Input input,
+                exOutput = Output expected }
             iterativeLearn (ex : exs) lims conf
-        Nothing ->
-            putStrLn ("Solution complete: no counter-example can be found to"
-                  ++ " falsify the postcondition.")
+        Nothing -> do
+            putStrLn "Success: the postcondition could not be falsified."
 
 --------------------------------------------------------------------------------
 findProgram :: [Example] -> Limits -> Conf -> IO (Maybe Program)
 findProgram exs lims conf = do
     let code = findProgramASP exs lims conf
-    let options = runClingoOptions{
-        rcEchoStdout = cfEchoClingo conf,
-        rcEchoInput  = cfEchoASP conf }
-    result <- runClingo options [CICode code]
+    result <- runClingoConf [CICode code] conf
     case result of
         CRSatisfiable (answer:_) ->
             return $ Just (Program answer)
@@ -246,10 +263,7 @@ findProgramASP exs lims conf
 findCounterexample :: Program -> Conditions -> Conf -> IO (Maybe Counterexample)
 findCounterexample prog conds conf = do
     let code = findCounterexampleASP prog conds conf
-    let options = runClingoOptions{
-        rcEchoStdout = cfEchoClingo conf,
-        rcEchoInput  = cfEchoASP conf }
-    result <- runClingo options [CICode code]
+    result <- runClingoConf [CICode code] conf
     case result of
         CRSatisfiable (answer : _) -> do
             let inputs = do
@@ -324,6 +338,13 @@ findCounterexampleASP prog conds conf
     Conditions{ cnPreCondition = preCond,  cnPostCondition = postCond } = conds
 
 --------------------------------------------------------------------------------
+runClingoConf :: [ClingoInput] -> Conf -> IO ClingoResult
+runClingoConf input conf = do
+    let options = runClingoOptions{
+        rcEchoStdout = cfEchoClingo conf,
+        rcEchoInput  = cfEchoASP conf }
+    runClingo options (input ++ [CIFile $ cfConfFile conf])
+
 showProgram :: Program -> [String]
 showProgram (Program [])
   = ["   (empty program)"]
