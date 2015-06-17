@@ -54,9 +54,9 @@ runClingo options inputs = do
     forM inputs $ \input -> do
         code <- case input of
             CICode code -> return code
-            CIFile path -> readFile path
+            CIFile path -> return $ "#include \"" ++ path ++ "\"."
         when (echoInput) $ forM_ (lines code) $ \line -> do
-            putStrLn $ "<-- " ++ line
+            putStrLn $ "\27[32m<-- " ++ line ++ "\27[0m"
         hPutStr clingoIn code
     hClose clingoIn
     result <- readClingo [] clingoOut
@@ -86,7 +86,7 @@ runClingo options inputs = do
     ehGetLine :: Handle -> IO String
     ehGetLine handle = do
         line <- hGetLine handle
-        when echoStdout $ putStrLn $ "--> " ++ line
+        when echoStdout $ putStrLn $ "\27[33m--> " ++ line ++ "\27[0m"
         return line
 
 --------------------------------------------------------------------------------

@@ -167,4 +167,4 @@ run_bool(R,T,B) :-
 % Which arithmetic and boolean expressions occur in the program
 % at given times and in given runs?
 run_expr_occurs(R, T, E) :- run_line(R, T, L), line_expr_occurs(L, E).
-run_bool_occurs(R, T, E) :- run_line(R, T, L), line_bool_occurs(L, E).
+run_bool_occurs(R, T, B) :- run_line(R, T, L), line_bool_occurs(L, B).
