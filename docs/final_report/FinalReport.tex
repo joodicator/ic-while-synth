@@ -33,8 +33,18 @@ generate \emph{computer programs}, which are the machine-readable
 representations of desired behaviour executed by a computer in order to 
 perform some useful computation.
 
-\textbf{Something about motivation to be inserted here; I haven't decided on 
-the wording.}
+In many cases the user might not have a clear idea of how a calculation is 
+to be performed, but will be able to point out some concrete examples of 
+its expected behaviour: the user intuitively knows that for certain 
+inputs, they expect the program to behave in a certain way. This is a 
+problem faced by students of Computing, for example, which if addressed 
+could be beneficial to their education.
+
+While certainly not the most reliable way of specifying a computer 
+program, it might be the best approximation that a user can produce with 
+limited knowledge of the problem domain; and if the examples are 
+sufficiently comprehensive, it has been seen that it is often enough to 
+make a good guess at what program the user has in mind.
 
 This project concerns the generation of \emph{imperative} computer 
 programs, consisting of sequences of instructions to be executed in order, 
@@ -45,7 +55,7 @@ In particular, we restrict our attention to a \emph{simple while language}
 containing the minimal features for computation involving whole numbers: 
 branching, using \emph{if statements}; looping, using \emph{while loops}, 
 and some basic arithmetic operators such as addition and multiplication.
-See Section~\ref{sec:whilan} for a formal description of this language.
+See Chapter~\ref{sec:whilan} for a formal description of this language.
 
 An example of such a program is the following, which takes as input an initial 
 value of \texttt{x}, say $x_0 \ge 0$, and leaves \texttt{y} equal to the 
@@ -86,7 +96,7 @@ domain of input/output values.
 \clearpage
 
 There is a significant body of previous work in the automatic synthesis of 
-programs (see Section~\ref{sec:bkgsyn}). Most can be classified as 
+programs (see Chapter~\ref{sec:bkgsyn}). Most can be classified as 
 \emph{inductive}, which take a machine-learning approach to generalising a set 
 of input/output examples with a program in a particular language; or 
 \emph{deductive}\cite{cheatham86}\cite{bundy90}\cite{colon05}, which seek to 
@@ -100,23 +110,32 @@ solved, and with the application of new tools and techniques, we hope to break
 new ground and document their effectiveness.
 
 In particular, we use a type of logic programming called Answer Set 
-Programming (see Section~\ref{sec:bkgasp}), which was previously used for 
+Programming (see Chapter~\ref{sec:bkgasp}), which was previously used for 
 inductive synthesis of logic programs, as the main part of a system 
 capable of inductively synthesising imperative programs.
 
 \subsection{Contributions}
-We present a tool which, given a list of input/output examples over a 
-given variable domain and a declarative specification of the types of 
-programs to consider (see Section~\ref{sec:spclng}), will generate a 
-program (if one exists, given the language constraints) which satisfies 
-all of the examples. See Section~\ref{sec:synexm}.
+\begin{itemize}
+    \item We present a tool which, given a list of input/output examples 
+    over a given variable domain will generate a program satisfying the
+    examples, if one exists given the certain constraints. See 
+    Chapter~\ref{sec:synexm}.
 
-Furthermore, we extend this with the ability to accept a program skeleton 
-delimited by preconditions, postconditions, midconditions and loop 
-invariants, given as logical formulae relating the initial and current 
-values of program variables. In this case, the user does not need to 
-supply any input/output examples, as they are generated from the formulae 
-as needed. See Section~\ref{sec:synfrm}.
+    \item We extend this system with the ability to judiciously generate 
+    examples from a functional specification written in propositional
+    logic, instead of relying on a list of examples from the user. See
+    Chapter~\ref{sec:genexm}.
+
+    \item We allow the structure of the generated program to be partially 
+    defined by the user, and show that this results in a significant increase
+    in speed of generation. See Chapter~\ref{sec:gensub}.
+
+    \item Particularising the above to the generation of programs 
+    involving loops, we allow a \emph{loop invariant} and \emph{variant}
+    to be specified by the user, and use this to generate the loop body
+    separately from the rest of the program, also resulting in an 
+    increase in speed of generation. See Chapter~\ref{sec:gensub}.
+\end{itemize}
 \clearpage
 
 \section{Background: Automatic Program Synthesis} \label{sec:bkgsyn}
@@ -182,9 +201,9 @@ defined and used with the system.
 
 \section{Background: Answer Set Programming} \label{sec:bkgasp}
 
-\section{Language Definitions}
+\section{Programs in the While Language} \label{sec:whilan}
 
-\subsection{While Language} \label{sec:whilan}
+\subsection{Language Definiton}
 
 The output language of our system is an imperative programming language that 
 can be described as a ``simple while language''. A running program's state is 
@@ -288,174 +307,7 @@ solutions.
     cause the program to formally fail to terminate.
 \end{enumerate}
 
-\subsection{Task Specification Language} \label{sec:spclng}
-
-The user specifies a program synthesis task by writing a configuration file 
-containing the relevant parameters. The format chosen for this file is an 
-Answer Set Program whose answer set contains facts giving the parameters. 
-Although it is possible to perform computation in this file, the normal usage 
-is to simply list the parameters as individual facts; the ASP format was 
-chosen for ease of integration with the other tools used.
-
-The following categories of parameters may be given:
-
-\subsubsection{Functional Specification}
-
-\begin{verbatim}
-input_variable(V1; ...; Vn).
-\end{verbatim}
-The \ttt{n} variables $\{\ttt{V1}, ..., \ttt{Vm}\}$ are declared as input 
-variables, meaning that they are initialised with values to parameterise an 
-individual execution of the program.
-
-\begin{verbatim}
-output_variable(V1; ...; Vn).
-\end{verbatim}
-The \ttt{n} variables $\{\ttt{V1}, ..., \ttt{Vm}\}$ are declared as output
-variables, meaning that their values when the program terminates are recorded
-and possibly compared with the input values to determine correctness.
-
-\begin{verbatim}
- in(ExampleID, InputVariable,  InitialValue).
-out(ExampleID, OutputVariable, ExpectedFinalValue).
-\end{verbatim}
-These parameters allow the user to list input/output examples that the program 
-is required to satisfy. Any number of examples may be given, and each set of 
-examples should have a unique \ttt{ExampleID}, with which each 
-\ttt{InputVariable} and \ttt{OutputVariable} is associated with an 
-\ttt{InitialValue} or \ttt{ExpectedFinalValue}.
-
-\begin{verbatim}
-precondition(PreconditionString).   % Optional; default: true.
-postcondition(PostconditionString). % Optional; default: true.
-\end{verbatim}
-If a precondition and/or postcondition are given, the task is to synthesise a 
-program whose output values satisfy the postcondition whenever its input 
-values satisfy the precondition, in addition to any constraints given by 
-input/output examples.
-
-Preconditions and postconditions are given as ASP \verb|"strings"|
-containing propositional formulae written in the same syntax as the body of an 
-ASP rule. Preconditions may contain no ASP variables other than those 
-corresponding to the initial values of input variables, which take the form 
-\ttt{In\_x} for an input variable named \ttt{x}. Postconditions may contain 
-the same ASP variables, in addition to those corresponding to the final values 
-of output variables, which take the form \ttt{Out\_y} for an output variable 
-named \ttt{y}.
-
-\subsubsection{Program Template}
-
-\textbf{More parameters to be added to this section, after their syntax is 
-finalised.}
-
-\subsubsection{Language Bias}
-
-\begin{verbatim}
-constant(C1; ...; Cn).           % Optional; default: no constants.
-\end{verbatim}
-The \ttt{n} numerical constants $\{\ttt{C1}, ..., \ttt{Cn}\}$ 
-given here may occur as literals in the program. No other constants may occur.
-
-\begin{verbatim}
-extra_variable(V1; ...; Vn).     % Optional; default: no extra variables.
-\end{verbatim}
-The \texttt{n} variables $\{\ttt{V1}, ..., \ttt{Vn}\}$ given here 
-may occur in the program in addition to those given by \ttt{input\_variable\/1}
-and \ttt{output\_variable\/1}. No other variables may occur.
-
-\begin{verbatim}
-read_only_variable(V1; ...; Vn). % Optional; default: all variables writable.
-\end{verbatim}
-None of the \texttt{n} variables $\{\ttt{V1}, ..., \ttt{Vn}\}$ 
-given here may be modified by the program. Of course, this only makes sense 
-for input variables, as a read-only variable could only otherwise hold a value 
-by receiving an input value. This can be used to speed up the search for a 
-program by eliminating spurious variable assignments.
-
-\begin{verbatim}
-disallow_feature(if).           % No if statements.
-disallow_feature(while).        % No while loops.
-
-disallow_feature(add).          % No addition.
-disallow_feature(sub).          % No subtraction.
-disallow_feature(mul).          % No multiplication.
-disallow_feature(div).          % No integer division.
-disallow_feature(mod).          % No remainder.
-disallow_feature(arithmetic).   % None of the above operations.
-\end{verbatim}
-The given syntactic element is prevented from occurring in a generated 
-program, unless it occurs in user-specified code in the program template.
-
-\subsubsection{Execution Limits}
-\begin{verbatim}
-int_range(Imin, Imax).  % Required.
-\end{verbatim}
-The value of no variable may be less than \ttt{Imax} or greater than 
-\ttt{Imin}.
-
-\begin{verbatim}
-time_limit(Tmax).       % Required.
-\end{verbatim}
-No more than \ttt{Tmax} instructions may be executed in any single execution.
-
-\subsubsection{Search Hints}
-\begin{verbatim}
-line_limit_min(Lmin).   % Optional; default: 0.
-line_limit_max(Lmax).   % Optional; default: unbounded.
-line_limit_step(Lstep). % Optional; default: 1.
-\end{verbatim}
-Controls the incremental search for a program with increasing limits on the 
-number of lines. Initially, a program with at most \ttt{Lmin} lines is sought 
-(which by default is the empty program). If no such program can be found, the 
-limit is increased by \ttt{Lstep} and the search repeated, until the limit 
-exceeds \ttt{Lmax}.
-
-\subsubsection{Example Specifications}
-
-There are two ways to specify the behaviour of the program we want to 
-synthesise: by listing examples, or by giving a precondition and a 
-postcondition. We shall gives examples of both of these for the case of a 
-program that computes a given power of two.
-
-Using examples:
-\begin{verbatim}
-    int_range(0, 32). time_limit(10). constant(1; 2).
-    input_variable(x). output_variable(y).
-
-    in(ex0, x, 0). out(ex0, y, 1).
-    in(ex1, x, 1). out(ex1, y, 2).
-    in(ex2, x, 2). out(ex2, y, 4).
-    in(ex3, x, 3). out(ex3, y, 8).
-    in(ex4, x, 4). out(ex4, y, 16).
-    in(ex5, x, 5). out(ex5, y, 32).
-\end{verbatim}
-
-Using a precondition and postcondition:
-\begin{verbatim}
-    int_range(0, 32). time_limit(10). constant(1; 2).    
-    input_variable(x). output_variable(y).
-
-    precondition("In_x >= 0").
-    postcondition("Out_y == 2 ** In_x").
-\end{verbatim}
-
-We would expect both of these specifications to produce programs with 
-equivalent behaviour, even if the programs differ in superficial aspects. 
-However, it will be seen that the latter specification leads to a more 
-efficient process of synthesis due to the fact that fewer more well-chosen 
-examples are needed to produce the correct program.
-
-\clearpage 
-
-\section{While Language Interpreter}
-
-In order to generate programs in our While language 
-(Section~\ref{sec:whilan}) using Answer Set Programming, we need an 
-encoding of programs in ASP, and a way to evaluate the result of running a 
-program with a given input, subject to the configured execution limits 
-(Section~\ref{sec:spclng}).
-
-\subsection{Program Encoding} \label{sec:progenc}
+\subsection{Program Encoding in ASP} \label{sec:progenc}
 
 Programs are represented as sequences of numbered \emph{lines}, where each 
 line contains an \emph{instruction}. The fact that the instruction 
@@ -561,8 +413,12 @@ As an example, when we run \verb|run.lp| with the constants
 from the example at the end of the previous 
 section \ref{sec:progenc}, and with the following additional facts:
 \begin{verbatim}
-    in(run0,x,0). in(run1,x,1). in(run2,x,2).
-    in(run3,x,3). in(run4,x,4). in(run5,x,5).
+    in(run0,x,0).
+    in(run1,x,1).
+    in(run2,x,2).
+    in(run3,x,3).
+    in(run4,x,4).
+    in(run5,x,5).
 \end{verbatim}
 Then the resulting answer set computed by Clingo 3 contains the following 
 instances of \verb|run_var_out/3|:
@@ -570,28 +426,193 @@ instances of \verb|run_var_out/3|:
     run_var_out(run0,x,0)  run_var_out(run0,y,1)
     run_var_out(run1,x,0)  run_var_out(run1,y,2)
     run_var_out(run2,x,0)  run_var_out(run2,y,4)
-    run_var_out(run5,x,0)  run_var_out(run5,y,8)
-    run_var_out(run3,x,0)  run_var_out(run3,y,16) 
-    run_var_out(run4,x,0)  run_var_out(run4,y,32)
+    run_var_out(run3,x,0)  run_var_out(run3,y,8)
+    run_var_out(run4,x,0)  run_var_out(run4,y,16) 
+    run_var_out(run5,x,0)  run_var_out(run5,y,32)
 \end{verbatim}
-Which as we would expect gives the correct result, with \verb|y| equal to 
-two raised to the power of the initial value of \verb|x|.
+Which as we would expect gives the correct result, with $y = 2^{x_0}$, 
+where $y$ is the final value of \verb|y| and $x_0$ is the initial value of 
+\verb|x|.
 
-\section{Program Synthesis using Examples} \label{sec:synexm}
+\section{Synthesis of Programs from User Examples} \label{sec:synexm}
+\subsection{Task Specification Language} \label{sec:spclng}
 
-\section{Program Synthesis using Formulae} \label{sec:synfrm}
-\subsection{Synthesis of Program Fragments}
-\subsection{Synthesis of While Loop Bodies}
+The user specifies a program synthesis task by writing a configuration file 
+containing the relevant parameters. The format chosen for this file is an 
+Answer Set Program whose answer set contains facts giving the parameters. 
+Although it is possible to perform computation in this file, the normal usage 
+is to simply list the parameters as individual facts; the ASP format was 
+chosen for ease of integration with the other tools used.
+
+The following categories of parameters may be given:
+
+\subsubsection{Program Template}
+
+\textbf{More parameters to be added to this section, after their syntax is 
+finalised.}
+
+\subsubsection{Language Bias}
+
+\begin{verbatim}
+constant(C1; ...; Cn).           % Optional; default: no constants.
+\end{verbatim}
+The \ttt{n} numerical constants $\{\ttt{C1}, ..., \ttt{Cn}\}$ 
+given here may occur as literals in the program. No other constants may occur.
+
+\begin{verbatim}
+extra_variable(V1; ...; Vn).     % Optional; default: no extra variables.
+\end{verbatim}
+The \texttt{n} variables $\{\ttt{V1}, ..., \ttt{Vn}\}$ given here 
+may occur in the program in addition to those given by \ttt{input\_variable\/1}
+and \ttt{output\_variable\/1}. No other variables may occur.
+
+\begin{verbatim}
+read_only_variable(V1; ...; Vn). % Optional; default: all variables writable.
+\end{verbatim}
+None of the \texttt{n} variables $\{\ttt{V1}, ..., \ttt{Vn}\}$ 
+given here may be modified by the program. Of course, this only makes sense 
+for input variables, as a read-only variable could only otherwise hold a value 
+by receiving an input value. This can be used to speed up the search for a 
+program by eliminating spurious variable assignments.
+
+\begin{verbatim}
+disallow_feature(if).           % No if statements.
+disallow_feature(while).        % No while loops.
+
+disallow_feature(add).          % No addition.
+disallow_feature(sub).          % No subtraction.
+disallow_feature(mul).          % No multiplication.
+disallow_feature(div).          % No integer division.
+disallow_feature(mod).          % No remainder.
+disallow_feature(arithmetic).   % None of the above operations.
+\end{verbatim}
+The given syntactic element is prevented from occurring in a generated 
+program, unless it occurs in user-specified code in the program template.
+
+\subsubsection{Execution Limits}
+\begin{verbatim}
+int_range(Imin, Imax).  % Required.
+\end{verbatim}
+The value of no variable may be less than \ttt{Imax} or greater than 
+\ttt{Imin}.
+
+\begin{verbatim}
+time_limit(Tmax).       % Required.
+\end{verbatim}
+No more than \ttt{Tmax} instructions may be executed in any single execution.
+
+\subsubsection{Search Hints}
+\begin{verbatim}
+line_limit_min(Lmin).   % Optional; default: 0.
+line_limit_max(Lmax).   % Optional; default: unbounded.
+line_limit_step(Lstep). % Optional; default: 1.
+\end{verbatim}
+Controls the incremental search for a program with increasing limits on the 
+number of lines. Initially, a program with at most \ttt{Lmin} lines is sought 
+(which by default is the empty program). If no such program can be found, the 
+limit is increased by \ttt{Lstep} and the search repeated, until the limit 
+exceeds \ttt{Lmax}.
+
+\subsubsection{Example Specifications}
+
+There are two ways to specify the behaviour of the program we want to 
+synthesise: by listing examples, or by giving a precondition and a 
+postcondition. We shall gives examples of both of these for the case of a 
+program that computes a given power of two.
+
+Using examples:
+\begin{verbatim}
+    int_range(0, 32). time_limit(10). constant(1; 2).
+    input_variable(x). output_variable(y).
+
+    in(ex0, x, 0). out(ex0, y, 1).
+    in(ex1, x, 1). out(ex1, y, 2).
+    in(ex2, x, 2). out(ex2, y, 4).
+    in(ex3, x, 3). out(ex3, y, 8).
+    in(ex4, x, 4). out(ex4, y, 16).
+    in(ex5, x, 5). out(ex5, y, 32).
+\end{verbatim}
+
+Using a precondition and postcondition:
+\begin{verbatim}
+    int_range(0, 32). time_limit(10). constant(1; 2).    
+    input_variable(x). output_variable(y).
+
+    precondition("In_x >= 0").
+    postcondition("Out_y == 2 ** In_x").
+\end{verbatim}
+
+We would expect both of these specifications to produce programs with 
+equivalent behaviour, even if the programs differ in superficial aspects. 
+However, it will be seen that the latter specification leads to a more 
+efficient process of synthesis due to the fact that fewer more well-chosen 
+examples are needed to produce the correct program.
+
+\clearpage 
+
+\section{Automatic Generation of Examples} \label{sec:genexm}
+
+\subsection{Extensions to the Task Specification Language}
+The specification language from Chapter~\ref{sec:synexm} is extended with 
+the following configuration entries:
+
+\begin{verbatim}
+input_variable(V1; ...; Vn).
+\end{verbatim}
+The \ttt{n} variables $\{\ttt{V1}, ..., \ttt{Vm}\}$ are declared as input 
+variables, meaning that they are initialised with values to parameterise an 
+individual execution of the program.
+
+\begin{verbatim}
+output_variable(V1; ...; Vn).
+\end{verbatim}
+The \ttt{n} variables $\{\ttt{V1}, ..., \ttt{Vm}\}$ are declared as output
+variables, meaning that their values when the program terminates are recorded
+and possibly compared with the input values to determine correctness.
+
+\begin{verbatim}
+ in(ExampleID, InputVariable,  InitialValue).
+out(ExampleID, OutputVariable, ExpectedFinalValue).
+\end{verbatim}
+These parameters allow the user to list input/output examples that the program 
+is required to satisfy. Any number of examples may be given, and each set of 
+examples should have a unique \ttt{ExampleID}, with which each 
+\ttt{InputVariable} and \ttt{OutputVariable} is associated with an 
+\ttt{InitialValue} or \ttt{ExpectedFinalValue}.
+
+\begin{verbatim}
+precondition(PreconditionString).   % Optional; default: true.
+postcondition(PostconditionString). % Optional; default: true.
+\end{verbatim}
+If a precondition and/or postcondition are given, the task is to synthesise a 
+program whose output values satisfy the postcondition whenever its input 
+values satisfy the precondition, in addition to any constraints given by 
+input/output examples.
+
+Preconditions and postconditions are given as ASP \verb|"strings"|
+containing propositional formulae written in the same syntax as the body of an 
+ASP rule. Preconditions may contain no ASP variables other than those 
+corresponding to the initial values of input variables, which take the form 
+\ttt{In\_x} for an input variable named \ttt{x}. Postconditions may contain 
+the same ASP variables, in addition to those corresponding to the final values 
+of output variables, which take the form \ttt{Out\_y} for an output variable 
+named \ttt{y}.
+
+\section{Separate Synthesis of Subprograms} \label{sec:gensub}
+
+\subsection{Extensions to the Task Specification Language}
+
+\subsection{Separate Synthesis of Loop Bodies}
 
 \section{Evaluation}
 \subsection{Power and Accuracy}
 \subsubsection{Extent of Capabilities}
 \subsubsection{Correctness of Generated Programs}
-\subsubsection{Comparison with Existing Systems}
 \subsection{Efficiency}
 \subsubsection{Time and Space Usage}
 \subsubsection{Number of Examples Needed}
 \subsubsection{Quality of Generated Programs}
+\subsection{Comparison with Existing Systems}
 
 \section{Conclusions and Future Work}
 \subsection{Conclusion}
