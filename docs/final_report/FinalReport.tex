@@ -24,7 +24,21 @@
 
 \title{Synthesis of Simple While Programs Using Answer Set Programming}
 \author{Joseph Crowe \\ Supervised by Krysia Broda and Mark Law}
+\date{18th June 2015}
 \maketitle
+
+\begin{abstract}
+sdfsf
+\end{abstract}
+\clearpage
+
+\section*{Acknowledgements}
+I owe many thanks to my supervisors Dr.\ Krysia Broda and Mark Law for their 
+advice, support, tolerance, and many valuable suggestions over the course of 
+the project.
+
+Thanks also to Dr.\ Alessandra Russo for some insightful feedback and 
+suggestions given during the interim project review.
 \clearpage
 
 \tableofcontents
@@ -114,7 +128,9 @@ new ground and document their effectiveness.
 In particular, we use a type of logic programming called Answer Set 
 Programming (see Chapter~\ref{chp:bkgasp}), which was previously used for 
 inductive synthesis of logic programs, as the main part of a system 
-capable of inductively synthesising imperative programs.
+capable of inductively synthesising imperative programs. For running 
+Answer Set Programs we use \emph{Clingo 3} from the Potsdam Answer Set 
+Solving Collection (Potassco)\cite{potassco}.
 
 \section{Contributions}
 \begin{itemize}
@@ -177,7 +193,7 @@ of program synthesis. An example of this applied to the synthesis of logic
 programs is given at \cite{bundy90}.
 
 More recent advances in deductive program synthesis use combinations of the 
-above techniques For example, in \cite{popl10syn}, it is shown that given a 
+above techniques. For example, in \cite{popl10syn}, it is shown that given a 
 functional specification of an imperative program, relating its inputs and 
 outputs with logical formulae, and given also the looping structure of the the 
 program, it is possible to infer a program satisfying these constraints, using 
@@ -191,8 +207,6 @@ behaviour, which usually takes the form of a list of input/output examples.
 This can be viewed as a form of machine learning, where the synthesised 
 program is a hypothesis generalising the given examples.
 
-\textbf{More references to be added.}
-
 David Perelman, Sumit Gulwani, et al.\ in 2014 developed a system\cite{tds} 
 based on the principle of ``programming by example,'' which generates and 
 iteratively refines a program from a sequence of increasingly more general 
@@ -201,6 +215,31 @@ imperative programs, but allows arbitrary domain-specific languages to be
 defined and used with the system.
 
 \chapter{Background: Answer Set Programming} \label{chp:bkgasp}
+
+Answer Set Programming (ASP) is a form of logic programming particularly
+suited to search problems over large domains (such as the domain of all
+imperative programs of a given length). An Answer Set Program distinguishes
+the result to be computed by a set of propositional facts and rules in the
+domain. Importantly, ASP includes \emph{aggregates}, \emph{integrity
+constraints}, and \emph{negation as failure}, where a rule can be conditional
+on the inability of prove that some proposition is true, which allows
+\emph{non-monotonic reasoning}. The result of running an ASP is an
+\emph{answer set} of facts which is consistent with the program, forms a
+\emph{stable model}, and is minimal in a certain sense. For further details,
+see \cite{glimpse}, which gives a concise introduction to the paradigm.
+
+\section{Previous Work using ASP}
+
+In 2013, Domenico Corapi et al.\ developed ASPAL\cite{aspal}, a system written
+in ASP for solving classical Inductive Logic Programming tasks, which brings
+to bear against these problems the efficiency of existing ASP solvers, and
+allows their optimisation features to be used to direct the search towards a
+desired optimal solution.
+
+Building on this, in 2014, Mark Law et al.\ in 2014 developed
+ILASP\cite{ilasp}, implementing a form of ILP where an Answer Set Program
+representing the solution is learned inductively from positive and negative
+examples, with applications in agent planning.
 
 \chapter{Programs in the While Language} \label{chp:whilan}
 
@@ -558,6 +597,11 @@ further computation is needed, and is implemented by the following rules:
 
 \subsection{Example Programs}
 
+We now introduce some examples of programs that can be run using 
+\verb|run.lp| and their sample inputs and outputs. We will return to some 
+of these same programs in later chapters to show how they can be 
+automatically generated.
+
 \subsubsection{Powers of Two}
 When we run \verb|run.lp| with the constants \verb|time_max=99|, 
 \verb|int_min=0|, \verb|int_max=32|, with the facts from the example at 
@@ -585,6 +629,49 @@ Which as we would expect gives the correct result, with $y = 2^{x_0}$,
 where $y$ is the final value of \verb|y| and $x_0$ is the initial value of 
 \verb|x|.
 
+\subsubsection{Triangular Numbers}
+The $n$th triangular number is defined as $T_n=\sum_{i=0}^n i$. There is 
+also a closed formula, $T_n=\tfrac{n(n+1)}2$. Therefore, the following two 
+programs are functionally equivalent:
+\begin{Verbatim}[samepage=true]
+    line_instr(1, set(t, add(var(n), con(1)))).   % t = n + 1;
+    line_instr(2, set(t, mul(var(t), var(n)))).   % t = t * n;
+    line_instr(3, set(t, div(var(t), con(2)))).   % t = t / 2;
+\end{Verbatim}
+\begin{Verbatim}[samepage=true]
+    line_instr(1, set(t, con(0))).                % t = 0;
+    line_instr(2, while(lt(con(0), var(n)), 2)).  % while (n > 0) {
+    line_instr(3, set(t, add(var(t), var(n)))).   %     t = t + n;
+    line_instr(4, set(n, sub(var(n), con(1)))).   %     n = n - 1;
+    line_instr(5, end_while).                     % }
+\end{Verbatim}
+
+Both of the above programs can be run with the following parameters:
+\begin{Verbatim}[samepage=true]
+    #const time_max=50.
+    #const int_min=0.
+    #const int_max=50.
+    
+    in(run0,n,0).
+    in(run1,n,1).
+    in(run2,n,2).
+    in(run3,n,3).
+    in(run4,n,4).
+    in(run5,n,5).
+\end{Verbatim}
+
+To produce the following output, the familiar sequence of triangular 
+numbers whose sequence of differences between successive terms is the 
+natural numbers:
+\begin{Verbatim}[samepage=true]
+    run_var_out(run0,t,0)
+    run_var_out(run1,t,1)
+    run_var_out(run2,t,3)
+    run_var_out(run3,t,6)
+    run_var_out(run4,t,10)
+    run_var_out(run5,t,15)
+\end{Verbatim}
+
 \subsubsection{Fibonacci Sequence}
 The Fibonacci Sequence $(F_n)_{n=1}^\infty$, given by $F_1=F_2=1$, 
 $F_{n+2}=F_{n}+F_{n+1}$, can be computed by the following program, which 
@@ -594,9 +681,9 @@ takes as input \verb|n|, and produces $\verb|f|=F_{\verb|n|}$, the
     line_instr(1, set(e, con(0))).                % e = 0;
     line_instr(1, set(f, con(1))).                % f = 1;
     line_instr(2, while(lt(con(1), var(n)), 3)).  % while (n > 1) {
-    line_instr(3, set(f, add(var(e), var(f)))).   %   f = e + f;
-    line_instr(4, set(e, sub(var(f), var(e)))).   %   e = f - e;
-    line_instr(5, set(n, sub(var(n), con(1)))).   %   n = n - 1;
+    line_instr(3, set(f, add(var(e), var(f)))).   %    f = e + f;
+    line_instr(4, set(e, sub(var(f), var(e)))).   %    e = f - e;
+    line_instr(5, set(n, sub(var(n), con(1)))).   %    n = n - 1;
     line_instr(6, end_while).                     % }
 \end{Verbatim}
 
@@ -631,12 +718,122 @@ which offers an insight into how the program works.
 
 \subsubsection{Median of Three Numbers}
 
+Given three real numbers $a$, $b$ and $c$, their median is the unique real 
+number $m\in\{a,b,c\}$ such that $\min(a,b,c)\leq m\leq\max(a,b,c)$. An 
+example of a program that finds the median of three integers is the 
+following, which puts \verb|a|, \verb|b| and \verb|c| in ascending order 
+using \verb|m| as a swap variable, then sets \verb|m| to \verb|b|, the 
+middle value:
+\begin{Verbatim}[samepage=true]
+    line_instr( 1, if(lt(var(c), var(a)), 3)).  % if (a > c) {
+    line_instr( 2, set(m, var(a))).             %     m = a;
+    line_instr( 3, set(a, var(c))).             %     a = c;
+    line_instr( 4, set(c, var(m))).             %     c = m; }
+    line_instr( 5, if(lt(var(b), var(a)), 3)).  % if (a > b) {
+    line_instr( 6, set(m, var(a))).             %     m = a;
+    line_instr( 7, set(a, var(b))).             %     a = b;
+    line_instr( 8, set(b, var(m))).             %     b = m; }
+    line_instr( 9, if(lt(var(c), var(b)), 3)).  % if (b > c) {
+    line_instr(10, set(m, var(b))).             %     m = b;
+    line_instr(11, set(b, var(c))).             %     b = c;
+    line_instr(12, set(c, var(m))).             %     c = m; }
+    line_instr(13, set(m, var(b))).             % m = b;
+\end{Verbatim}
+
+Configured with the following parameters:
+\begin{Verbatim}[samepage=true]
+    #const time_max=10.
+    #const int_min=0.
+    #const int_max=10.
+
+    in(r123,a,11). in(r123,b,12). in(r123,c,13).
+    in(r132,a,21). in(r132,b,23). in(r132,c,22).
+    in(r312,a,33). in(r312,b,31). in(r312,c,32).
+    in(r321,a,43). in(r321,b,42). in(r321,c,41).
+    in(r231,a,52). in(r231,b,53). in(r231,c,51).
+    in(r213,a,62). in(r213,b,61). in(r213,c,63).
+\end{Verbatim}
+
+Produces the following output:
+\begin{Verbatim}[samepage=true]
+    run_var_out(r123,m,12)
+    run_var_out(r132,m,22)
+    run_var_out(r312,m,32)
+    run_var_out(r321,m,42)
+    run_var_out(r231,m,52)
+    run_var_out(r213,m,62)
+\end{Verbatim}
+
 \subsubsection{$n$th Prime Number}
-A positive integer $p$ is prime if it has no proper divisors, i.e. there 
-is no integer $k$ such that $1<k<p$ and $p=kj$ for some integer $j$. A 
-result in elementary number theory says that there are infinitely many 
-prime numbers, so we can define a sequence $(p_n)_{n=1}^\infty=(2, 3, 5, 
-7, ...)$, where $p_n$ is the $n$th prime number.
+
+A positive integer $p$ is prime if $p>1$ and $p$ has no proper divisors, 
+i.e. there are no two integers $k,j$ such that $1<k<p$ and $p=kj$. 
+Euclid's Theorem, a result in elementary number theory, states that there 
+are infinitely many prime numbers; so we can define a sequence 
+$(p_n)_{n=1}^\infty=(2, 3, 5, 7, ...)$, where $p_n$ is the $n$th prime 
+number. There are known a number of efficient algorithms to compute $p_n$ 
+given $n$, but the following program implements a relatively simple one:
+\begin{Verbatim}[samepage=true]
+    line_instr( 1, set(p, con(2))).                 % p = 2;
+    line_instr( 2, if(lt(con(1), var(n)), 2)).      % if (n > 1) {
+    line_instr( 3, set(p, con(3))).                 %   p = 3;
+    line_instr( 4, set(n, sub(var(n), con(1)))).    %   n = n - 1; }
+    line_instr( 5, while(lt(con(1), var(n)), 12)).  % while (n > 1):
+    line_instr( 6, set(n, sub(var(n), con(1)))).    %   n = n - 1;
+    line_instr( 7, set(r, con(0))).                 %   r = 0;
+    line_instr( 8, while(le(var(r), con(0)), 8)).   %   while (r <= 0):
+    line_instr( 9, set(p, add(var(p), con(2)))).    %     p = p + 2;
+    line_instr(10, set(d, con(3))).                 %     d = 3;
+    line_instr(11, while(lt(var(d), var(p)), 4)).   %     while (d < p) {
+    line_instr(12, set(r, mod(var(p), var(d)))).    %       r = p % d;
+    line_instr(13, set(d, add(var(d), con(2)))).    %       d = d + 2;
+    line_instr(14, if(le(var(r), con(0)), 1)).      %       if (r <= 0) {
+    line_instr(15, set(d, var(p))).                 %         d = p; }
+    line_instr(16, end_while).                      %     }
+    line_instr(17, end_while).                      %   }
+    line_instr(18, end_while).                      % }
+\end{Verbatim}
+
+Running this program with the following parameters:
+\begin{Verbatim}[samepage=true]
+    #const time_max=100.
+    #const int_min=0.
+    #const int_max=15.
+    
+    in(run1,n,1).
+    in(run2,n,2).
+    in(run3,n,3).
+    in(run4,n,4).
+    in(run5,n,5).
+    in(run6,n,6).
+\end{Verbatim}
+We obtain an answer set containing the following results:
+\begin{Verbatim}[samepage=true]
+    run_var_out(run1,p,2)
+    run_var_out(run2,p,3)
+    run_var_out(run3,p,5)
+    run_var_out(run4,p,7)
+    run_var_out(run5,p,11)
+    run_does_not_halt(run6)
+\end{Verbatim}
+The first 5 runs successfully computed the value we would expect, but 
+\verb|run6| failed to halt. This is because the number of time-steps 
+needed to count up to the 6th prime number exceeds our value of 
+\verb|time_max=100|. It is possible to raise this value and obtain a value 
+of $\verb|p|=13$, but at this point the grounding of the ASP becomes large 
+enough that extending it to a search of many similar programs of this 
+complexity is computationally infeasible when running on current desktop 
+machines.
+
+This indicates that a divide-and-conquer approach will be needed in order 
+to address more complicated programs. The above program can be seen to 
+consist of three main subprograms: the innermost loop, which checks 
+whether $\verb|p|\geq3$ is a prime number; the loop containing that, which 
+increments a prime number $\verb|p|\geq3$ to the next largest prime 
+number; and the outermost loop, which increments $\verb|p|\geq3$ to the 
+$(n-1)$th next largest prime number. It is possible to reason separately 
+about the correctness of these subprograms, so in the same way it may be 
+possible to synthesise them separately.
 
 \chapter{Synthesis of Programs from User Examples} \label{chp:synexm}
 
@@ -839,9 +1036,7 @@ explicitly listed examples:
 \end{Verbatim}
 
 \chapter{Separate Synthesis of Subprograms} \label{chp:gensub}
-
 \section{Extensions to the Task Specification Language}
-
 \section{Separate Synthesis of Loop Bodies}
 
 \chapter{Evaluation}
@@ -900,13 +1095,8 @@ explicitly listed examples:
         Perelman, D., Gulwani, S., Grossman, D., Provost, P. (2014).
         Test-Driven Synthesis.
         \url{http://research.microsoft.com/en-us/um/people/sumitg/pubs/pldi14-tds.pdf}
-\begin{comment}
-    \bibitem{muggleton94}
-        Muggleton, S., De Raedt, L. (1994).
-        Inductive Logic Programming: Theory and methods.
-        The Journal of Logic Programming, vol. 19-20, page 629-679.
     \bibitem{potassco}
-        Potassco, the Potsdam Answer Set Solving Collection. 
+        Potassco, the Potsdam Answer Set Solving Collection.
         \url{http://potassco.sourceforge.net}
     \bibitem{glimpse}
         Anger, C., Konczak, K., Linke, T., Schaub, T. (2005).
@@ -920,7 +1110,6 @@ explicitly listed examples:
         Law, M., Russo, A., Broda, K. (2014).
         Inductive learning of answer set programs.
         \url{https://www.doc.ic.ac.uk/~ml1909/ILASP_Paper.pdf}
-\end{comment}
 \end{thebibliography}
 
 \end{document}
