@@ -1,4 +1,5 @@
 #const time_max=30.
+#const int_min=0.
 #const int_max=10.
 
 con(2).

@@ -25,6 +25,8 @@ line(L) :- line_instr(L, _).
 var(V) :- line_expr_occurs(_, var(V)).
 var(V) :- line_instr(_, set(V, _)).
 
+% Which arithmetic and boolean expressions occur in the program
+% at given times and in given runs?
 line_expr_occurs(L, E) :- line_instr(L, set(_, E)).
 line_expr_occurs(L, E) :- line_binop_occurs(L, E, _).
 line_expr_occurs(L, E) :- line_binop_occurs(L, _, E).
@@ -39,6 +41,9 @@ line_binop_occurs(L, A, B) :- line_expr_occurs(L, div(A,B)).
 line_binop_occurs(L, A, B) :- line_expr_occurs(L, mod(A,B)).
 line_binop_occurs(L, A, B) :- line_bool_occurs(L, lt(A,B)).
 line_binop_occurs(L, A, B) :- line_bool_occurs(L, le(A,B)).
+
+run_expr_occurs(R, T, E) :- run_line(R, T, L), line_expr_occurs(L, E).
+run_bool_occurs(R, T, B) :- run_line(R, T, L), line_bool_occurs(L, B).
 
 % Projection of if/while parameters.
 line_instr_if_guard(L, G)     :- line_instr(L, if(G, _)).
@@ -163,8 +168,3 @@ run_bool(R,T,B) :-
     run_expr(R,T,E1,C1),
     run_expr(R,T,E2,C2),
     C1 <= C2.
-
-% Which arithmetic and boolean expressions occur in the program
-% at given times and in given runs?
-run_expr_occurs(R, T, E) :- run_line(R, T, L), line_expr_occurs(L, E).
-run_bool_occurs(R, T, B) :- run_line(R, T, L), line_bool_occurs(L, B).

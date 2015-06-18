@@ -38,8 +38,8 @@ allow(F)    :- feature(F), not disallow(F).
 { line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
 any_line_instr(L) :- line_instr(L, _).
 
-:- line(L), not any_line_instr(L), any_line_instr(L+1).
-#minimize { any_line_instr(L) }.
+%:- line(L), not any_line_instr(L), any_line_instr(L+1).
+%#minimize { any_line_instr(L) }.
 
 % All test examples must halt with the correct value.
 :- run_does_not_halt(R).
@@ -63,8 +63,25 @@ valid_line_instr(L, while(B, 1..M)) :-
 valid_line_instr(L, end_while) :-
     line(L), allow(while).
 
-%valid_line_instr(L,I) :- preset_line_instr(L,I).
-%line_instr(L,I)       :- preset_line_instr(L,I).
+valid_line_instr(L,I) :- preset_line_instr(L,I).
+line_instr(L,I)       :- preset_line_instr(L,I).
+
+% Which arithmetic and boolean expressions occur in the program
+% at given times and in given runs?
+line_expr_occurs(L, E) :- preset_line_instr(L, set(_, E)).
+line_expr_occurs(L, E) :- line_binop_occurs(L, E, _).
+line_expr_occurs(L, E) :- line_binop_occurs(L, _, E).
+
+line_bool_occurs(L, B) :- preset_line_instr(L, if(B, _)).
+line_bool_occurs(L, B) :- preset_line_instr(L, while(B, _)).
+
+line_binop_occurs(L, A, B) :- line_expr_occurs(L, add(A,B)).
+line_binop_occurs(L, A, B) :- line_expr_occurs(L, sub(A,B)).
+line_binop_occurs(L, A, B) :- line_expr_occurs(L, mul(A,B)).
+line_binop_occurs(L, A, B) :- line_expr_occurs(L, div(A,B)).
+line_binop_occurs(L, A, B) :- line_expr_occurs(L, mod(A,B)).
+line_binop_occurs(L, A, B) :- line_bool_occurs(L, lt(A,B)).
+line_binop_occurs(L, A, B) :- line_bool_occurs(L, le(A,B)).
 
 % Require end_while statements to occur at exactly the correct positions.
 :- line_instr(L,end_while), not end_while_block(L).
@@ -87,6 +104,8 @@ line_instr_while_length(L, B) :- line_instr(L, while(_, B)).
 
 %-------------------------------------------------------------------------------
 % Arithmetic expressions. (Constants must be assigned to a variable to be used.)
+
+expr(E) :- line_expr_occurs(_, E).
 
 expr(con(C)) :- con(C).
 expr(var(X)) :- var(X).
@@ -130,6 +149,8 @@ expr(mod(var(X), con(C))) :- allow(mod), var(X), con(C), c > 0.
 %   x >= y  <=>  le(y,x)
 %   x == y  <=>  le(x,y) AND le(y,x)
 %   x != y  <=>  lt(x,y) AND lt(y,x)
+
+bool(B) :- line_bool_occurs(_, B).
 
 bool(lt(var(X), var(Y))) :- var(X), var(Y), X != Y.
 bool(lt(var(X), con(C))) :- var(X), con(C).
@@ -215,7 +236,7 @@ line_jump(L) :- line_instr(L, end_while).
 
 % Evaluate arithmetic expressions.
 run_leaf_expr(R,T,E,C) :-
-    E=con(C), con(C), expr(E), run(R,T).
+    E=con(C), int(C), expr(E), run(R,T).
 run_leaf_expr(R,T,E,C) :-
     E=var(V), var(V), expr(E), run_var(R,T,V,C).
 
