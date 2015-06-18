@@ -38,8 +38,8 @@ allow(F)    :- feature(F), not disallow(F).
 { line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
 any_line_instr(L) :- line_instr(L, _).
 
-%:- line(L), not any_line_instr(L), any_line_instr(L+1).
-%#minimize { any_line_instr(L) }.
+% :- line(L), not any_line_instr(L), any_line_instr(L+1).
+% #minimize { any_line_instr(L) }.
 
 % All test examples must halt with the correct value.
 :- run_does_not_halt(R).

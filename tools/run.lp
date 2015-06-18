@@ -73,23 +73,42 @@ run_does_not_halt(R) :- run(R), not run_does_halt(R).
 % run_var_out(R,X,C) if the final value of X in run R is C.
 run_var_out(R,X,C)     :- run_var(R,T,X,C), not run(R,T).
 run_var_out(R,X,unset) :- run(R), var(X), not run_var_out_set(R,X).
-run_var_out_set(R,X) :- run_var_out(R,X,C), C != unset.
+run_var_out_set(R,X)   :- run_var_out(R,X,C), C != unset.
+
 
 % Initialise variables to their input value, if any.
-run_var_in(R,X)  :- in(R,X,_).
 run_var(R,0,X,C) :- in(R,X,C), int(C).
+
+% Identify lines where a particular variable's value may change.
+line_set(L,X) :- line_instr(L, set(X,_)).
 
 % On a set statement, update variables; otherwise, leave them constant.
 run_var(R,T+1,X,C) :-
-    run_line(R,T,L), not line_set(L,X), run_var(R,T,X,C), int(C).
+    run_line(R,T,L), not line_set(L,X),
+    run_var(R,T,X,C), int(C).
 run_var(R,T+1,X,C) :-
-    run_line(R,T,L), line_set(L,X), line_instr(L,set(X,E)), run_expr(R,T,E,C), int(C).
+    run_line(R,T,L), line_set(L,X), line_instr(L,set(X,E)),
+    run_expr(R,T,E,C), int(C).
+
+% Identify expressions which evaluate to a legal result.
+run_expr_not_fail(R,T,E) :- run_expr(R,T,E,_).
+
+% Identify the time at which a run fails due to illegal arithmetic.
 run_fail(R,T) :-
     run_line(R,T,L), line_set(L,X), line_instr(L,set(X,E)),
     not run_expr_not_fail(R,T,E).
-run_expr_not_fail(R,T,E) :- run_expr(R,T,E,_).
 
-line_set(L,X) :- line_instr(L, set(X,_)).
+
+% Identify lines where execution may jump to a remote instruction.
+line_jump(L) :- line_instr(L, if(_,_)).
+line_jump(L) :- line_instr(L, while(_,_)).
+line_jump(L) :- line_instr(L, end_while).
+
+% For efficiency, project out if/while parameters occurring at these lines.
+line_instr_if_guard(L, G)     :- line_instr(L, if(G, _)).
+line_instr_if_length(L, B)    :- line_instr(L, if(_, B)).
+line_instr_while_guard(L, G)  :- line_instr(L, while(G, _)).
+line_instr_while_length(L, B) :- line_instr(L, while(_, B)).
 
 % Start at line 1, and, by default, move to the next line at each step.
 run_line(R,0,1) :-
@@ -119,9 +138,6 @@ run_line(R,T+1,HeadLine) :-
     line_instr_while_length(HeadLine, BodyLength),
     L == HeadLine+BodyLength+1.
 
-line_jump(L) :- line_instr(L, if(_,_)).
-line_jump(L) :- line_instr(L, while(_,_)).
-line_jump(L) :- line_instr(L, end_while).
 
 % Evaluate arithmetic expressions.
 run_expr(R,T,con(C),C) :-

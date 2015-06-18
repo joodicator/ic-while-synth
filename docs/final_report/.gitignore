@@ -1,5 +1,7 @@
-*.aux
-*.log
-*.out
-*.pdf
-*.toc
+FinalReport.aux
+FinalReport.log
+FinalReport.out
+FinalReport.pdf
+FinalReport.toc
+FinalReport.cb
+FinalReport.cb2
