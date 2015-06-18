@@ -127,7 +127,8 @@ run_line(R,T+1,L+BodyLength+1) :-
 % Run while loops.
 run_line(R,T+1,L+1) :-
     % Boolean guard is true upon (re-)entering loop.
-    run(R,T), run_line(R,T,L), line_instr_while_guard(L,B), run_bool(R,T,B).
+    run(R,T), run_line(R,T,L), line_instr_while_guard(L,B),
+    run_bool(R,T,B).
 run_line(R,T+1,L+BodyLength+2) :-
     % Boolean guard is false upon (re-)entering loop.
     run(R,T), run_line(R,T,L), line_instr(L,while(B,BodyLength)),
@@ -137,6 +138,14 @@ run_line(R,T+1,HeadLine) :-
     run(R,T), run_line(R,T,L), line_instr(L,end_while),
     line_instr_while_length(HeadLine, BodyLength),
     L == HeadLine+BodyLength+1.
+
+% Identify the time at which a run fails due to an illegal guard.
+run_fail(R,T) :-
+    run_line(R,T,L), line_instr_if_guard(L,B),
+    not run_bool_not_fail(R,T,B).
+run_fail(R,T) :-
+    run_line(R,T,L), line_instr_while_guard(L,B),
+    not run_bool_not_fail(R,T,B).
 
 
 % Evaluate arithmetic expressions.
@@ -184,3 +193,11 @@ run_bool(R,T,B) :-
     run_expr(R,T,E1,C1),
     run_expr(R,T,E2,C2),
     C1 <= C2.
+
+% Identify booleans which evaluate to a legal result.
+run_bool_not_fail(R,T,B) :-
+    B=lt(E1,E2), run_bool_occurs(R,T,B),
+    run_expr(R,T,E1,_), run_expr(R,T,E2,_).
+run_bool_not_fail(R,T,B) :-
+    B=le(E1,E2), run_bool_occurs(R,T,B),
+    run_expr(R,T,E1,_), run_expr(R,T,E2,_).
