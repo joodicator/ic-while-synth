@@ -20,7 +20,8 @@
 % Silence certain warnings for undefined predicates:
 in(never,never,never)           :- out(never,never,never).
 out(never,never,never)          :- preset_line_instr(never,never).
-preset_line_instr(never,never)  :- in(never,never,never).
+preset_line_instr(never,never)  :- con(never).
+con(never)                      :- in(never,never,never).
 
 %-------------------------------------------------------------------------------
 % Features allowed in the program.

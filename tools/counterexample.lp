@@ -20,6 +20,9 @@ counter_out(V, C) :- run_var_out(counter, V, C).
 var(V) :- input_var(V).
 var(V) :- output_var(V).
 
+:- not any_counter_out(V), output_variable(V).
+any_counter_out(V) :- counter_out(V, _).
+
 % counter_expected_out(x, Out_x) :- postcon(In_x, Out_x), counter_in(x, In_x).
 
 % input_var(x).

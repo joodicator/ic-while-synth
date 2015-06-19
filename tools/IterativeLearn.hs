@@ -146,15 +146,16 @@ main = do
 
 iterativeLearn :: [Example] -> Limits -> Conf -> IO ()
 iterativeLearn exs lims conf = do
-    putStrLn $ "Searching for a program with at most " ++ show (lmLineMax lims)
-            ++ " lines that satisfies " ++ show (length exs) ++ " known"
-            ++ " example(s)..."
+    putStrLn $ "Searching for a program with " ++ show (lmLineMax lims)
+            ++ " lines satisfying " ++ show (length exs) ++ " example(s)..."
     mProg <- findProgram exs lims conf
     case mProg of
       Just prog -> do
         putStrLn "Found the following program:"
         printProgram prog
-        iterativeLearn' prog exs lims conf
+        case cfPostCondition conf of
+            _:_ -> iterativeLearn' prog exs lims conf
+            ""  -> exitSuccess
       Nothing -> do
         let lineMax = lmLineMax lims + cfLineLimitStep conf
         case cfLineLimitMax conf of
@@ -182,11 +183,13 @@ iterativeLearn' prog exs lims conf = do
 
             let deficient = not . null $ map fst actual \\ map fst expected
             case deficient of
-                True  -> putStrLn $ "Failure: counterexamples were found, but"
-                    ++ " none with input values admitting a solution to the"
-                    ++ " postcondition. Either the postcondition is unsatisfiable"
-                    ++ " for some valid inputs, or the allowed range of integers"
-                    ++ " too small."
+                True  -> do
+                    putStrLn $ "Failure: counterexamples were found, but"
+                            ++ " none admitting a solution the postcondition."
+                            ++ " Possible causes:"
+                    putStrLn $ "   - The postcondition is unsatisfiable for some"
+                            ++ " valid input."
+                    putStrLn $ "   - The given int_range is too small."
                 False -> putStrLn "Found the following counterexample:"
 
             putStrLn $ "   Input:    " ++ (intercalate ", "
