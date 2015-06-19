@@ -26,9 +26,26 @@
 \author{Joseph Crowe \\ Supervised by Krysia Broda and Mark Law}
 \date{18th June 2015}
 \maketitle
+\clearpage
 
 \begin{abstract}
-sdfsf
+We address the program of generating programs in a simple imperative programming
+language supporting integer arithmetic, from a high-level specification of the 
+program's behaviour. We focus in particular on users lacking programming experience, 
+and so allow the specification take the form of a list of input/output examples of 
+expected program behaviour.
+
+Using Answer Set Programming and inductive learning techniques, it is seen that this is 
+enough to generate short programs, and we present a tool for automating this process.
+
+This tool is extended with the ability to take a functional specification of the 
+program's behaviour, written in propositional logic- a precondition and a 
+postcondition--and automatically determine the minimal set of examples needed to find a 
+program satisfying the specification over a given finite domain.
+
+We then investigate the possibility of generating larger programs by splitting them up 
+with midconditions, and of separately generating \verb|while| loop bodies using 
+variants and invariants.
 \end{abstract}
 \clearpage
 
@@ -1035,6 +1052,7 @@ explicitly listed examples:
     postcondition("Out_y == 2 ** In_x").
 \end{Verbatim}
 
+\begin{comment}
 \chapter{Separate Synthesis of Subprograms} \label{chp:gensub}
 \section{Extensions to the Task Specification Language}
 \section{Separate Synthesis of Loop Bodies}
@@ -1052,6 +1070,7 @@ explicitly listed examples:
 \chapter{Conclusions and Future Work}
 \section{Conclusion}
 \section{Possible Extensions}
+\end{comment}
 
 \begin{thebibliography}{9}
     \bibitem{fortran}
