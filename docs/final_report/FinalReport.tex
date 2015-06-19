@@ -26,36 +26,43 @@
 \author{Joseph Crowe \\ Supervised by Krysia Broda and Mark Law}
 \date{18th June 2015}
 \maketitle
-\clearpage
+
+\vfill
 
 \begin{abstract}
-We address the program of generating programs in a simple imperative programming
-language supporting integer arithmetic, from a high-level specification of the 
-program's behaviour. We focus in particular on users lacking programming experience, 
-and so allow the specification take the form of a list of input/output examples of 
-expected program behaviour.
+We address the problem of generating programs in a simple imperative 
+programming language supporting integer arithmetic, from a high-level 
+specification of the program's behaviour. We focus in particular on users 
+lacking programming experience, and so allow the specification take the 
+form of a list of input/output examples of expected program behaviour.
 
-Using Answer Set Programming and inductive learning techniques, it is seen that this is 
-enough to generate short programs, and we present a tool for automating this process.
+Using Answer Set Programming and inductive learning techniques, it is seen 
+that this is enough to generate short programs, and we present a tool for 
+automating this process.
 
-This tool is extended with the ability to take a functional specification of the 
-program's behaviour, written in propositional logic- a precondition and a 
-postcondition--and automatically determine the minimal set of examples needed to find a 
-program satisfying the specification over a given finite domain.
-
-We then investigate the possibility of generating larger programs by splitting them up 
-with midconditions, and of separately generating \verb|while| loop bodies using 
-variants and invariants.
+This tool is extended with the ability to take a functional specification 
+of the program's behaviour consisting of a logical precondition and 
+postcondition, and iteratively generate a minimal set of examples needed 
+to find a matching program.
 \end{abstract}
+
+\vfill
+\vfill
+
 \clearpage
 
 \section*{Acknowledgements}
-I owe many thanks to my supervisors Dr.\ Krysia Broda and Mark Law for their 
-advice, support, tolerance, and many valuable suggestions over the course of 
-the project.
-
-Thanks also to Dr.\ Alessandra Russo for some insightful feedback and 
-suggestions given during the interim project review.
+This thesis was written for my final year undergraduate project at 
+Imperial College London. For its completion, I owe my thanks to:
+\begin{itemize}
+    \item Krysia Broda and Mark Law, my supervisors, for their advice, 
+    support, tolerance, and many valuable suggestions over the course of 
+    the project.
+    \item Alessandra Russo for her insightful feedback and suggestions 
+    given during the interim project review.
+    \item Duncan Gillies and Barbara Claxton for being very helpful during 
+    the final stages of the project.
+\end{itemize}
 \clearpage
 
 \tableofcontents
@@ -165,11 +172,13 @@ Solving Collection (Potassco)\cite{potassco}.
     logic, instead of relying on a list of examples from the user. See
     Chapter~\ref{chp:genexm}.
 
+\begin{comment}
     \item Particularising the above to the generation of programs 
     involving loops, we allow a \emph{loop invariant} and \emph{variant}
     to be specified by the user, and use this to generate the loop body
     separately from the rest of the program, also resulting in an 
     increase in speed of generation. See Chapter~\ref{chp:gensub}.
+\end{comment}
 \end{itemize}
 
 \chapter{Background: Automatic Program Synthesis} \label{chp:bkgsyn}
@@ -272,9 +281,7 @@ other programming language.
 \subsection{Syntax}
 The following context-free grammar gives the (abstract) syntax of the While 
 language. The basic elements of a program are integer constants and named 
-variables. The exact set of possible constants and variables is specific to 
-the program being generated, is given by the language bias (see 
-Section~\ref{sec:spclng}).
+variables.
 \begin{align*}
    \trm{Const} \to\ & ... \mid -2 \mid -1 \mid 0 \mid 1 \mid 2 \mid ...
 \\ \trm{Var}   \to\ & a \mid b \mid c \mid ... \mid x \mid y \mid z \mid ...
@@ -301,12 +308,21 @@ possible, to reduce the search space of programs:
 \\ \trm{Bool}  \to\ & \trm{LExpr}\ (\ \ttt{<} \mid \ttt{<=}\ )\ \trm{LExpr}
 \\ \trm{LExpr} \to\ & \trm{Const} \mid \trm{Var}
 \end{align*}
-Input and output is achieved by setting the initial values of certain 
-\emph{input variables} before the program runs, and reading the values of 
-certain \emph{output variables} after it has terminated.
+
+Note that \verb|<| and \verb|<=| together with conjunction (which can be 
+achieved by nested \verb|if| statements) and disjunction (which can be 
+achieved by multiple \verb|if| statements in parallel), is enough to allow 
+all of the standard comparisons to be expressed:
+\begin{align*}
+    x < y    \iff& x < y
+\\  x > y    \iff& y < x
+\\  x \leq y \iff& x \leq y
+\\  x \geq y \iff& y \leq x
+\\  x = y    \iff& x \leq y \wedge y \leq x
+\\  x \neq y \iff& x < y \vee y < x
+\end{align*}
 
 \subsection{Example Program}
-
 Recall the example program from Chapter~\ref{chp:intro}:
 \begin{Verbatim}[samepage=true]
     y = 1;
@@ -363,6 +379,11 @@ solutions.
     \item Division by zero, and taking the remainder of division by zero,
     cause the program to formally fail to terminate.
 \end{enumerate}
+
+Input and output is achieved by setting the initial values of certain 
+\emph{input variables} before the program runs, and reading the values of 
+certain \emph{output variables} after it has terminated, with the 
+mechanics of how this is done depending on the context.
 
 \section{Program Encoding in ASP} \label{sec:progenc}
 
@@ -612,7 +633,7 @@ further computation is needed, and is implemented by the following rules:
     run_var_out_set(R,X)   :- run_var_out(R,X,C), C != unset.
 \end{Verbatim}
 
-\subsection{Example Programs}
+\section{Example Programs} \label{sec:synexm_progs}
 
 We now introduce some examples of programs that can be run using 
 \verb|run.lp| and their sample inputs and outputs. We will return to some 
@@ -622,8 +643,15 @@ automatically generated.
 \subsubsection{Powers of Two}
 When we run \verb|run.lp| with the constants \verb|time_max=99|, 
 \verb|int_min=0|, \verb|int_max=32|, with the facts from the example at 
-the end of Section~\ref{sec:progenc}, and with the following additional 
-facts:
+the end of Section~\ref{sec:progenc}:
+\begin{Verbatim}[samepage=true]
+    line_instr(1, set(y, con(1))).                % y = 1;
+    line_instr(2, while(lt(con(0), var(x)), 2)).  % while (0 < x) {
+    line_instr(3, set(y, mul(var(y), con(2)))).   %     y = y * 2;
+    line_instr(4, set(x, sub(var(x), con(1)))).   %     x = x - 1;
+    line_instr(5, end_while).                     % }
+\end{Verbatim}
+And with the following additional facts:
 \begin{Verbatim}[samepage=true]
     in(run0,x,0).
     in(run1,x,1).
@@ -854,29 +882,35 @@ possible to synthesise them separately.
 
 \chapter{Synthesis of Programs from User Examples} \label{chp:synexm}
 
-This chapter will detail the part of our system which takes a list of user 
-examples as input, and gives a program satisfying those examples as 
-output. It consists of two components:
+The kernel of inductive program synthesis is to take a list of 
+input/output examples and find a program satisfying them. This chapter 
+will detail the subset of our work implementing this scheme. In later 
+chapters we will describe how we built upon the idea to effect 
+improvements.
+
+For now, it consists of two components:
 \begin{itemize}
-    \item An Answer Set Program, \verb|learn.asp|, which contains a 
-    modified version of \verb|run.asp| from Section~\ref{sec:runasp}, in 
+    \item An Answer Set Program, \verb|learn.lp|, which contains a 
+    modified version of \verb|run.lp| from Section~\ref{sec:runasp}, in 
     addition to aggregrates and integrity constraints which invert the 
-    computation done by \verb|run.asp| so that it takes program results as 
+    computation done by \verb|run.lp| so that it takes program results as 
     \emph{input}, and produces the program as \emph{output}.
 
-    \item A Haskell program which reads a \emph{task specification} and 
-    sets up parameters to \verb|learn.asp|, running it multiple times if 
-    necessary with different parameters to find a program meeting the task 
-    specification, and prints it in a human-readable form.
+    \item A Haskell program \verb|IterativeLearn| which reads a \emph{task 
+    specification} and sets up parameters to \verb|learn.lp|, running it 
+    multiple times if necessary with different parameters to find a 
+    program meeting the task specification, and prints it in a 
+    human-readable form.
 \end{itemize}
 
-\section{Task Specification Language} \label{sec:spclng}
+\section{Task Specification Language} \label{sec:synexm_spclng}
 The user specifies a program synthesis task by writing a configuration file 
 containing the relevant parameters. The format chosen for this file is an 
 Answer Set Program whose answer set contains facts giving the parameters. 
-Although it is possible to perform computation in this file, the normal usage 
-is to simply list the parameters as individual facts; the ASP format was 
-chosen for ease of integration with the other tools used.
+
+As long as their names do not clash with ones used in \verb|learn.asp|, 
+additional predicates may be specified in this file, and referred to from 
+the configuration parameters.
 
 The following categories of parameters may be given:
 
@@ -906,7 +940,7 @@ examples should have a unique \ttt{ExampleID}, with which each
 \ttt{InputVariable} and \ttt{OutputVariable} is associated with an 
 \ttt{InitialValue} or \ttt{ExpectedFinalValue}.
 
-\subsection{Language Bias}
+\subsection{Language Bias} \label{sec:synexm_spclng_bias}
 \begin{Verbatim}[samepage=true]
 constant(C1; ...; Cn).           % Optional; default: no constants.
 \end{Verbatim}
@@ -967,7 +1001,7 @@ time_limit(Tmax).       % Required.
 \end{Verbatim}
 No more than \ttt{Tmax} instructions may be executed in any single execution.
 
-\subsection{Search Hints}
+\subsection{Search Hints} \label{sec:synexm_spclng_hint}
 \begin{Verbatim}[samepage=true]
 line_limit_min(Lmin).   % Optional; default: 0.
 line_limit_max(Lmax).   % Optional; default: unbounded.
@@ -981,15 +1015,160 @@ repeated, until the limit exceeds \ttt{Lmax}.
 
 \section{Implementation}
 
+\subsection{\ttt{learn.lp}}
 
-\section{Examples}
-Below is an example of how we might use this language to specify a program 
-which takes an input $x_0$, and produces an output with $y = 2^{x_0}$, by 
-listing a number of input/output examples. We make a guess at the 
-execution resources and the language elements needed by the resulting 
-program.
+In \verb|learn.lp|, The Answer Set Program \verb|run.lp| from 
+Section~\ref{sec:runasp} is modified to generate and then search the 
+domain of programs fitting the given language bias and resource 
+restrictions.
 
+Given input/output examples expressed by several of the following facts:
 \begin{Verbatim}[samepage=true]
+     in(ExampleID, InputVariable, Value).
+    out(ExampleID, OutputVariable, ExpectedValue).
+\end{Verbatim}
+The part of the answer set we are now interested in is the generated 
+program, given as one instruction per line:
+\begin{Verbatim}[samepage=true]
+    line_instr(LineNumber, Instruction).
+\end{Verbatim}
+This is in contrast to \verb|run.lp| which takes \verb|line_instr/2| as 
+given, and generates an answer set containing \verb|run_var_out/3| facts 
+giving its output.
+
+The following aggregate expresses that there must be exactly one 
+instruction per line, but gives the solver the choice of any valid 
+instruction at a given line, except for preset lines. The constant 
+\verb|line_max| is exactly equal to the number of lines in the program we 
+are trying to generate.
+\begin{Verbatim}[samepage=true]
+    1{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
+    line_instr(L, I) :- preset_line_instr(L, I).
+    line(1..line_max).
+\end{Verbatim}
+
+Then, in order to direct the search to the program we want, the following 
+integrity constraints are defined to assert that the program must 
+terminate successfully with the correct output values:
+\begin{Verbatim}[samepage=true]
+    :- run_does_not_halt(R).
+    :- run_var_out(R,V,Actual), out(R,V,Expected), Actual != Expected.
+\end{Verbatim}
+
+What constitutes a valid instruction depends on the line at which it is to 
+occur, and is defined by the following rule. \verb|write_var/1| and 
+\verb|allow/1| are the respective negations of \verb|read_only_variable/1| 
+and \verb|disallow_feature/1| from the task specification with respect to 
+suitable defaults. \verb|expr/1| and \verb|bool/1| define the valid 
+arithmetic and boolean expressions.
+\begin{Verbatim}[samepage=true]
+    % Setting a writable variable:
+    valid_line_instr(L, set(V, E)) :-
+        line(L), write_var(V), expr(E).
+
+    % If statements (must end inside the program):
+    valid_line_instr(L, if(B, 1..M)) :-
+        line(L), allow(if), bool(B), M=line_max-L.
+
+    % While loops (must end inside the program):
+    valid_line_instr(L, while(B, 1..M)) :-
+        line(L), allow(while), bool(B), M=line_max-1.
+
+    % While loop terminators.
+    valid_line_instr(L, end_while) :-
+        line(L), allow(while).
+
+    % Allow any pre-set line unconditionally:
+    valid_line_instr(L, I) :-
+        preset_line_instr(L, I).
+\end{Verbatim}
+
+In addition, we need to contrain away nonsensical combinations of 
+instructions, which is achieved by the following integrity constraints:
+\begin{Verbatim}
+    % We need to project out the Length parameter from line_instr/2:
+    line_instr_if_length(L, Len)    :- line_instr(L,    if(_, Len)).
+    line_instr_while_length(L, Len) :- line_instr(L, while(_, Len)).
+
+    % Forbid if/while blocks that end outside of a block they start within:
+    :- line_instr_if_length(L,M),
+       block(PL,PM), PL<L, L<=PL+PM, L+M>PL+PM.  
+    :- line_instr_while_length(L,M),
+       block(PL,PM), PL<L, L<=PL+PM, L+M+1>PL+PM.
+    % ...where a "block" is an if statement or a while loop:
+    block(L, M) :- line_instr(L,    if(_, M)).
+    block(L, M) :- line_instr(L, while(_, M))
+
+    % Require end_while statements to occur at the correct positions:
+    :- line_instr(L,end_while), not end_while_block(L).
+    :- end_while_block(L), not line_instr(L,end_while).
+    % ... where the "correct positions" are given by:
+    end_while_block(L) :- line_instr_while_length(LH,B), L=LH+B+1.    
+\end{Verbatim}
+
+Finally, the predicates \verb|expr/1| and \verb|bool/1| need to be 
+defined, to generate the domain of possible expressions. The grounding 
+size of \verb|learn.lp| is sensitive to how this is done, so care was 
+taken to eliminate redundant expressions wherever possible.
+
+The implementation is lengthy, so we give an example for \verb|add| 
+expressions and refer to the reader to the full text of \verb|learn.lp| 
+for details of other operations:
+\begin{Verbatim}[samepage=true]
+    % x+c makes sense if c is positive (but x+0 does not),
+    % but since addition is commutative, we exclude c+x:
+    expr(add(var(X), con(C))) :-
+        allow(add), var(X), con(C), C > 0.
+
+    % x+(-c) only makes sense if x-c is not possible:
+    expr(add(var(X), con(C))) :-
+        allow(add), var(X), con(C), C < 0, not allow(sub).
+    expr(add(var(X), con(C))) :-
+        allow(add), var(X), con(C), C < 0, not con(-C).
+
+    % By commutativity, allow exactly one of x+y or y+x:
+    expr(add(var(X), var(Y))) :-
+        allow(add), var(X), var(Y), X < Y.
+
+    % x+x only makes sense if 2*x is not possible:
+    expr(add(var(X), var(X))) :-
+        allow(add), var(X), not allow(mul).
+    expr(add(var(X), var(X))) :-
+        allow(add), var(X), not con(2).
+\end{Verbatim}
+
+\subsection{\ttt{IterativeLearn}}
+
+The purpose of the program \verb|IterativeLearn| is simply to execute 
+\verb|learn.lp| with the correct parameters and to provide a somewhat 
+more abstracted user interface.
+
+Subject to the parameters \verb|line_limit_min|, \verb|line_limit_step| 
+and \verb|line_limit_max| (Section \ref{sec:synexm_spclng_hint}), it 
+incrementally searches for a program with the smallest possible number of 
+lines. In fact, it would have been possible to implement the same 
+functionality using ASP \emph{optimisation statements} in \verb|learn.lp| 
+or using \verb|iclingo|, an iterative version of Clingo from the 
+Potassco\cite{potassco} tools. However, in an extended version of the 
+system where \verb|IterativeLearn|'s mediation in the search process is 
+more involved, neither of these alternatives would work.
+
+When a program is successfully generated, \verb|IterativeLearn| converts 
+the set of facts representing the program into a more human-readable 
+representation of the program's syntax, presents this to the user, and 
+exits.
+
+\section{Synthesising Example Programs}
+
+We now demonstrate the system as applied to some example synthesis tasks.
+
+\subsubsection{Powers of Two}
+
+This task specification includes the first 6 powers of two as input/output 
+examples, and enforces the reasonable constraint that the only numerical 
+constants to occur in the code are \verb|1| and \verb|2|:
+\begin{Verbatim}[samepage=true]
+    % pow2_ex.lp
     int_range(0, 32).
     time_limit(10).
     constant(1; 2).
@@ -1005,7 +1184,200 @@ program.
     in(ex5, x, 5). out(ex5, y, 32).
 \end{Verbatim}
 
+When run with \verb|IterativeLearn|, the following output is produced: 
+\begin{Verbatim}[samepage=true]
+    $ ./IterativeLearn.hs ../examples/iterative/pow2_ex.lp 
+    Searching for a program with 0 lines satisfying 5 example(s)...
+    No such program found.
+    Searching for a program with 1 lines satisfying 5 example(s)...
+    No such program found.
+    Searching for a program with 2 lines satisfying 5 example(s)...
+    No such program found.
+    Searching for a program with 3 lines satisfying 5 example(s)...
+    No such program found.
+    Searching for a program with 4 lines satisfying 5 example(s)...
+    No such program found.
+    Searching for a program with 5 lines satisfying 5 example(s)...
+    Found the following program:
+       1. y = 1
+       2. while (1 <= x):
+       3.     y = 2 * y
+       4.     x = x - 1
+       5. end_while
+\end{Verbatim}
+
+\subsubsection{Triangular Numbers}
+
+A specification by example of the program computing the triangular numbers 
+$\verb|T|=\sum_{i=0}^{\verb|n|} i$ is given below:
+\begin{Verbatim}[samepage=true]
+    % triangle_ex.lp
+    time_limit(30).
+    int_range(0, 30).
+    constant(0; 1; 2).
+    
+    input_variable(n).
+    output_variable(t).
+    
+    in(r0,n,0). out(r0,t,0).
+    in(r1,n,1). out(r1,t,1).
+    in(r2,n,2). out(r2,t,3).
+    in(r3,n,3). out(r3,t,6).
+    in(r4,n,4). out(r4,t,10).
+\end{Verbatim}
+
+\begin{Verbatim}[samepage=true]
+$ ./IterativeLearn.hs ../examples/iterative/triangle_ex.lp 
+Searching for a program with 0 lines satisfying 5 example(s)...
+No such program found.
+Searching for a program with 1 lines satisfying 5 example(s)...
+No such program found.
+Searching for a program with 2 lines satisfying 5 example(s)...
+No such program found.
+Searching for a program with 3 lines satisfying 5 example(s)...
+Found the following program:
+   1. t = n * n
+   2. n = n + t
+   3. t = n / 2
+\end{Verbatim}
+This gives a program equivalent to the 3-line example in
+Section~\ref{sec:synexm_progs}, except it computes the polynomial formula 
+by adding together terms instead of by multiplying together factors.
+
+If we like, we can add \verb|read_only_variable(n)| to the specification, 
+preventing \verb|n| from being used as a temporary variable in this way, 
+and we obtain instead:
+\begin{Verbatim}[samepage=true]
+Found the following program:
+   1. t = n + 1
+   2. t = n * t
+   3. t = t / 2
+\end{Verbatim}
+Which is now exactly the same program that we manually wrote.
+
+Alterantively, we can try to generate a program that computes the 
+triangular numbers by adding in a loop, by using the following parameters 
+with the same examples as above:
+\begin{Verbatim}[samepage=true]
+    time_limit(30).
+    int_range(0, 10).
+    constant(0; 1).
+    
+    input_variable(n).
+    output_variable(t).
+    
+    disallow(if; mul; div; mod).
+\end{Verbatim}
+And we obtain:
+\begin{Verbatim}[samepage=true]
+    Found the following program:
+       1. t = n
+       2. while (1 <= n):
+       3.     n = n - 1
+       4.     t = n + t
+       5. end_while
+\end{Verbatim}
+Which is more or less the same as the handwritten implementation, albeit 
+using an unusual order of summation.
+
+\subsubsection{Median of Three Numbers}
+The task of giving the median value of three integers is expressed by 
+example in the following task specification. We disable arithmetic 
+operations and while loops because we know the median can be computed in 
+constant time and without arithmetic. 
+
+We make the inputs read-only, and provide two general-purpose variables 
+for writing in addition to the output variable \verb|m|. We also know that 
+there's no point considering short programs, so we place a conservative 
+minimum of 5 on the program's length.
+
+\begin{Verbatim}[samepage=true]
+    time_limit(12).
+    int_range(0, 7).
+    line_limit_min(5).
+    
+    input_variable(a; b; c).
+    read_only_variable(a; b; c).
+    output_variable(m).
+    extra_variable(x; y).
+    
+    disallow_feature(while; arithmetic).
+    
+    % Examples:
+    ex(r00, 0,0,0, 0).
+    ex(r10, 7,1,1, 1).
+    ex(r20, 1,7,1, 1).
+    ex(r30, 1,1,7, 1).
+    ex(r40, 1,7,7, 7).
+    ex(r50, 7,1,7, 7).
+    ex(r60, 7,7,1, 7).
+    ex(r70, 1,2,3, 2).
+    ex(r80, 1,3,2, 2).
+    ex(r90, 2,1,3, 2).
+    ex(rA0, 3,2,1, 2).
+    ex(rB0, 2,3,1, 2).
+    ex(rC0, 3,1,2, 2).
+    
+    % This predicate allows examples to be written compactly.
+     in(R,a,A) :- ex(R,A,_,_,_).
+     in(R,b,B) :- ex(R,_,B,_,_).
+     in(R,c,C) :- ex(R,_,_,C,_).
+    out(R,m,M) :- ex(R,_,_,_,M).
+\end{Verbatim}
+
+However, when we try to run this specification, the complexity of the 
+search causes it to become unreasonably slow, and, impatient and having a 
+vague idea of how the program will be structured, we decide to specify the 
+first three lines of the program to speed up the search:
+\begin{Verbatim}[samepage=true]
+    % Set x = max(a, b).
+    preset_line_instr(1, set(x, var(a))).
+    preset_line_instr(2, if(lt(var(x), var(b)), 1)).
+    preset_line_instr(3, set(x, var(b))).
+\end{Verbatim}
+
+With this addition to the task specification, the following result can 
+now be computed in reasonable time:
+\begin{Verbatim}[samepage=true]
+    Searching for a program with 5 lines satisfying 13 example(s)...
+    No such program found.
+    Searching for a program with 6 lines satisfying 13 example(s)...
+    No such program found.
+    Searching for a program with 7 lines satisfying 13 example(s)...
+    No such program found.
+    Searching for a program with 8 lines satisfying 13 example(s)...
+    No such program found.
+    Searching for a program with 9 lines satisfying 13 example(s)...
+    No such program found.
+    Searching for a program with 10 lines satisfying 13 example(s)...
+    Found the following program:
+       1. x = a
+       2. if (x < b):
+       3.     x = b
+       4. m = a
+       5. if (c <= x):
+       6.     if (b < a):
+       7.         m = b
+       8.     x = c
+       9. if (m < x):
+      10.  m = x
+\end{Verbatim}
+Although it's not a particularly easy program to read, we can, analysing 
+its cases, see that it computes $m=\min(\max(a,b),\max(b,c),\max(c,a))$, 
+which, being $\leq \max(a,b,c)$ and $\geq \min(a,b,c)$, is the median of 
+$a$, $b$ and $c$, so it meets its intended specification.
+
 \chapter{Automatic Generation of Examples} \label{chp:genexm}
+
+The system present so far relies on the user to give examples of the 
+program's behaviour, but it's quite possible to give a bad set of examples 
+that doesn't fully represent the program the user has in mind, or to give 
+more examples than necessary and slow down the generation process.
+
+We now extend the system with the ability to take a functional 
+specification that expresses exactly the program we want, and uses this to 
+generate examples until a set of examples is accumulated yielding a 
+program that meets the specification.
 
 \section{Extensions to the Task Specification Language}
 The specification language from Chapter~\ref{chp:synexm} is extended with 
@@ -1033,12 +1405,29 @@ named \ttt{y}.
 
 \section{Implementation}
 
-\section{Examples}
+A new component is introduced: a dynamically 
+generated answer set program based on \verb|counterexample.lp|, which uses 
+\verb|run.lp| and takes an existing program, a precondition and a 
+postcondition, and attempts to find an input satisfying the precondition 
+but whose resulting output does not satisfy the postcondition. If this 
+happens, the existing program is incorrect, and we also calculate what the 
+output should have been for this input.
 
-In Chapter~\ref{chp:synexm} we gave an example of how we would specify 
-using a list of the examples the $y = 2^{x_0}$ program. We now show how, 
-using the extensions to specification language, this can be done with no 
-explicitly listed examples:
+\verb|IterativeLearn| now alternates between generating a program from the 
+examples recorded so far, and searching for a new example to falsify the 
+current program and extend its list of examples. Once no more examples can 
+be found, the program is considered correct and offered as a solution. 
+This results in each example being relevant to the process, and the number 
+of examples being no greater than necessary. It also gives stronger 
+confidence that the resulting program is correct, subject to the 
+configured \verb|int_range| of values being considered.
+
+\section{Synthesising Example Programs}
+
+\subsubsection{Powers of Two}
+Returning to the familiar example of computing powers of two, a 
+specification is given below that uses no examples and just a precondition 
+and postcondition expressing the problem:
 
 \begin{Verbatim}[samepage=true]
     int_range(0, 32).
@@ -1051,6 +1440,80 @@ explicitly listed examples:
     precondition("In_x >= 0").
     postcondition("Out_y == 2 ** In_x").
 \end{Verbatim}
+
+Running this with the modified \verb|IterativeLearn|, the following output 
+is produced:
+\begin{Verbatim}
+$ ./IterativeLearn.hs ../examples/iterative/pow2_con.lp 
+Searching for a program with 0 lines satisfying 0 example(s)...
+Found the following program:
+   (empty program)
+Searching for a counter-example to falsify the postcondition...
+Found the following counterexample:
+   Input:    x = 5
+   Expected: y = 32
+   Output:   (none)
+Searching for a program with 0 lines satisfying 1 example(s)...
+No such program found.
+Searching for a program with 1 lines satisfying 1 example(s)...
+No such program found.
+Searching for a program with 2 lines satisfying 1 example(s)...
+No such program found.
+Searching for a program with 3 lines satisfying 1 example(s)...
+Found the following program:
+   1. y = x * x
+   2. y = y + 2
+   3. y = x + y
+Searching for a counter-example to falsify the postcondition...
+Found the following counterexample:
+   Input:    x = 4
+   Expected: y = 16
+   Output:   y = 22
+Searching for a program with 3 lines satisfying 2 example(s)...
+No such program found.
+Searching for a program with 4 lines satisfying 2 example(s)...
+No such program found.
+Searching for a program with 5 lines satisfying 2 example(s)...
+Found the following program:
+   1. y = x - 2
+   2. x = x + 1
+   3. y = x * y
+   4. y = y - 2
+   5. y = 2 * y
+Searching for a counter-example to falsify the postcondition...
+Found the following counterexample:
+   Input:    x = 3
+   Expected: y = 8
+   Output:   y = 4
+Searching for a program with 5 lines satisfying 3 example(s)...
+Found the following program:
+   1. y = 2
+   2. while (1 < x):
+   3.     x = x - 1
+   4.     y = 2 * y
+   5. end_while
+Searching for a counter-example to falsify the postcondition...
+Found the following counterexample:
+   Input:    x = 0
+   Expected: y = 1
+   Output:   y = 2
+Searching for a program with 5 lines satisfying 4 example(s)...
+Found the following program:
+   1. y = 1
+   2. while (1 <= x):
+   3.     x = x - 1
+   4.     y = 2 * y
+   5. end_while
+Searching for a counter-example to falsify the postcondition...
+Success: the postcondition could not be falsified.
+\end{Verbatim}
+
+Rather than the 6 examples manually specified before, this approach found 
+the program using 4 well-chosen examples. With too few examples, the 
+program synthesiser just produced polynomial functions interpolating them; 
+then with another example, an almost-correct program that failed at the 
+sometimes overlooked case of $\verb|x|=0$; with that example added, the 
+correct program was produced.
 
 \begin{comment}
 \chapter{Separate Synthesis of Subprograms} \label{chp:gensub}
