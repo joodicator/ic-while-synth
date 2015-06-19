@@ -36,22 +36,17 @@ allow(F)    :- feature(F), not disallow(F).
 
 %-------------------------------------------------------------------------------
 % Exactly one instruction per line.
-{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
-any_line_instr(L) :- line_instr(L, _).
-
-% :- line(L), not any_line_instr(L), any_line_instr(L+1).
-% #minimize { any_line_instr(L) }.
+1{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
+line(1..line_max).
 
 % All test examples must halt with the correct value.
 :- run_does_not_halt(R).
-:- run_var_out(R,X,Actual), out(R,X,Expected), Actual != Expected.
+:- run_var_out(R,V,Actual), out(R,V,Expected), Actual != Expected.
 
 %------------------------------------------------------------------------------- 
 % Line numbers and integer bounds.
 
 int(int_min..int_max).
-
-line(1..line_max).
 
 %-------------------------------------------------------------------------------
 % Instructions.
@@ -104,7 +99,7 @@ line_instr_while_guard(L, G)  :- line_instr(L, while(G, _)).
 line_instr_while_length(L, B) :- line_instr(L, while(_, B)).
 
 %-------------------------------------------------------------------------------
-% Arithmetic expressions. (Constants must be assigned to a variable to be used.)
+% Arithmetic expressions.
 
 expr(E) :- line_expr_occurs(_, E).
 
@@ -149,7 +144,7 @@ expr(mod(var(X), con(C))) :- allow(mod), var(X), con(C), c > 0.
 %   x <= y  <=>  le(x,y)
 %   x >= y  <=>  le(y,x)
 %   x == y  <=>  le(x,y) AND le(y,x)
-%   x != y  <=>  lt(x,y) AND lt(y,x)
+%   x != y  <=>  lt(x,y) OR  lt(y,x)
 
 bool(B) :- line_bool_occurs(_, B).
 
@@ -174,10 +169,10 @@ run(R) :- in(R,_,_).
 run(R) :- out(R,_,_).
 
 % run(R,T) if test case R runs to at least time T.
-run(R,T) :- run_line(R,T,L), T<time_max, any_line_instr(L).
+run(R,T) :- run_line(R,T,L), T<time_max, line(L).
 
 % run_halt(R,T) if test case R halts normally at time T.
-run_halt(R,T) :- run_line(R,T,L), T<time_max, not any_line_instr(L).
+run_halt(R,T) :- run_line(R,T,L), T<time_max, not line(L).
 
 run_does_halt(R) :- run_halt(R,_).
 run_does_not_halt(R) :- run(R), not run_does_halt(R).
@@ -207,7 +202,7 @@ line_set(L,X) :- line_instr(L, set(X,_)).
 run_line(R,0,1) :-
     run(R).
 run_line(R,T+1,L+1) :-
-    any_line_instr(L), run(R,T), run_line(R,T,L),
+    line(L), run(R,T), run_line(R,T,L),
     not line_jump(L), not run_fail(R,T).
 
 % Run if statements.
