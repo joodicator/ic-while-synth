@@ -4,24 +4,28 @@
 #show counter_in/2.
 #show counter_out/2.
 #show counter_expected_out/2.
+#show any_expected.
+#show any_actual.
 
 % Select values for input variables which satisfy our constraints.
 1{ counter_in(V, C) : int(C) }1 :- input_var(V).
 
-% Produce an expected output value if at all possible.
-#maximize{ counter_expected_out(_,_) }.
+% Produce an expected output value if possible.
+#maximize{ any_expected_var(V) }.
+any_expected :- any_expected_var(_).
+any_expected_var(V) :- counter_expected_out(V, C).
 
-% Subject to the above, also try to avoid inputs causing nontermination.
-#minimize{ run_does_not_halt(_) }.
+% Do not accept the case of no expected value and no actual value
+% as a counterexample
+:- not any_expected, not any_actual.
+any_actual :- any_actual_var(_).
+any_actual_var(V) :- counter_out(V, C), C != unset, output_var(V).
 
 % Define counter_* predicates to hide the complexity of run.lp.
 in(counter, V, C) :- counter_in(V, C).
 counter_out(V, C) :- run_var_out(counter, V, C).
 var(V) :- input_var(V).
 var(V) :- output_var(V).
-
-:- not any_counter_out(V), output_variable(V).
-any_counter_out(V) :- counter_out(V, _).
 
 % counter_expected_out(x, Out_x) :- postcon(In_x, Out_x), counter_in(x, In_x).
 

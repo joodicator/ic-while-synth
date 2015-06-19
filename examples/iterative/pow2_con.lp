@@ -7,7 +7,7 @@ input_variable(x).
 output_variable(y).
 
 precondition("0 <= In_x, In_x < 31").
-postcondition("In_x == In_x").
+postcondition("Out_y == 2 ** In_x").
 
-%echo_clingo.
-%echo_asp.
+echo_clingo.
+echo_asp.

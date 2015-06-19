@@ -41,6 +41,12 @@ runClingoOptions = RunClingoOptions{
     rcEchoInput  = False }
 
 --------------------------------------------------------------------------------
+-- ANSI terminal control sequences.
+ansiDarkRed   = "\27[31m"
+ansiDarkGreen = "\27[32m"
+ansiClear     = "\27[0m"
+
+--------------------------------------------------------------------------------
 -- Run Clingo 3, which is assumed to be present on the search path as 'clingo',
 -- with the given input strings/files, and with the given arguments appended.
 -- Returns either CRSatisfiable [answer1, answer2, ...], where the answerN are
@@ -56,7 +62,7 @@ runClingo options inputs = do
             CICode code -> return code
             CIFile path -> return $ "#include \"" ++ path ++ "\"."
         when (echoInput) $ forM_ (lines code) $ \line -> do
-            putStrLn $ "\27[32m<-- " ++ line ++ "\27[0m"
+            putStrLn $ ansiDarkGreen ++ "<-- " ++ line ++ ansiClear
         hPutStr clingoIn code
     hClose clingoIn
     result <- readClingo [] clingoOut
@@ -86,7 +92,7 @@ runClingo options inputs = do
     ehGetLine :: Handle -> IO String
     ehGetLine handle = do
         line <- hGetLine handle
-        when echoStdout $ putStrLn $ "\27[33m--> " ++ line ++ "\27[0m"
+        when echoStdout $ putStrLn $ ansiDarkRed ++ "--> " ++ line ++ ansiClear
         return line
 
 --------------------------------------------------------------------------------

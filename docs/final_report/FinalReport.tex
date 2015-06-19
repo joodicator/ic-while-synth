@@ -44,6 +44,9 @@ This tool is extended with the ability to take a functional specification
 of the program's behaviour consisting of a logical precondition and 
 postcondition, and iteratively generate a minimal set of examples needed 
 to find a matching program.
+
+We present details of how this is implemented using Answer Set Programming, and propose 
+promising directions in which further research could be done.
 \end{abstract}
 
 \vfill
@@ -927,8 +930,8 @@ individual execution of the program.
 output_variable(V1; ...; Vn).
 \end{Verbatim}
 The \ttt{n} variables $\{\ttt{V1}, ..., \ttt{Vm}\}$ are declared as output
-variables, meaning that their values when the program terminates are recorded
-and possibly compared with the input values to determine correctness.
+variables, meaning that their values after the program terminates are examined, and 
+possibly compared with examples to determine program correctness.
 
 \begin{Verbatim}[samepage=true]
  in(ExampleID, InputVariable,  InitialValue).
@@ -1516,10 +1519,6 @@ sometimes overlooked case of $\verb|x|=0$; with that example added, the
 correct program was produced.
 
 \begin{comment}
-\chapter{Separate Synthesis of Subprograms} \label{chp:gensub}
-\section{Extensions to the Task Specification Language}
-\section{Separate Synthesis of Loop Bodies}
-
 \chapter{Evaluation}
 \section{Power and Accuracy}
 \subsection{Extent of Capabilities}
@@ -1529,11 +1528,64 @@ correct program was produced.
 \subsection{Number of Examples Needed}
 \subsection{Quality of Generated Programs}
 \section{Comparison with Existing Systems}
+\end{comment}
 
 \chapter{Conclusions and Future Work}
-\section{Conclusion}
-\section{Possible Extensions}
-\end{comment}
+
+We have evaluated the applicability of Answer Set Programming to the task of 
+inductively synthesising imperative programs, and the progress made in doing this 
+indicates that the technique has some promise.
+
+However, There are a lot of possible improvements or extensions to the system that have 
+been considered, but not yet been thoroughly investigated. For example:
+
+\begin{itemize}
+    \item Currently, programs can be specified only using a precondition and a 
+    postcondition; however, if it were allowed to annotate a program template with 
+    midconditions, the system could split the task into many parallel tasks involving 
+    learning subprograms. If successful, this should afford a tremendous performance 
+    improvement for large programs, and make it feasible to synthesise larger programs 
+    and over larger domains of values.
+    
+    \item Further the previous point, it should also be possible to annotate 
+    \verb|while| loops in the program template with an \emph{invariant} which should 
+    hold before and after each iteration, and a \emph{variant} expression related to 
+    the loop's boolean guard which must strictly decrease on each iteration, and 
+    eventually falsify the guard. For a correct invariant and variant, this would allow 
+    a correct program to be generated faster. For an incorrect invariant or variant, 
+    the failure to generate the correct program might provide useful insight to the 
+    user about their problem.
+
+    \item If it is possible to reason about subprograms in a separated manner, this 
+    could be further extended to formally introduce the notion of subroutines into the 
+    language definition. Practically, speaking, it's almost always necessary to divide 
+    a large imperative program into subroutines to avoid a repetitive and unreadable 
+    program, so this may be needed to make the tool applicable in practice. Allowing 
+    the user to define separate subroutines seems certainly within the realm of 
+    possiblity, and having the system invent its own subroutines could be even more 
+    powerful, but its feasibility is currently uncertain.
+    
+    \item The language of programs generated is currently quite restricted, and this 
+    limits the usefulness of the tool in practice. More data types and operations could 
+    be added to the existing language, or the applicability of these techniques to a 
+    different type of language, perhaps a functional programming language, could be 
+    investigated.
+
+    \item The field of Inductive Logic Programming (ILP) involves the generation of 
+    logic programs, and in particular there has been work in inductively generating 
+    Answer Set Programs\cite{ilasp}. This project was initially envisioned to use ILP 
+    as part of the process of generating imperative programs, with the imperative 
+    program exracted by some further mechanism from a generated logic program. The 
+    project took a different direction due to the pure use of ASP appearing more 
+    immediately promising; nonetheless, it might be worthwhile to give further 
+    consideration to this notion, to see if it offers any improvements over the current 
+    system.
+
+    \item The current system uses Clingo 3 for evaluating Answer Set Programs; however, 
+    there is a later version, Clingo 4, which uses an updated ASP language with 
+    additional features. It may be worth rewriting the current tools in Clingo 4 to see 
+    performance can be increased.
+\end{itemize}
 
 \begin{thebibliography}{9}
     \bibitem{fortran}
