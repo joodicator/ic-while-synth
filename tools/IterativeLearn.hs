@@ -148,6 +148,8 @@ readConfFacts facts conf
             readConfFacts' (conf{ cfEchoClingo=True }) facts
         Fact (Name "echo_asp") [] ->
             readConfFacts' (conf{ cfEchoASP=True }) facts
+        Fact (Name "thread_count") [TInt tcount] ->
+            readConfFacts' (conf{ cfThreads=tcount }) facts
         _ ->
             readConfFacts' conf facts
     readConfFacts' conf [] = conf
@@ -171,15 +173,24 @@ readArgs (arg : args) conf | otherwise
 readArgs [] conf
   = ([], conf)
 
-readArgsFlag :: [String] -> Conf -> ([String], Conf)
 readArgsFlag (arg : args) conf
   | arg `elem` ["-i", "--interactive"]
-    = readArgs args (conf{ cfInteractive=True })
+  = readArgs args (conf{ cfInteractive=True })
+  | arg `elem` ["--echo-clingo", "-ec"]
+  = readArgs args (conf{ cfEchoClingo=True })
+  | arg `elem` ["--echo-asp", "-ea"]
+  = readArgs args (conf{ cfEchoASP=True })
   | arg `elem` ["-j", "--threads"]
-    = let param : args' = args in
+  = let param : args' = args in
     readArgs args' (conf{ cfThreads = read param })
+  | "-j" `isPrefixOf` arg
+  = let Just param = stripPrefix "-j" arg in
+    readArgs args (conf{ cfThreads = read param })
+  | "--threads=" `isPrefixOf` arg
+  = let Just param = stripPrefix "--threads" arg in
+    readArgs args (conf{ cfThreads = read param })
   | otherwise
-    = error $ "Unrecognised option: " ++ arg
+  = error $ "Unrecognised option: " ++ arg
 
 --------------------------------------------------------------------------------
 iterativeLearn :: [Example] -> Limits -> Conf -> IO ()

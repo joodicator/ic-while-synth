@@ -23,4 +23,3 @@ common_divisor(X, Y, D) :-
     X #mod D == 0, Y #mod D == 0.
 
 echo_clingo.
-echo_asp.

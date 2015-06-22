@@ -8,7 +8,7 @@ output_variable(f).
 extra_variable(g).
 
 constant(0; 1).
-disallow(if; mul; div; rem).
+disallow_feature(if; mul; div; mod).
 while_max(1).
 
 precondition("In_n > 0").
