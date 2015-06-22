@@ -5,6 +5,7 @@ import qualified While
 
 import Data.List
 import Data.Maybe
+import Data.Char
 import Control.Monad
 import Control.Concurrent
 import Control.Concurrent.MVar
@@ -59,9 +60,10 @@ data Conf = Conf{
     cfPreCondition    :: Condition,
     cfPostCondition   :: Condition,
     cfConfFile        :: FilePath,
+    cfThreads         :: Integer,
     cfEchoClingo      :: Bool,
     cfEchoASP         :: Bool,
-    cfThreads         :: Integer }
+    cfInteractive     :: Bool }
   deriving Show
 
 defaultConf = Conf{
@@ -82,9 +84,10 @@ defaultConf = Conf{
     cfPreCondition    = "",
     cfPostCondition   = "",
     cfConfFile        = undefined,
+    cfThreads         = 1,
     cfEchoClingo      = False,
     cfEchoASP         = False,
-    cfThreads         = 1 }
+    cfInteractive     = False }
 
 readConfFile :: FilePath -> Conf -> IO Conf
 readConfFile filePath conf = do
@@ -161,17 +164,22 @@ main = do
     iterativeLearn examples limits conf
 
 readArgs :: [String] -> Conf -> ([String], Conf)
-readArgs (arg : args) conf | "-" `isPrefixOf` arg
-  = case arg of
-      "-j" ->
-        let param : args' = args in
-        readArgs args' (conf { cfThreads = read param })
-      _  ->
-        error $ "Unrecognised option: " ++ arg
+readArgs args@(arg : _) conf | "-" `isPrefixOf` arg
+  = readArgsFlag  args conf
 readArgs (arg : args) conf | otherwise
   = let (args', conf') = readArgs args conf in (arg:args', conf')
 readArgs [] conf
   = ([], conf)
+
+readArgsFlag :: [String] -> Conf -> ([String], Conf)
+readArgsFlag (arg : args) conf
+  | arg `elem` ["-i", "--interactive"]
+    = readArgs args (conf{ cfInteractive=True })
+  | arg `elem` ["-j", "--threads"]
+    = let param : args' = args in
+    readArgs args' (conf{ cfThreads = read param })
+  | otherwise
+    = error $ "Unrecognised option: " ++ arg
 
 --------------------------------------------------------------------------------
 iterativeLearn :: [Example] -> Limits -> Conf -> IO ()
@@ -192,6 +200,7 @@ iterativeLearn exs lims conf = do
       Just prog -> do
         putStrLn "Found the following program:"
         printProgram prog
+        conf <- interactivePause conf
         let lineMax = programLength prog
         case cfPostCondition conf of
             _:_ -> iterativeLearn' prog exs lims{lmLineMax = lineMax} conf
@@ -206,7 +215,6 @@ iterativeLearn exs lims conf = do
             _ -> do
                 putStrLn "No such program found."
                 iterativeLearn exs (lims'{lmLineMax=lineMax}) conf
-        
 
 iterativeLearn' :: Program -> [Example] -> Limits -> Conf -> IO ()
 iterativeLearn' prog exs lims conf = do
@@ -243,6 +251,7 @@ iterativeLearn' prog exs lims conf = do
                 _  -> intercalate ", " [v++" = "++show c | (v,c) <- actual ] }
 
             when deficient exitFailure
+            conf <- interactivePause conf
 
             let ex = Example{
                 exID     = head $ map (("cx"++) . show) [1..] \\ map exID exs,
@@ -401,6 +410,26 @@ findCounterexampleASP prog conds conf
     Conf{ cfIntRange=(intMin, intMax), cfTimeMax=timeMax,
           cfInputVars=inputVars, cfOutputVars=outputVars } = conf
     Conditions{ cnPreCondition = preCond,  cnPostCondition = postCond } = conds
+
+--------------------------------------------------------------------------------
+interactivePause :: Conf -> IO Conf
+interactivePause conf
+  = case cfInteractive conf of
+      True -> do
+        putStr "\27[1m>\27[0m "
+        line <- getLine
+        case map toLower line of
+            ""  -> return conf
+            "c" -> return $ conf{ cfInteractive=False }
+            "q" -> exitSuccess
+            _   -> showInteractiveHelp >> interactivePause conf
+      False -> do
+        return conf
+
+showInteractiveHelp :: IO ()
+showInteractiveHelp = do
+    putStrLn $ "Type enter to continue, c to exit interactive mode,"
+            ++ " or q to quit."
 
 --------------------------------------------------------------------------------
 runClingoConf :: [ClingoInput] -> Maybe String -> Conf -> IO ClingoResult
