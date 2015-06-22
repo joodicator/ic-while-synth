@@ -43,6 +43,12 @@ line(1..line_max).
 :- run_does_not_halt(R).
 :- run_var_out(R,V,Actual), out(R,V,Expected), Actual != Expected.
 
+0{ while_line(L) : line(L) }while_max :- while_max != any.
+0{ if_line(L) : line(L) }if_max       :- if_max    != any.
+while_line(L) :- line_instr(L, while(_, _)).
+if_line(L) :- line_instr(L, if(_, _)).
+
+
 %------------------------------------------------------------------------------- 
 % Line numbers and integer bounds.
 
@@ -51,13 +57,13 @@ int(int_min..int_max).
 %-------------------------------------------------------------------------------
 % Instructions.
 valid_line_instr(L, set(V, E)) :-
-    line(L), write_var(V), expr(E).
+    line(L), write_var(V), expr(E), E != var(V).
 valid_line_instr(L, if(B, 1..M)) :-
     line(L), allow(if), bool(B), M=line_max-L.
 valid_line_instr(L, while(B, 1..M)) :-
-    line(L), allow(while), bool(B), M=line_max-1.
+    line(L), allow(while), bool(B), M=line_max-L-1.
 valid_line_instr(L, end_while) :-
-    line(L), allow(while).
+    line(L), L >= 3, allow(while).
 
 valid_line_instr(L,I) :- preset_line_instr(L,I).
 line_instr(L,I)       :- preset_line_instr(L,I).
@@ -133,9 +139,9 @@ expr(div(con(C), var(X))) :- allow(div), con(C), var(X), C > 1.
 expr(div(var(X), con(C))) :- allow(div), var(X), con(C), C > 1.
 
 % mod: disallow x%x, disallow c%x for all c < 2, x%c for all c < 1.
-expr(mod(var(X), var(Y))) :- allow(mod), var(X), var(Y), x != y.
-expr(mod(con(C), var(X))) :- allow(mod), var(X), con(C), c > 1.
-expr(mod(var(X), con(C))) :- allow(mod), var(X), con(C), c > 0.
+expr(mod(var(X), var(Y))) :- allow(mod), var(X), var(Y), X != X.
+expr(mod(con(C), var(X))) :- allow(mod), var(X), con(C), C > 0.
+expr(mod(var(X), con(C))) :- allow(mod), var(X), con(C), C > 1.
 
 %-------------------------------------------------------------------------------
 % Boolean expressions. Note that:
@@ -148,13 +154,22 @@ expr(mod(var(X), con(C))) :- allow(mod), var(X), con(C), c > 0.
 
 bool(B) :- line_bool_occurs(_, B).
 
-bool(lt(var(X), var(Y))) :- var(X), var(Y), X != Y.
-bool(lt(var(X), con(C))) :- var(X), con(C).
-bool(lt(con(C), var(X))) :- var(X), con(C).
+% x < int_min  <->  false
+% x > int_max  <->  false
+bool(lt(var(X), var(Y))) :-
+    var(X), var(Y), X != Y.
+bool(lt(var(X), con(C))) :-
+    var(X), con(C), C > int_min.
+bool(lt(con(C), var(X))) :-
+    var(X), con(C), C < int_max.
 
+% x <= c  <->  x < c+1;  x <= int_max  <-> true
+% c <= x  <->  c-1 < x;  x >= int_min  <-> true
 bool(le(var(X), var(Y))) :- var(X), var(Y), X != Y.
-bool(le(var(X), con(C))) :- var(X), con(C).
-bool(le(con(C), var(X))) :- var(X), con(C).
+bool(le(var(X), con(C))) :-
+    var(X), con(C), C < int_max, not con(C+1).
+bool(le(con(C), var(X))) :-
+    var(X), con(C), C > int_min, not con(C-1).
 
 %-------------------------------------------------------------------------------
 % Program interpreter.

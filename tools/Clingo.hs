@@ -30,15 +30,24 @@ type Answer = [Fact]
 
 -- Options passed to runClingo.
 data RunClingoOptions = RunClingoOptions{
-    rcClingoArgs :: [String], -- Additional arguments to be passed to Clingo.
-    rcEchoStdout :: Bool,     -- If True, Clingo's stdout is copied to stdout.
-    rcEchoInput  :: Bool }    -- If True, the input ASP is copied to stdout.
+    -- Additional arguments to be passed to Clingo.
+    rcClingoArgs :: [String],      
+
+    -- If True, Clingo's stdout is copied to the current stdout.
+    rcEchoStdout :: Bool,          
+
+    -- If True, the input ASP is copied to current stdout.
+    rcEchoInput  :: Bool,
+
+    -- If given, annotates the output of rcEchoStdout and rcEchoInput.
+    rcIdentifier :: Maybe String }
 
 -- RunClingoOptions with default values.
 runClingoOptions = RunClingoOptions{
     rcClingoArgs = [],
     rcEchoStdout = True,
-    rcEchoInput  = False }
+    rcEchoInput  = False,
+    rcIdentifier = Nothing }
 
 --------------------------------------------------------------------------------
 -- ANSI terminal control sequences.
@@ -61,8 +70,12 @@ runClingo options inputs = do
         code <- case input of
             CICode code -> return code
             CIFile path -> return $ "#include \"" ++ path ++ "\"."
-        when (echoInput) $ forM_ (lines code) $ \line -> do
-            putStrLn $ ansiDarkGreen ++ "<-- " ++ line ++ ansiClear
+        when (echoInput) $ do
+            let code' = unlines $ do
+                line <- lines code
+                let prefix = maybe "<-- " (++ "<- ") (rcIdentifier options)
+                return $ ansiDarkGreen ++ prefix ++ line ++ ansiClear
+            putStrLn code'
         hPutStr clingoIn code
     hClose clingoIn
     result <- readClingo [] clingoOut
@@ -92,7 +105,8 @@ runClingo options inputs = do
     ehGetLine :: Handle -> IO String
     ehGetLine handle = do
         line <- hGetLine handle
-        when echoStdout $ putStrLn $ ansiDarkRed ++ "--> " ++ line ++ ansiClear
+        let prefix = maybe "--> " (++ "-> ") (rcIdentifier options)
+        when echoStdout $ putStrLn $ ansiDarkRed ++ prefix ++ line ++ ansiClear
         return line
 
 --------------------------------------------------------------------------------

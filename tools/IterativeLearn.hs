@@ -1,11 +1,13 @@
-#!/usr/bin/env runhaskell
+#!/usr/bin/env runghc
 
-import Clingo
+import Clingo hiding (readArgs)
 import qualified While
 
 import Data.List
 import Data.Maybe
 import Control.Monad
+import Control.Concurrent
+import Control.Concurrent.MVar
 import System.IO
 import System.Environment
 import System.Exit
@@ -40,58 +42,65 @@ data Counterexample = Counterexample {
 
 --------------------------------------------------------------------------------
 data Conf = Conf{
-    cfIntRange      :: (Integer, Integer),
-    cfTimeMax       :: Integer, 
-    cfLineLimitMin  :: Integer,
-    cfLineLimitStep :: Integer,
-    cfLineLimitMax  :: Maybe Integer,
-    cfConstants     :: [Value],   
-    cfInputVars     :: [Variable],
-    cfOutputVars    :: [Variable],
-    cfExtraVars     :: [Variable],
-    cfReadOnly      :: [Variable],
-    cfDisallow      :: [Feature],
-    cfExamples      :: [Example],
-    cfPreCondition  :: Condition,
-    cfPostCondition :: Condition,
-    cfConfFile      :: FilePath,
-    cfEchoClingo    :: Bool,
-    cfEchoASP       :: Bool }
+    cfIntRange        :: (Integer, Integer),
+    cfTimeMax         :: Integer, 
+    cfLineLimitMin    :: Integer,
+    cfLineLimitStep   :: Integer,
+    cfLineLimitMax    :: Maybe Integer,
+    cfIfStatementsMax :: Maybe Integer,
+    cfWhileLoopsMax   :: Maybe Integer,
+    cfConstants       :: [Value],   
+    cfInputVars       :: [Variable],
+    cfOutputVars      :: [Variable],
+    cfExtraVars       :: [Variable],
+    cfReadOnly        :: [Variable],
+    cfDisallow        :: [Feature],
+    cfExamples        :: [Example],
+    cfPreCondition    :: Condition,
+    cfPostCondition   :: Condition,
+    cfConfFile        :: FilePath,
+    cfEchoClingo      :: Bool,
+    cfEchoASP         :: Bool,
+    cfThreads         :: Integer }
   deriving Show
 
 defaultConf = Conf{
-    cfIntRange      = error "int_range undefined",
-    cfTimeMax       = error "time_max undefined",
-    cfLineLimitMin  = 0,
-    cfLineLimitStep = 1,
-    cfLineLimitMax  = Nothing,
-    cfConstants     = [],
-    cfInputVars     = [],
-    cfOutputVars    = [],
-    cfExtraVars     = [],
-    cfReadOnly      = [],
-    cfDisallow      = [],
-    cfExamples      = [],
-    cfPreCondition  = "",
-    cfPostCondition = "",
-    cfConfFile      = undefined,
-    cfEchoClingo    = False,
-    cfEchoASP       = False }
+    cfIntRange        = error "int_range undefined",
+    cfTimeMax         = error "time_max undefined",
+    cfLineLimitMin    = 0,
+    cfLineLimitStep   = 1,
+    cfLineLimitMax    = Nothing,
+    cfIfStatementsMax = Nothing,
+    cfWhileLoopsMax   = Nothing,
+    cfConstants       = [],
+    cfInputVars       = [],
+    cfOutputVars      = [],
+    cfExtraVars       = [],
+    cfReadOnly        = [],
+    cfDisallow        = [],
+    cfExamples        = [],
+    cfPreCondition    = "",
+    cfPostCondition   = "",
+    cfConfFile        = undefined,
+    cfEchoClingo      = False,
+    cfEchoASP         = False,
+    cfThreads         = 1 }
 
-readConfFile :: FilePath -> IO Conf
-readConfFile filePath = do
+readConfFile :: FilePath -> Conf -> IO Conf
+readConfFile filePath conf = do
     let options = runClingoOptions{ rcEchoStdout=False }
     result <- runClingo options [CIFile filePath]
     case result of
         CRSatisfiable (answer:_) -> do
-            let conf = readConfFacts answer
-            return $ conf{ cfConfFile=filePath }
+            let conf' = readConfFacts answer conf
+            return $ conf'{ cfConfFile=filePath }
         CRUnsatisfiable ->
             error $ filePath ++ " unsatisfiable."
 
-readConfFacts :: [Fact] -> Conf
-readConfFacts facts = conf where
-    conf = (readConfFacts' defaultConf facts){ cfExamples=examples }
+readConfFacts :: [Fact] -> Conf -> Conf
+readConfFacts facts conf
+  = (readConfFacts' conf facts){ cfExamples=examples }
+  where
     ins = [(e, v, c)
         | Fact (Name "in") [TFun(Name e)[], TFun(Name v)[], TInt c] <- facts]
     outs = [(e, v, c)
@@ -112,6 +121,10 @@ readConfFacts facts = conf where
             readConfFacts' (conf{ cfLineLimitStep=lstep }) facts
         Fact (Name "line_limit_max") [TInt lmax] ->
             readConfFacts' (conf{ cfLineLimitMax=Just lmax }) facts
+        Fact (Name "if_statements_max") [TInt fmax] ->
+            readConfFacts' (conf{ cfIfStatementsMax=Just fmax }) facts
+        Fact (Name "while_loops_max") [TInt wmax] ->
+            readConfFacts' (conf{ cfWhileLoopsMax=Just wmax }) facts
         Fact (Name "constant") [TInt con] ->
             readConfFacts' (conf{ cfConstants=con : cfConstants conf }) facts
         Fact (Name "input_variable") [TFun (Name var) []] ->
@@ -138,38 +151,66 @@ readConfFacts facts = conf where
 
 --------------------------------------------------------------------------------
 main = do
-    confPath:_ <- getArgs
-    conf <- readConfFile confPath
+    args <- getArgs
+    let ([confPath], conf) = readArgs args defaultConf
+    conf <- readConfFile confPath conf
+
     let examples = cfExamples conf
     let limits = Limits{ lmLineMax = cfLineLimitMin conf }
+
     iterativeLearn examples limits conf
 
+readArgs :: [String] -> Conf -> ([String], Conf)
+readArgs (arg : args) conf | "-" `isPrefixOf` arg
+  = case arg of
+      "-j" ->
+        let param : args' = args in
+        readArgs args' (conf { cfThreads = read param })
+      _  ->
+        error $ "Unrecognised option: " ++ arg
+readArgs (arg : args) conf | otherwise
+  = let (args', conf') = readArgs args conf in (arg:args', conf')
+readArgs [] conf
+  = ([], conf)
+
+--------------------------------------------------------------------------------
 iterativeLearn :: [Example] -> Limits -> Conf -> IO ()
 iterativeLearn exs lims conf = do
-    putStrLn $ "Searching for a program with " ++ show (lmLineMax lims)
+    let limss = [lims{ lmLineMax=l } | i <- [0..cfThreads conf-1],
+                 let l = lmLineMax lims + i * cfLineLimitStep conf,
+                 maybe True (l <=) (cfLineLimitMax conf)]
+
+    let linesString = case limss of {
+        [_] -> show(lmLineMax $ head limss);
+        _   -> show(lmLineMax $ head limss)++"-"++show(lmLineMax $ last limss) }
+    putStrLn $ "Searching for a program with " ++ linesString
             ++ " lines satisfying " ++ show (length exs) ++ " example(s)..."
-    mProg <- findProgram exs lims conf
+
+    mProg <- findProgramConcurrent exs limss conf
+
     case mProg of
       Just prog -> do
         putStrLn "Found the following program:"
         printProgram prog
+        let lineMax = programLength prog
         case cfPostCondition conf of
-            _:_ -> iterativeLearn' prog exs lims conf
+            _:_ -> iterativeLearn' prog exs lims{lmLineMax = lineMax} conf
             ""  -> exitSuccess
       Nothing -> do
-        let lineMax = lmLineMax lims + cfLineLimitStep conf
+        let lims' = last limss
+        let lineMax = lmLineMax lims' + cfLineLimitStep conf
         case cfLineLimitMax conf of
             Just limit | lineMax > limit -> do
                 putStrLn $ "Failure: no such program can be found within the"
                         ++ " configured line limits."
             _ -> do
                 putStrLn "No such program found."
-                iterativeLearn exs (lims{lmLineMax=lineMax}) conf
+                iterativeLearn exs (lims'{lmLineMax=lineMax}) conf
         
 
 iterativeLearn' :: Program -> [Example] -> Limits -> Conf -> IO ()
 iterativeLearn' prog exs lims conf = do
-    putStrLn "Searching for a counter-example to falsify the postcondition..."
+    putStrLn "Searching for a counterexample to falsify the postcondition..."
     let conds = Conditions{
         cnPreCondition  = cfPreCondition conf,
         cnPostCondition = cfPostCondition conf}
@@ -215,12 +256,30 @@ iterativeLearn' prog exs lims conf = do
 findProgram :: [Example] -> Limits -> Conf -> IO (Maybe Program)
 findProgram exs lims conf = do
     let code = findProgramASP exs lims conf
-    result <- runClingoConf [CICode code] conf
+    let maybeRunID = case cfThreads conf of {
+        1 -> Nothing;
+        _ -> Just (show $ lmLineMax lims) }
+    result <- runClingoConf [CICode code] maybeRunID conf
     case result of
         CRSatisfiable (answer:_) ->
             return $ Just (Program answer)
         CRUnsatisfiable ->
             return Nothing
+
+findProgramConcurrent :: [Example] -> [Limits] -> Conf -> IO (Maybe Program)
+findProgramConcurrent exs limss conf = do
+    tasks <- forM limss $ \lims -> do
+        result <- newEmptyMVar
+        thread <- forkIO $ putMVar result =<< findProgram exs lims conf
+        return (thread, result)
+    results <- forM (zip tasks [0..]) $ \((thread, resultMVar), i) -> do
+        prior <- forM (take i tasks) $ \(_,r) -> do
+            empty <- isEmptyMVar r
+            if empty then return Nothing else readMVar r
+        case any isJust prior of
+          True  -> killThread thread >> return Nothing
+          False -> readMVar resultMVar
+    return (listToMaybe . catMaybes $ results)
 
 findProgramASP :: [Example] -> Limits -> Conf -> String
 findProgramASP exs lims conf
@@ -231,6 +290,8 @@ findProgramASP exs lims conf
         "#const time_max=" ++ show timeMax ++ ".",
         "#const int_min=" ++ show intMin ++ ".",
         "#const int_max=" ++ show intMax ++ ".",
+        "#const if_max=" ++ maybe "any" show ifMax ++ ".",
+        "#const while_max=" ++ maybe "any" show whileMax ++ ".",
         "#include \"learn.lp\".",
         "#hide. #show line_instr/2."]
 
@@ -256,17 +317,18 @@ findProgramASP exs lims conf
     
     allVars = nub . sort $ inputVars ++ outputVars ++ extraVars
     
-    Conf{ cfTimeMax  =timeMax,   cfIntRange  =(intMin, intMax),
-          cfInputVars=inputVars, cfOutputVars=outputVars,
-          cfExtraVars=extraVars, cfConstants =constants,
-          cfDisallow =disallow,  cfReadOnly  =readOnly } = conf
+    Conf{ cfTimeMax        =timeMax,   cfIntRange     =(intMin, intMax),
+          cfInputVars      =inputVars, cfOutputVars   =outputVars,
+          cfExtraVars      =extraVars, cfConstants    =constants,
+          cfDisallow       =disallow,  cfReadOnly     =readOnly,
+          cfIfStatementsMax=ifMax,     cfWhileLoopsMax=whileMax} = conf
     Limits{ lmLineMax=lineMax } = lims
     
 --------------------------------------------------------------------------------
 findCounterexample :: Program -> Conditions -> Conf -> IO (Maybe Counterexample)
 findCounterexample prog conds conf = do
     let code = findCounterexampleASP prog conds conf
-    result <- runClingoConf [CICode code] conf
+    result <- runClingoConf [CICode code] Nothing conf
     case result of
         CRSatisfiable (answer : _) -> do
             let inputs = do
@@ -341,11 +403,12 @@ findCounterexampleASP prog conds conf
     Conditions{ cnPreCondition = preCond,  cnPostCondition = postCond } = conds
 
 --------------------------------------------------------------------------------
-runClingoConf :: [ClingoInput] -> Conf -> IO ClingoResult
-runClingoConf input conf = do
+runClingoConf :: [ClingoInput] -> Maybe String -> Conf -> IO ClingoResult
+runClingoConf input maybeRunID conf = do
     let options = runClingoOptions{
         rcEchoStdout = cfEchoClingo conf,
-        rcEchoInput  = cfEchoASP conf }
+        rcEchoInput  = cfEchoASP conf,
+        rcIdentifier = maybeRunID }
     runClingo options (input ++ [CIFile $ cfConfFile conf])
 
 showProgram :: Program -> [String]
@@ -357,3 +420,7 @@ showProgram (Program facts)
 printProgram :: Program -> IO ()
 printProgram prog
   = mapM_ putStrLn $ showProgram prog
+
+programLength :: Program -> Integer
+programLength (Program facts)
+  = genericLength . catMaybes . map While.readLineInstr $ facts
