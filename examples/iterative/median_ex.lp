@@ -10,9 +10,9 @@ extra_variable(x; y).
 disallow_feature(while; arithmetic).
 
 % Give some of the program:
-preset_line_instr(1, set(x, var(a))).
-preset_line_instr(2, if(lt(var(x), var(b)), 1)).
-preset_line_instr(3, set(x, var(b))).
+%preset_line_instr(1, set(x, var(a))).
+%preset_line_instr(2, if(lt(var(x), var(b)), 1)).
+%preset_line_instr(3, set(x, var(b))).
 
 % Examples:
 ex(r00, 0,0,0, 0). 

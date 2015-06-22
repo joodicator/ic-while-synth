@@ -247,9 +247,11 @@ iterativeLearn' prog exs lims conf = do
                     putStrLn $ "Failure: counterexamples were found, but"
                             ++ " none admitting a solution the postcondition."
                             ++ " Possible causes:"
-                    putStrLn $ "   - The postcondition is unsatisfiable for some"
+                    putStrLn $ "- The postcondition is unsatisfiable for some"
                             ++ " valid input."
-                    putStrLn $ "   - The given int_range is too small."
+                    putStrLn $ "- The precondition is satisfiable for some"
+                            ++ " invalid input."
+                    putStrLn $ "- The given int_range is too small."
                 False -> putStrLn "Found the following counterexample:"
 
             putStrLn $ "   Input:    " ++ (intercalate ", "

@@ -21,5 +21,3 @@ gcd(X, Y, G) :-
 common_divisor(X, Y, D) :-
     X=0..ceiling, Y=0..ceiling, D=1..ceiling,
     X #mod D == 0, Y #mod D == 0.
-
-echo_clingo.

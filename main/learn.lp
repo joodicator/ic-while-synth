@@ -43,10 +43,10 @@ line(1..line_max).
 :- run_does_not_halt(R).
 :- run_var_out(R,V,Actual), out(R,V,Expected), Actual != Expected.
 
-0{ while_line(L) : line(L) }while_max :- while_max != any.
-0{ if_line(L) : line(L) }if_max       :- if_max    != any.
-while_line(L) :- line_instr(L, while(_, _)).
-if_line(L) :- line_instr(L, if(_, _)).
+%0{ while_line(L) : line(L) }while_max :- while_max != any.
+%0{ if_line(L) : line(L) }if_max       :- if_max    != any.
+%while_line(L) :- line_instr(L, while(_, _)).
+%if_line(L) :- line_instr(L, if(_, _)).
 
 
 %------------------------------------------------------------------------------- 
@@ -139,7 +139,7 @@ expr(div(con(C), var(X))) :- allow(div), con(C), var(X), C > 1.
 expr(div(var(X), con(C))) :- allow(div), var(X), con(C), C > 1.
 
 % mod: disallow x%x, disallow c%x for all c < 2, x%c for all c < 1.
-expr(mod(var(X), var(Y))) :- allow(mod), var(X), var(Y), X != X.
+expr(mod(var(X), var(Y))) :- allow(mod), var(X), var(Y), X != Y.
 expr(mod(con(C), var(X))) :- allow(mod), var(X), con(C), C > 0.
 expr(mod(var(X), con(C))) :- allow(mod), var(X), con(C), C > 1.
 
