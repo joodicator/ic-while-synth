@@ -11,51 +11,58 @@ examples/learn/
     Example specification files that can be run with `learn'.
 
 examples/run/
-    Example programs encoded in the format used by run.lp and learn.lp. They can be 
-    executed by running with using Clingo 3 together with run.lp. Most already include 
-    instances of in/3 to give input values, and some also use an #include statement  
+    Example programs encoded in the format used by run.lp and learn.lp. They can be
+    executed by running with using Clingo 3 together with run.lp. Most already include
+    instances of in/3 to give input values, and some also use an #include statement
     for run.lp so that they can be run with Clingo 3 alone.
 
+docs/interim_report
+docs/final_report
+    The interim and final versions of the project report.
+
+docs/presentation
+    The slides used during the final project presentation.
+
 main/IterativeLearn.hs
-    The program that performs synthesis of while programs from specification files such 
+    The program that performs synthesis of while programs from specification files such
     as can be found in examples/iterative. IterativeLearn.hs can be run as a script
-    on UNIX if GHC or Hugs is installed and "runhaskell" is present on the system path. 
-    Alternatively, it can be executed using Hugs or compiled with GHC and run as a 
+    on UNIX if GHC or Hugs is installed and "runhaskell" is present on the system path.
+    Alternatively, it can be executed using Hugs or compiled with GHC and run as a
     binary.
-    
-    You must change your directory to main/ before running IterativeLearn.hs as a 
+
+    You must change your directory to main/ before running IterativeLearn.hs as a
     script; then, the syntax is:
-    
-    `./IterativeLearn.hs SPEC_FILE_NAME'.
+
+    ./IterativeLearn.hs SPEC_FILE_NAME
 
 main/Format.hs
 main/format
-    A program that filters its standard input, detecting any occurrence of a set of 
-    line_instr/2 facts in the format Clingo 3 would output, and printing this out as a 
-    human-readable program listing, printing out any other facts on the same line 
+    A program that filters its standard input, detecting any occurrence of a set of
+    line_instr/2 facts in the format Clingo 3 would output, and printing this out as a
+    human-readable program listing, printing out any other facts on the same line
     separately, and copying any other lines.
-    
-    It is occasionally useful when you have some line_instr/2 facts and want to see 
-    what program they represent to run main/format, then paste them in and press Ctrl+D 
+
+    It is occasionally useful when you have some line_instr/2 facts and want to see
+    what program they represent to run main/format, then paste them in and enter Ctrl+D
     to issue an end-of-file, so that the program is printed out.
 
 main/Learn.hs
 main/learn
-    The previous incarnation of IterativeLearn.hs, and, respectively, a shell script 
-    that performs some processing to allow it to be called from a directory other than 
-    main/, and also pipes it through main/format. Requires Clingo 3 to be on the system 
+    The previous incarnation of IterativeLearn.hs, and, respectively, a shell script
+    that performs some processing to allow it to be called from a directory other than
+    main/, and also pipes it through main/format. Requires Clingo 3 to be on the system
     path as "clingo." Now obsolete.
 
 main/learn.lp
     An ASP that synthesises programs from a list of input/output examples.
 
 main/run.lp
-    An ASP that simulates the running of programs given their represenation and some 
+    An ASP that simulates the running of programs given their represenation and some
     input values.
 
 main/counterexample.lp
-    An ASP that, when relevant facts and rules (which must be dynamically computed) are 
-    added by IterativeLearn.hs, produces a counterexample for a given program and set 
+    An ASP that, when relevant facts and rules (which must be dynamically computed) are
+    added by IterativeLearn.hs, produces a counterexample for a given program and set
     of conditions, if one exists.
 
 main/While.hs
