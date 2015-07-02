@@ -12,7 +12,7 @@ while_loops_max(1).
 input_variable(x; y).
 output_variable(g).
 
-precondition("In_x > 0, In_y > 0, In_x + In_y > 0").
+precondition("In_x >= 0, In_y >= 0, In_x + In_y > 0").
 postcondition("gcd(In_x, In_y, Out_g)").
 
 gcd(X, Y, G) :-

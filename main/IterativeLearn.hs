@@ -1,5 +1,7 @@
 #!/usr/bin/env runghc
 
+module IterativeLearn where
+
 import Clingo hiding (readArgs)
 import qualified While
 
@@ -18,7 +20,10 @@ type Value     = Integer
 type Condition = String
 type Feature   = String
 
-newtype Program  = Program [Clingo.Fact] deriving Show
+type LineInstr   = Clingo.Fact
+type Instruction = Clingo.Term
+
+newtype Program  = Program [LineInstr] deriving Show
 newtype Input    = Input   [(Variable, Value)] deriving Show
 newtype Output   = Output  [(Variable, Value)] deriving Show
 
@@ -54,6 +59,7 @@ data Conf = Conf{
     cfInputVars       :: [Variable],
     cfOutputVars      :: [Variable],
     cfExtraVars       :: [Variable],
+    cfLogicVars       :: [Variable],
     cfReadOnly        :: [Variable],
     cfDisallow        :: [Feature],
     cfExamples        :: [Example],
@@ -78,6 +84,7 @@ defaultConf = Conf{
     cfInputVars       = [],
     cfOutputVars      = [],
     cfExtraVars       = [],
+    cfLogicVars       = [],
     cfReadOnly        = [],
     cfDisallow        = [],
     cfExamples        = [],
@@ -159,11 +166,7 @@ main = do
     args <- getArgs
     let ([confPath], conf) = readArgs args defaultConf
     conf <- readConfFile confPath conf
-
-    let examples = cfExamples conf
-    let limits = Limits{ lmLineMax = cfLineLimitMin conf }
-
-    iterativeLearn examples limits conf
+    iterativeLearnConf conf
 
 readArgs :: [String] -> Conf -> ([String], Conf)
 readArgs args@(arg : _) conf | "-" `isPrefixOf` arg
@@ -193,7 +196,13 @@ readArgsFlag (arg : args) conf
   = error $ "Unrecognised option: " ++ arg
 
 --------------------------------------------------------------------------------
-iterativeLearn :: [Example] -> Limits -> Conf -> IO ()
+iterativeLearnConf :: Conf -> IO Program
+iterativeLearnConf conf = do
+    let examples = cfExamples conf
+    let limits = Limits{ lmLineMax = cfLineLimitMin conf }
+    iterativeLearn examples limits conf
+
+iterativeLearn :: [Example] -> Limits -> Conf -> IO Program
 iterativeLearn exs lims conf = do
     let limss = [lims{ lmLineMax=l } | i <- [0..cfThreads conf-1],
                  let l = lmLineMax lims + i * cfLineLimitStep conf,
@@ -215,7 +224,7 @@ iterativeLearn exs lims conf = do
         let lineMax = programLength prog
         case cfPostCondition conf of
             _:_ -> iterativeLearn' prog exs lims{lmLineMax = lineMax} conf
-            ""  -> exitSuccess
+            ""  -> return prog
       Nothing -> do
         let lims' = last limss
         let lineMax = lmLineMax lims' + cfLineLimitStep conf
@@ -223,11 +232,12 @@ iterativeLearn exs lims conf = do
             Just limit | lineMax > limit -> do
                 putStrLn $ "Failure: no such program can be found within the"
                         ++ " configured line limits."
+                exitFailure
             _ -> do
                 putStrLn "No such program found."
                 iterativeLearn exs (lims'{lmLineMax=lineMax}) conf
 
-iterativeLearn' :: Program -> [Example] -> Limits -> Conf -> IO ()
+iterativeLearn' :: Program -> [Example] -> Limits -> Conf -> IO Program
 iterativeLearn' prog exs lims conf = do
     putStrLn "Searching for a counterexample to falsify the postcondition..."
     let conds = Conditions{
@@ -273,6 +283,7 @@ iterativeLearn' prog exs lims conf = do
             iterativeLearn (ex : exs) lims conf
         Nothing -> do
             putStrLn "Success: the postcondition could not be falsified."
+            return prog
 
 --------------------------------------------------------------------------------
 findProgram :: [Example] -> Limits -> Conf -> IO (Maybe Program)
@@ -321,7 +332,7 @@ findProgramASP exs lims conf
         (guard (not $ null constants) >>
             ["con(" ++ intercalate "; " (map show constants) ++ ")."]) ++
         (guard (not $ null allVars) >>
-            ["var(" ++ intercalate "; " allVars ++ ")."]) ++
+            ["var(" ++ intercalate "; " allVars \\ logicVars ++ ")."]) ++
         (guard (not $ null allVars) >>
             ["write_var(" ++ intercalate "; " (allVars \\ readOnly) ++  ")."]) ++
         (guard (not $ null disallow) >>
@@ -343,7 +354,8 @@ findProgramASP exs lims conf
           cfInputVars      =inputVars, cfOutputVars   =outputVars,
           cfExtraVars      =extraVars, cfConstants    =constants,
           cfDisallow       =disallow,  cfReadOnly     =readOnly,
-          cfIfStatementsMax=ifMax,     cfWhileLoopsMax=whileMax} = conf
+          cfIfStatementsMax=ifMax,     cfWhileLoopsMax=whileMax,
+          cfLogicVars      =logicVars} = conf
     Limits{ lmLineMax=lineMax } = lims
     
 --------------------------------------------------------------------------------
@@ -392,15 +404,15 @@ findCounterexampleASP prog conds conf
         let Program instrs = prog in Clingo.showFactLines instrs
 
     preCondLines =
-        let preVars = filter ((`isInfixOf` preCond) . ("In_"++)) inputVars in
+        let preVars = filter ((`isFreeIn` preCond) . ("In_"++)) inputVars in
         let inDom   = ["counter_in("++v++", In_"++v++")" | v<-preVars] in [
         let preConds = filter (not . null) [preCond] in
         "precon :- "++ intercalate ", " (preConds ++ inDom) ++".",
         ":- not precon."]
     
     postCondLines =
-        let inVars = filter ((`isInfixOf` postCond) . ("In_"++)) inputVars in
-        let outVars = filter ((`isInfixOf` postCond) . ("Out_"++)) outputVars in
+        let inVars = filter ((`isFreeIn` postCond) . ("In_"++)) inputVars in
+        let outVars = filter ((`isFreeIn` postCond) . ("Out_"++)) outputVars in
         let args = case outVars of {
             [] -> "";
             _  -> "(" ++ intercalate ", " (map ("Out_"++) outVars) ++ ")" } in
@@ -414,7 +426,7 @@ findCounterexampleASP prog conds conf
         ":- " ++ intercalate ", " (consHead : actOutDom) ++ "."]
 
     expectedLines = do
-        let outVars = filter ((`isInfixOf` postCond) . ("Out_"++)) outputVars
+        let outVars = filter ((`isFreeIn` postCond) . ("Out_"++)) outputVars
         v <- outVars
         let args = [if v == v' then "Out_"++v else "_" | v' <- outVars]
         let body = "postcon("++ intercalate ", " args ++")"
@@ -466,3 +478,13 @@ printProgram prog
 programLength :: Program -> Integer
 programLength (Program facts)
   = genericLength . catMaybes . map While.readLineInstr $ facts
+
+freeVariables :: Condition -> [Variable]
+freeVariables cs@(c : _) | isUpper c
+  = let (body, tail) = span isAlphaNum cs in
+    body : (freeVariables tail \\ [body])
+freeVariables (_ : cs)  = freeVariables cs
+freeVariables []        = []
+
+isFreeIn :: Variable -> Condition -> Bool
+isFreeIn var cond = var `elem` freeVariables cond
