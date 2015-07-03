@@ -16,7 +16,7 @@ template(4, mid("gcd(X,Y,G1), gcd(X0,Y0,G1), Y > 0, X1 = X, Y1 = Y")).
 template(5, mid("gcd(X,Y,G1), gcd(X0,Y0,G1), Y < Y1")).
 template(5, instr(end_while)).
 template(6, mid("gcd(X,Y,G1), gcd(X0,Y0,G1), Y <= 0")).
-template(7, post("gcd(X,Y,G)")).
+template(7, post("gcd(X0,Y0,G)")).
 
 % Domain-specific predicates:
 gcd(X, Y, G) :-

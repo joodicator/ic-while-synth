@@ -5,7 +5,8 @@ import Control.Applicative
 import Data.List
 import Clingo
 
-type LineInstr = (Integer, Instr)
+type LineNumber = Integer
+type LineInstr = (LineNumber, Instr)
 type Len = Integer
 type Var = Name
 

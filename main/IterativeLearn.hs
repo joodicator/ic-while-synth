@@ -5,12 +5,18 @@ module IterativeLearn where
 import Clingo hiding (readArgs)
 import qualified While
 
-import Data.List
-import Data.Maybe
-import Data.Char
 import Control.Monad
 import Control.Concurrent
 import Control.Concurrent.MVar
+import Control.Applicative
+
+import Data.List
+import Data.Maybe
+import Data.Char
+
+import Data.Functor.Identity
+import Control.Monad.Trans.State.Lazy
+
 import System.IO
 import System.Environment
 import System.Exit
@@ -332,7 +338,7 @@ findProgramASP exs lims conf
         (guard (not $ null constants) >>
             ["con(" ++ intercalate "; " (map show constants) ++ ")."]) ++
         (guard (not $ null allVars) >>
-            ["var(" ++ intercalate "; " allVars \\ logicVars ++ ")."]) ++
+            ["var(" ++ intercalate "; " (allVars \\ logicVars) ++ ")."]) ++
         (guard (not $ null allVars) >>
             ["write_var(" ++ intercalate "; " (allVars \\ readOnly) ++  ")."]) ++
         (guard (not $ null disallow) >>
@@ -479,12 +485,28 @@ programLength :: Program -> Integer
 programLength (Program facts)
   = genericLength . catMaybes . map While.readLineInstr $ facts
 
+--------------------------------------------------------------------------------
+traverseFreeVariables
+  :: Applicative f => (Variable -> f Variable) -> Condition -> f Condition
+traverseFreeVariables act cond@(c : _) | isVariableHead c
+  = (++) <$> act var <*> traverseFreeVariables act tail
+  where (var, tail) = span isVariableBody cond
+traverseFreeVariables act cond@(_ : _)
+  = (head ++) <$> traverseFreeVariables act tail
+  where (head, tail) = break isVariableHead cond
+traverseFreeVariables _ ""
+  = pure ""
+
+isVariableHead c = isUpper c
+isVariableBody c = isAlphaNum c || c == '_'
+
+mapFreeVariables :: (Variable -> Variable) -> Condition -> Condition
+mapFreeVariables f cond 
+  = runIdentity $ traverseFreeVariables (pure . f) cond
+
 freeVariables :: Condition -> [Variable]
-freeVariables cs@(c : _) | isUpper c
-  = let (body, tail) = span isAlphaNum cs in
-    body : (freeVariables tail \\ [body])
-freeVariables (_ : cs)  = freeVariables cs
-freeVariables []        = []
+freeVariables cond
+  = nub . sort . getConst $ traverseFreeVariables (\v -> Const [v]) cond
 
 isFreeIn :: Variable -> Condition -> Bool
-isFreeIn var cond = var `elem` freeVariables cond
+isFreeIn var = elem var . freeVariables
