@@ -1,0 +1,21 @@
+[jjc311@pixel07:~/ws/main]$ ./TemplateLearn.hs -j4 ../examples/template/double.lp 
+Synthesising the program fragment between conditions:
+   Pre:  X0 = X.
+   Post: Y = 2*X0.
+Searching for a program with 0-3 lines satisfying 0 example(s)...
+Found the following program:
+   (empty program)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    y = 20, x0 = 9, x = 9
+   Expected: y = 18
+   Output:   y = 20
+Searching for a program with 0-3 lines satisfying 1 example(s)...
+Found the following program:
+   1. y = x + x
+Searching for a counterexample to falsify the postcondition...
+Success: the postcondition could not be falsified.
+
+The following program satisfies all conditions of the template:
+   1. y = x + x
+

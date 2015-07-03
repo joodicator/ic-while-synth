@@ -1,0 +1,179 @@
+[jjc311@pixel07:~/ws/main]$ ./TemplateLearn.hs -j4 ../examples/template/max.lp 
+Synthesising the program fragment between conditions:
+   Pre:  (none).
+   Post: max(X1,X2, Max).
+Searching for a program with 0-3 lines satisfying 0 example(s)...
+Found the following program:
+   (empty program)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x2 = 5, x1 = 0, max = 4
+   Expected: max = 5
+   Output:   max = 4
+Searching for a program with 0-3 lines satisfying 1 example(s)...
+Found the following program:
+   1. max = x2
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x2 = 0, x1 = 5, max = 0
+   Expected: max = 5
+   Output:   max = 0
+Searching for a program with 1-4 lines satisfying 2 example(s)...
+Found the following program:
+   1. max = x1
+   2. if (x1 <= x2):
+   3.     max = x2
+Searching for a counterexample to falsify the postcondition...
+Success: the postcondition could not be falsified.
+
+Synthesising the program fragment between conditions:
+   Pre:  max(X1,X2, Max).
+   Post: max(X1,X2,X3, Max).
+Searching for a program with 0-3 lines satisfying 0 example(s)...
+Found the following program:
+   (empty program)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x3 = 2, x2 = 1, x1 = 1, max = 1
+   Expected: max = 2
+   Output:   max = 1
+Searching for a program with 0-3 lines satisfying 1 example(s)...
+Found the following program:
+   1. max = x3
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x3 = 0, x2 = 0, x1 = 1, max = 1
+   Expected: max = 1
+   Output:   max = 0
+Searching for a program with 1-4 lines satisfying 2 example(s)...
+Found the following program:
+   1. if (x2 < x3):
+   2.     max = x3
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x3 = 1, x2 = 0, x1 = 2, max = 2
+   Expected: max = 2
+   Output:   max = 1
+Searching for a program with 2-5 lines satisfying 3 example(s)...
+Found the following program:
+   1. if (x1 < x3):
+   2.     max = x3
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x3 = 1, x2 = 2, x1 = 0, max = 2
+   Expected: max = 2
+   Output:   max = 1
+Searching for a program with 2-5 lines satisfying 4 example(s)...
+Found the following program:
+   1. if (max < x3):
+   2.     max = x3
+Searching for a counterexample to falsify the postcondition...
+Success: the postcondition could not be falsified.
+
+Synthesising the program fragment between conditions:
+   Pre:  max(X1,X2,X3, Max).
+   Post: max(X1,X2,X3,X4, Max).
+Searching for a program with 0-3 lines satisfying 0 example(s)...
+Found the following program:
+   (empty program)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x4 = 2, x3 = 0, x2 = 1, x1 = 1, max = 1
+   Expected: max = 2
+   Output:   max = 1
+Searching for a program with 0-3 lines satisfying 1 example(s)...
+Found the following program:
+   1. max = x4
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x4 = 0, x3 = 0, x2 = 0, x1 = 1, max = 1
+   Expected: max = 1
+   Output:   max = 0
+Searching for a program with 1-4 lines satisfying 2 example(s)...
+Found the following program:
+   1. if (x3 < x4):
+   2.     max = x4
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x4 = 4, x3 = 3, x2 = 5, x1 = 1, max = 5
+   Expected: max = 5
+   Output:   max = 4
+Searching for a program with 2-5 lines satisfying 3 example(s)...
+Found the following program:
+   1. if (x2 < x4):
+   2.     max = x4
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x4 = 4, x3 = 5, x2 = 3, x1 = 1, max = 5
+   Expected: max = 5
+   Output:   max = 4
+Searching for a program with 2-5 lines satisfying 4 example(s)...
+Found the following program:
+   1. if (max < x4):
+   2.     max = x4
+Searching for a counterexample to falsify the postcondition...
+Success: the postcondition could not be falsified.
+
+Synthesising the program fragment between conditions:
+   Pre:  max(X1,X2,X3,X4, Max).
+   Post: max(X1,X2,X3,X4,X5, Max).
+Searching for a program with 0-3 lines satisfying 0 example(s)...
+Found the following program:
+   (empty program)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x5 = 1, x4 = 0, x3 = 0, x2 = 0, x1 = 0, max = 0
+   Expected: max = 1
+   Output:   max = 0
+Searching for a program with 0-3 lines satisfying 1 example(s)...
+Found the following program:
+   1. max = x5
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x5 = 0, x4 = 0, x3 = 0, x2 = 0, x1 = 1, max = 1
+   Expected: max = 1
+   Output:   max = 0
+Searching for a program with 1-4 lines satisfying 2 example(s)...
+Found the following program:
+   1. if (x4 < x5):
+   2.     max = x5
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x5 = 4, x4 = 3, x3 = 5, x2 = 5, x1 = 1, max = 5
+   Expected: max = 5
+   Output:   max = 4
+Searching for a program with 2-5 lines satisfying 3 example(s)...
+Found the following program:
+   1. if (x3 < x5):
+   2.     max = x5
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x5 = 4, x4 = 5, x3 = 3, x2 = 5, x1 = 1, max = 5
+   Expected: max = 5
+   Output:   max = 4
+Searching for a program with 2-5 lines satisfying 4 example(s)...
+Found the following program:
+   1. if (x2 < x5):
+   2.     max = x5
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x5 = 4, x4 = 5, x3 = 5, x2 = 3, x1 = 1, max = 5
+   Expected: max = 5
+   Output:   max = 4
+Searching for a program with 2-5 lines satisfying 5 example(s)...
+Found the following program:
+   1. if (max < x5):
+   2.     max = x5
+Searching for a counterexample to falsify the postcondition...
+Success: the postcondition could not be falsified.
+
+The following program satisfies all conditions of the template:
+   1. max = x1
+   2. if (x1 <= x2):
+   3.     max = x2
+   4. if (max < x3):
+   5.     max = x3
+   6. if (max < x4):
+   7.     max = x4
+   8. if (max < x5):
+   9.     max = x5

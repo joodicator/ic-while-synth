@@ -4,8 +4,6 @@
 #show counter_in/2.
 #show counter_out/2.
 #show counter_expected_out/2.
-#show any_expected.
-#show any_actual.
 
 % Select values for input variables which satisfy our constraints.
 1{ counter_in(V, C) : int(C) }1 :- input_var(V).

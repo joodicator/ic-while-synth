@@ -220,9 +220,11 @@ templateLearn' conf tmpl = case tmpl of
 -- (precondition, postcondition) pair.
 templateLearn'' :: Conf -> (Condition, Condition) -> IO [Instruction]
 templateLearn'' conf (preCond, postCond) = do
+    let preCondStr  = if null preCond  then "(none)" else preCond
+    let postCondStr = if null postCond then "(none)" else postCond
     putStrLn $ "Synthesising the program fragment between conditions:"
-    putStrLn $ "   Pre:  " ++ preCond
-    putStrLn $ "   Post: " ++ postCond
+    putStrLn $ "   Pre:  " ++ preCondStr  ++ "."
+    putStrLn $ "   Post: " ++ postCondStr ++ "."
     
     let iterativeConf = IL.defaultConf{
         IL.cfIntRange      = cfIntRange conf,
@@ -251,8 +253,8 @@ templateLearn'' conf (preCond, postCond) = do
     preVars  = map (headMap toLower) (freeVariables preCond)
     postVars = map (headMap toLower) (freeVariables postCond)
     inputVars = nub . sort $
-        filter (`elem` (preVars ++ postVars)) (cfLogicVars conf) ++
-        filter (`elem` postVars)  (cfProgramVars conf)
+        filter (`elem` preVars) (cfLogicVars conf) ++
+        filter (`elem` (preVars ++ postVars)) (cfProgramVars conf)
     outputVars =
         filter (`elem` postVars) (cfProgramVars conf) \\ cfReadOnly conf
     extraVars = cfProgramVars conf \\ (inputVars ++ outputVars)
