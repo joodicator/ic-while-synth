@@ -7,5 +7,5 @@ An example of this working is the program `max` which computes the maximum of 5 
 Started preparing further changes that will allow while loop bodies to be separately synthesised.
 
 Relevant commits:
-* [https://github.com/JosephCrowe/ic-while-synth/commit/481e9856aa7daefc56002834128004dee49ede81](481e985)
-* [https://github.com/JosephCrowe/ic-while-synth/commit/890593307ed9082ae7faae994e0be0a6e7169f9d](8905933)
+* [481e985](https://github.com/JosephCrowe/ic-while-synth/commit/481e9856aa7daefc56002834128004dee49ede81)
+* [8905933](https://github.com/JosephCrowe/ic-while-synth/commit/890593307ed9082ae7faae994e0be0a6e7169f9d)
