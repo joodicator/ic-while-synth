@@ -29,9 +29,8 @@ type LineInstr   = Clingo.Fact
 type Instruction = Clingo.Term
 
 newtype Program = Program [LineInstr] deriving Show
-newtype Input   = Input   [(Variable, Value)] deriving Show
-newtype Output  = Output  [(Variable, Value)] deriving Show
-newtype MultiOutput = MultiOutput [(Variable, [Value])] deriving Show
+newtype Input   = Input   [(Variable, Value)] deriving (Show, Eq, Ord)
+newtype Output  = Output  [(Variable, Value)] deriving (Show, Eq, Ord)
 
 data Limits = Limits{
     lmLineMax :: Integer }
@@ -49,7 +48,7 @@ data Example
 data Counterexample = Counterexample {
     ceInput          :: Input,
     ceActualOutput   :: Output,
-    ceExpectedOutput :: MultiOutput }
+    ceExpectedOutput :: [Output] }
   deriving Show
 
 --------------------------------------------------------------------------------
@@ -252,11 +251,9 @@ iterativeLearn' prog exs lims conf = do
             let Counterexample{
                 ceInput          = Input input,
                 ceActualOutput   = Output actual,
-                ceExpectedOutput = MultiOutput expected } = cex
+                ceExpectedOutput = expected } = cex
 
-            let { deficient = any null [
-                fold $ lookup v expected | v <- map fst actual] }
-
+            let deficient = null expected
             case deficient of
                 True  -> do
                     putStrLn $ "Failure: counterexamples were found, but"
@@ -271,16 +268,17 @@ iterativeLearn' prog exs lims conf = do
                     putStrLn "Found the following counterexample:"
 
             putStrLn $ "   Input:    " ++ (intercalate ", "
-                     $ [v++" = "++show c | (v,c) <- input ])
+                     $ [v++"="++show c | (v,c) <- sort input ])
             putStrLn $ "   Expected: " ++ case expected of {
                 [] -> "(none)";
-                _  -> intercalate ", " [
-                    v ++ " = " ++ intercalate "|" (map show $ take 4 cs)
-                           ++ if null (drop 4 cs) then "" else "|..."
-                    | (v, cs) <- expected] }
+                _  -> intercalate " | " $ [
+                    intercalate ", " [v ++ "=" ++ show c | (v,c) <- os]
+                    | Output os <- take 5 $ sort [
+                        Output (sort os) | Output os <- expected]]
+                    ++ if (length expected > 5) then ["..."] else [] }
             putStrLn $ "   Output:   " ++ case actual of {
                 [] -> "(none)";
-                _  -> intercalate ", " [v++" = "++show c | (v,c) <- actual ] }
+                _  -> intercalate ", " [v++"="++show c | (v,c) <- sort actual ] }
 
             when deficient exitFailure
             conf <- interactivePause conf
@@ -404,24 +402,24 @@ findCounterexample prog conf = do
                 guard $ name `elem` cfOutputVars conf
                 return (name, value)
             let expected = do
-                Fact (Name "counter_expected_out") args <- answer
-                let [TFun (Name name) [], TInt value] = args
-                guard $ name `elem` cfOutputVars conf
-                return (name, value)
-            let expected' = do
-                name <- nub . sort $ map fst expected
-                return (name, [c | (n,c) <- expected, n == name])
+                Fact (Name "postcon") args <- answer
+                let names = [v | v <- outputVars,
+                             ("Out_"++v) `isFreeIn` postCond]
+                let values = [c | TInt c <- args]
+                return $ Output (zip names values)
             return $ Just $ Counterexample{
                 ceInput          = Input inputs,
                 ceActualOutput   = Output outputs,
-                ceExpectedOutput = MultiOutput expected' }
+                ceExpectedOutput = expected }
         CRUnsatisfiable ->
             return Nothing
+  where
+    Conf{ cfPostCondition=postCond, cfOutputVars=outputVars } = conf
 
 findCounterexampleASP :: Program -> Conf -> String
 findCounterexampleASP prog conf
   = unlines . intercalate [""] $ [
-        headerLines, programLines, preCondLines, postCondLines, expectedLines]
+        headerLines, programLines, preCondLines, postCondLines]
   where
     headerLines = [
         "#const time_max=" ++ show timeMax ++ ".",
@@ -458,14 +456,8 @@ findCounterexampleASP prog conf
                      ++ ["int("++ v ++")" | v <- plVars] in
         let consHead = "postcon" ++ args in [
         "postcon"++ args ++" :- "++ ruleBody ++".",
-        ":- " ++ intercalate ", " (consHead : actOutDom) ++ "."]
-
-    expectedLines = do
-        let outVars = filter ((`isFreeIn` postCond) . ("Out_"++)) outputVars
-        v <- outVars
-        let args = [if v == v' then "Out_"++v else "_" | v' <- outVars]
-        let body = "postcon("++ intercalate ", " args ++")"
-        return $ "counter_expected_out("++v++", Out_"++v++") :- "++body++"."
+        ":- " ++ intercalate ", " (consHead : actOutDom) ++ ".",
+        "#show postcon/" ++ show (length outVars) ++ "."]
 
     Conf{ cfIntRange=(intMin, intMax), cfTimeMax=timeMax,
           cfInputVars=inputVars, cfOutputVars=outputVars,

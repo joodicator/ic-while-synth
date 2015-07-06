@@ -1,6 +1,6 @@
 #const ceiling=10.
 
-time_limit(50).
+time_limit(15).
 int_range(0, ceiling).
 
 con(0..3).

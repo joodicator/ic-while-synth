@@ -3,7 +3,6 @@
 #hide.
 #show counter_in/2.
 #show counter_out/2.
-#show counter_expected_out/2.
 
 % Select values for input variables which satisfy our constraints.
 1{ counter_in(V, C) : int(C) }1 :- input_var(V).
