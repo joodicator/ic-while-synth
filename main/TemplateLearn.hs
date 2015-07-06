@@ -309,8 +309,3 @@ interactivePause conf
 showInteractiveHelp :: IO ()
 showInteractiveHelp = do
     putStrLn $ "Type enter to continue or q to quit."
-
---------------------------------------------------------------------------------
-headMap :: (a -> a) -> [a] -> [a]
-headMap f (x : xs) = f x : xs
-headMap _ _        = []

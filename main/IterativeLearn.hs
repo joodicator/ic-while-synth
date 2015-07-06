@@ -362,11 +362,14 @@ findProgramASP exs lims conf
         let ids = [id | PostConditionExample{ exID=id } <- exs ] in
         let iVars = [v | v <- inputVars, ("In_"++v) `isFreeIn` postCond] in
         let oVars = [v | v <- outputVars, ("Out_"++v) `isFreeIn` postCond] in
+        let plVars = [v | v <- headMap toUpper <$> (logicVars \\ outputVars),
+                          v `isFreeIn` postCond] in
         if (null ids) then [] else [
         "postcon_run(" ++ intercalate ";" ids ++ ").",
         "postcon("++ intercalate "," ("R" : map ("Out_"++) oVars) ++") :- "
         ++ "postcon_run(R), "
         ++ concat ["int(Out_"++ v ++"), " | v <- oVars]
+        ++ concat ["int("++ v ++"), " | v <- plVars]
         ++ concat ["in(R,"++v++",In_"++v++"), " | v <- iVars]
         ++ postCond ++".",
         ":- postcon_run(R), "
@@ -441,14 +444,18 @@ findCounterexampleASP prog conf
     postCondLines =
         let inVars = filter ((`isFreeIn` postCond) . ("In_"++)) inputVars in
         let inDom = ["counter_in("++v++", In_"++v++")" | v<-inVars] in
-        let expOutDom = ["int(Out_"++v++")" | v <- outputVars] in
+        let plVars = [v | v <- headMap toUpper <$> (logicVars \\ outputVars),
+                          v `isFreeIn` postCond] in
+        let expOutDom = ["int(Out_"++ v ++")" | v <- outputVars]
+                     ++ ["int("++ v ++")" | v <- plVars] in
         let postConds = filter (not . null) [postCond] in
         let ruleBody = intercalate ", " (postConds ++ inDom ++ expOutDom) in
         let outVars = filter ((`isFreeIn` postCond) . ("Out_"++)) outputVars in
         let args = case outVars of {
             [] -> "";
             _  -> "(" ++ intercalate ", " (map ("Out_"++) outVars) ++ ")" } in
-        let actOutDom = ["counter_out("++v++", Out_"++v++")" | v<-outVars] in
+        let actOutDom = ["counter_out("++v++", Out_"++v++")" | v<-outVars]
+                     ++ ["int("++ v ++")" | v <- plVars] in
         let consHead = "postcon" ++ args in [
         "postcon"++ args ++" :- "++ ruleBody ++".",
         ":- " ++ intercalate ", " (consHead : actOutDom) ++ "."]
@@ -462,7 +469,8 @@ findCounterexampleASP prog conf
 
     Conf{ cfIntRange=(intMin, intMax), cfTimeMax=timeMax,
           cfInputVars=inputVars, cfOutputVars=outputVars,
-          cfPreCondition=preCond, cfPostCondition=postCond } = conf
+          cfPreCondition=preCond, cfPostCondition=postCond,
+          cfLogicVars=logicVars } = conf
 
 --------------------------------------------------------------------------------
 interactivePause :: Conf -> IO Conf
@@ -533,3 +541,7 @@ freeVariables cond
 
 isFreeIn :: Variable -> Condition -> Bool
 isFreeIn var = elem var . freeVariables
+
+headMap :: (a -> a) -> [a] -> [a]
+headMap f (x : xs) = f x : xs
+headMap _ []       = []
