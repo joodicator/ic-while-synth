@@ -2,9 +2,12 @@
 #const ceiling=20.
 
 int_range(0,ceiling).
-time_limit(50).
-constant(0; 1; 2).
+time_limit(25).
+constant(0; 1).
 disallow_feature(div; mul; sub).
+
+while_max(1).
+if_max(1).
 
 program_variable(p; a; b).
 logic_variable(p0; p1; q).

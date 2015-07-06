@@ -457,6 +457,7 @@ findCounterexampleASP prog conf
         let consHead = "postcon" ++ args in [
         "postcon"++ args ++" :- "++ ruleBody ++".",
         ":- " ++ intercalate ", " (consHead : actOutDom) ++ ".",
+        "any_postcon :- postcon(" ++ intercalate "," ("_" <$ outVars) ++ ").",
         "#show postcon/" ++ show (length outVars) ++ "."]
 
     Conf{ cfIntRange=(intMin, intMax), cfTimeMax=timeMax,

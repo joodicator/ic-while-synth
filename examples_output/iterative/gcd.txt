@@ -1,0 +1,63 @@
+[jjc311@pixel35:~/ws/main]$ time ./IterativeLearn.hs -j4 ../examples/iterative/gcd.lp 
+Searching for a program with 0-3 lines satisfying 0 example(s)...
+Found the following program:
+   (empty program)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x=20, y=0
+   Expected: g=20
+   Output:   (none)
+Searching for a program with 0-3 lines satisfying 1 example(s)...
+Found the following program:
+   1. g = x
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x=0, y=20
+   Expected: g=20
+   Output:   g=0
+Searching for a program with 1-4 lines satisfying 2 example(s)...
+Found the following program:
+   1. g = y
+   2. if (y < x):
+   3.     g = x
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x=20, y=1
+   Expected: g=1
+   Output:   g=20
+Searching for a program with 3-6 lines satisfying 3 example(s)...
+Found the following program:
+   1. g = y
+   2. if (g <= 0):
+   3.     g = x
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x=1, y=4
+   Expected: g=1
+   Output:   g=4
+Searching for a program with 3-6 lines satisfying 4 example(s)...
+Found the following program:
+   1. g = y
+   2. while (0 < x):
+   3.     g = x
+   4.     x = y % x
+   5. end_while
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x=20, y=3
+   Expected: g=1
+   Output:   g=3
+Searching for a program with 5-8 lines satisfying 5 example(s)...
+Found the following program:
+   1. g = y
+   2. while (0 < x):
+   3.     g = x
+   4.     x = y % g
+   5.     y = g
+   6. end_while
+Searching for a counterexample to falsify the postcondition...
+Success: the postcondition could not be falsified.
+
+real    1m9.404s
+user    2m7.951s
+sys     0m0.739s

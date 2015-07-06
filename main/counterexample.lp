@@ -8,13 +8,11 @@
 1{ counter_in(V, C) : int(C) }1 :- input_var(V).
 
 % Produce an expected output value if possible.
-#maximize{ any_expected_var(V) }.
-any_expected :- any_expected_var(_).
-any_expected_var(V) :- counter_expected_out(V, C).
+#maximize{ any_postcon }.
 
 % Do not accept the case of no expected value and no actual value
 % as a counterexample
-:- not any_expected, not any_actual.
+:- not any_postcon, not any_actual.
 any_actual :- any_actual_var(_).
 any_actual_var(V) :- counter_out(V, C), C != unset, output_var(V).
 
@@ -24,7 +22,8 @@ counter_out(V, C) :- run_var_out(counter, V, C).
 var(V) :- input_var(V).
 var(V) :- output_var(V).
 
-% counter_expected_out(x, Out_x) :- postcon(In_x, Out_x), counter_in(x, In_x).
+
+% any_postcon :- postcon(_, _).
 
 % input_var(x).
 % output_var(x). 
