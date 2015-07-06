@@ -258,13 +258,16 @@ templateLearn'' conf (preCond, postCond) = do
     outputVars =
         filter (`elem` postVars) (cfProgramVars conf) \\ cfReadOnly conf
     extraVars = cfProgramVars conf \\ (inputVars ++ outputVars)
-    iterativePreCond  = mapFreeVariables (("In_" ++) . headMap toLower) preCond
+    iterativePreCond  = mapFreeVariables mapIn preCond
     iterativePostCond = mapFreeVariables mapOut postCond
+    mapIn v
+      | v' `elem` inputVars  = "In_" ++ v'
+      | otherwise            = v
+      where v' = headMap toLower v
     mapOut v
-      | v' `elem` cfLogicVars conf                                = "In_" ++ v'
-      | v' `elem` cfReadOnly conf && v' `elem` cfProgramVars conf = "In_" ++ v'
-      | v' `elem` cfProgramVars conf                              = "Out_" ++ v'
-      | otherwise                                                 = v
+      | v' `elem` outputVars = "Out_" ++ v'
+      | v' `elem` inputVars  = "In_" ++ v'
+      | otherwise            = v
       where v' = headMap toLower v
 
 --------------------------------------------------------------------------------

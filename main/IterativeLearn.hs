@@ -13,9 +13,8 @@ import Control.Applicative
 import Data.List
 import Data.Maybe
 import Data.Char
-
+import Data.Foldable (fold)
 import Data.Functor.Identity
-import Control.Monad.Trans.State.Lazy
 
 import System.IO
 import System.Environment
@@ -29,27 +28,28 @@ type Feature   = String
 type LineInstr   = Clingo.Fact
 type Instruction = Clingo.Term
 
-newtype Program  = Program [LineInstr] deriving Show
-newtype Input    = Input   [(Variable, Value)] deriving Show
-newtype Output   = Output  [(Variable, Value)] deriving Show
-
-data Conditions = Conditions{
-    cnPreCondition  :: Condition,
-    cnPostCondition :: Condition }
+newtype Program = Program [LineInstr] deriving Show
+newtype Input   = Input   [(Variable, Value)] deriving Show
+newtype Output  = Output  [(Variable, Value)] deriving Show
+newtype MultiOutput = MultiOutput [(Variable, [Value])] deriving Show
 
 data Limits = Limits{
     lmLineMax :: Integer }
 
-data Example = Example{
-    exID     :: String,
-    exInput  :: Input,
-    exOutput :: Output }
+data Example
+  = UserExample{
+        exID     :: String,
+        exInput  :: Input,
+        exOutput :: Output }
+  | PostConditionExample {
+        exID     :: String,
+        exInput  :: Input }
   deriving Show
 
 data Counterexample = Counterexample {
     ceInput          :: Input,
     ceActualOutput   :: Output,
-    ceExpectedOutput :: Output }
+    ceExpectedOutput :: MultiOutput }
   deriving Show
 
 --------------------------------------------------------------------------------
@@ -121,7 +121,7 @@ readConfFacts facts conf
         | Fact (Name "in") [TFun(Name e)[], TFun(Name v)[], TInt c] <- facts]
     outs = [(e, v, c)
         | Fact (Name "out") [TFun(Name e)[], TFun(Name v)[], TInt c] <- facts]
-    examples = [Example{
+    examples = [UserExample{
         exID     = e,
         exInput  = Input  [(v,c) | (e',v,c) <- ins,  e == e'],
         exOutput = Output [(v,c) | (e',v,c) <- outs, e == e'] }
@@ -172,7 +172,7 @@ main = do
     args <- getArgs
     let ([confPath], conf) = readArgs args defaultConf
     conf <- readConfFile confPath conf
-    iterativeLearnConf conf
+    void $ iterativeLearnConf conf
 
 readArgs :: [String] -> Conf -> ([String], Conf)
 readArgs args@(arg : _) conf | "-" `isPrefixOf` arg
@@ -246,18 +246,17 @@ iterativeLearn exs lims conf = do
 iterativeLearn' :: Program -> [Example] -> Limits -> Conf -> IO Program
 iterativeLearn' prog exs lims conf = do
     putStrLn "Searching for a counterexample to falsify the postcondition..."
-    let conds = Conditions{
-        cnPreCondition  = cfPreCondition conf,
-        cnPostCondition = cfPostCondition conf}
-    mCounter <- findCounterexample prog conds conf
+    mCounter <- findCounterexample prog conf
     case mCounter of
         Just cex -> do
             let Counterexample{
                 ceInput          = Input input,
                 ceActualOutput   = Output actual,
-                ceExpectedOutput = Output expected } = cex
+                ceExpectedOutput = MultiOutput expected } = cex
 
-            let deficient = not . null $ map fst actual \\ map fst expected
+            let { deficient = any null [
+                fold $ lookup v expected | v <- map fst actual] }
+
             case deficient of
                 True  -> do
                     putStrLn $ "Failure: counterexamples were found, but"
@@ -268,13 +267,17 @@ iterativeLearn' prog exs lims conf = do
                     putStrLn $ "- The precondition is satisfiable for some"
                             ++ " invalid input."
                     putStrLn $ "- The given int_range is too small."
-                False -> putStrLn "Found the following counterexample:"
+                False -> do
+                    putStrLn "Found the following counterexample:"
 
             putStrLn $ "   Input:    " ++ (intercalate ", "
                      $ [v++" = "++show c | (v,c) <- input ])
             putStrLn $ "   Expected: " ++ case expected of {
                 [] -> "(none)";
-                _ -> intercalate ", " [v++" = "++show c | (v,c) <- expected ] }
+                _  -> intercalate ", " [
+                    v ++ " = " ++ intercalate "|" (map show $ take 4 cs)
+                           ++ if null (drop 4 cs) then "" else "|..."
+                    | (v, cs) <- expected] }
             putStrLn $ "   Output:   " ++ case actual of {
                 [] -> "(none)";
                 _  -> intercalate ", " [v++" = "++show c | (v,c) <- actual ] }
@@ -282,10 +285,9 @@ iterativeLearn' prog exs lims conf = do
             when deficient exitFailure
             conf <- interactivePause conf
 
-            let ex = Example{
+            let ex = PostConditionExample{
                 exID     = head $ map (("cx"++) . show) [1..] \\ map exID exs,
-                exInput  = Input input,
-                exOutput = Output expected }
+                exInput  = Input input }
             iterativeLearn (ex : exs) lims conf
         Nothing -> do
             putStrLn "Success: the postcondition could not be falsified."
@@ -322,7 +324,7 @@ findProgramConcurrent exs limss conf = do
 
 findProgramASP :: [Example] -> Limits -> Conf -> String
 findProgramASP exs lims conf
-  = unlines . intercalate [""] $ [headerLines, biasLines, exampleLines]
+  = unlines $ concat [headerLines, biasLines, exampleLines, postCondLines]
   where
     headerLines = [
         "#const line_max=" ++ show lineMax ++ ".",
@@ -345,15 +347,32 @@ findProgramASP exs lims conf
             ["disallow(" ++ intercalate "; " disallow ++ ")."])
 
     exampleLines = do
-        Example{ exID=id, exInput=Input inps, exOutput=Output outps } <- exs
+        example <- exs
+        let (id, Input inps) = (exID example, exInput example)
         let ins = do
             (var, val) <- inps
             return $ "in(" ++ id ++ "," ++ var ++ "," ++ show val ++ ")."
         let outs = do
+            UserExample{ exOutput=Output outps } <- return example
             (var, val) <- outps
             return $ "out(" ++ id ++ "," ++ var ++ "," ++ show val ++ ")."
-        return $ intercalate " " (ins ++ outs)
-    
+        return $ unwords $ ins ++ outs
+       
+    postCondLines =
+        let ids = [id | PostConditionExample{ exID=id } <- exs ] in
+        let iVars = [v | v <- inputVars, ("In_"++v) `isFreeIn` postCond] in
+        let oVars = [v | v <- outputVars, ("Out_"++v) `isFreeIn` postCond] in
+        if (null ids) then [] else [
+        "postcon_run(" ++ intercalate ";" ids ++ ").",
+        "postcon("++ intercalate "," ("R" : map ("Out_"++) oVars) ++") :- "
+        ++ "postcon_run(R), "
+        ++ concat ["int(Out_"++ v ++"), " | v <- oVars]
+        ++ concat ["in(R,"++v++",In_"++v++"), " | v <- iVars]
+        ++ postCond ++".",
+        ":- postcon_run(R), "
+        ++ concat ["run_var_out(R,"++v++",Out_"++v++"), " | v <- oVars]
+        ++ "not postcon("++ intercalate "," ("R" : map ("Out_"++) oVars) ++")."]
+
     allVars = nub . sort $ inputVars ++ outputVars ++ extraVars
     
     Conf{ cfTimeMax        =timeMax,   cfIntRange     =(intMin, intMax),
@@ -361,13 +380,13 @@ findProgramASP exs lims conf
           cfExtraVars      =extraVars, cfConstants    =constants,
           cfDisallow       =disallow,  cfReadOnly     =readOnly,
           cfIfStatementsMax=ifMax,     cfWhileLoopsMax=whileMax,
-          cfLogicVars      =logicVars} = conf
+          cfLogicVars      =logicVars, cfPostCondition=postCond} = conf
     Limits{ lmLineMax=lineMax } = lims
     
 --------------------------------------------------------------------------------
-findCounterexample :: Program -> Conditions -> Conf -> IO (Maybe Counterexample)
-findCounterexample prog conds conf = do
-    let code = findCounterexampleASP prog conds conf
+findCounterexample :: Program -> Conf -> IO (Maybe Counterexample)
+findCounterexample prog conf = do
+    let code = findCounterexampleASP prog conf
     result <- runClingoConf [CICode code] Nothing conf
     case result of
         CRSatisfiable (answer : _) -> do
@@ -386,15 +405,18 @@ findCounterexample prog conds conf = do
                 let [TFun (Name name) [], TInt value] = args
                 guard $ name `elem` cfOutputVars conf
                 return (name, value)
+            let expected' = do
+                name <- nub . sort $ map fst expected
+                return (name, [c | (n,c) <- expected, n == name])
             return $ Just $ Counterexample{
                 ceInput          = Input inputs,
                 ceActualOutput   = Output outputs,
-                ceExpectedOutput = Output expected }
+                ceExpectedOutput = MultiOutput expected' }
         CRUnsatisfiable ->
             return Nothing
 
-findCounterexampleASP :: Program -> Conditions -> Conf -> String
-findCounterexampleASP prog conds conf
+findCounterexampleASP :: Program -> Conf -> String
+findCounterexampleASP prog conf
   = unlines . intercalate [""] $ [
         headerLines, programLines, preCondLines, postCondLines, expectedLines]
   where
@@ -418,15 +440,15 @@ findCounterexampleASP prog conds conf
     
     postCondLines =
         let inVars = filter ((`isFreeIn` postCond) . ("In_"++)) inputVars in
+        let inDom = ["counter_in("++v++", In_"++v++")" | v<-inVars] in
+        let expOutDom = ["int(Out_"++v++")" | v <- outputVars] in
+        let postConds = filter (not . null) [postCond] in
+        let ruleBody = intercalate ", " (postConds ++ inDom ++ expOutDom) in
         let outVars = filter ((`isFreeIn` postCond) . ("Out_"++)) outputVars in
         let args = case outVars of {
             [] -> "";
             _  -> "(" ++ intercalate ", " (map ("Out_"++) outVars) ++ ")" } in
-        let inDom = ["counter_in("++v++", In_"++v++")" | v<-inVars] in
         let actOutDom = ["counter_out("++v++", Out_"++v++")" | v<-outVars] in
-        let expOutDom = ["int(Out_"++v++")" | v<-outVars] in
-        let postConds = filter (not . null) [postCond] in
-        let ruleBody = intercalate ", " (postConds ++ inDom ++ expOutDom) in
         let consHead = "postcon" ++ args in [
         "postcon"++ args ++" :- "++ ruleBody ++".",
         ":- " ++ intercalate ", " (consHead : actOutDom) ++ "."]
@@ -439,8 +461,8 @@ findCounterexampleASP prog conds conf
         return $ "counter_expected_out("++v++", Out_"++v++") :- "++body++"."
 
     Conf{ cfIntRange=(intMin, intMax), cfTimeMax=timeMax,
-          cfInputVars=inputVars, cfOutputVars=outputVars } = conf
-    Conditions{ cnPreCondition = preCond,  cnPostCondition = postCond } = conds
+          cfInputVars=inputVars, cfOutputVars=outputVars,
+          cfPreCondition=preCond, cfPostCondition=postCond } = conf
 
 --------------------------------------------------------------------------------
 interactivePause :: Conf -> IO Conf
@@ -448,6 +470,7 @@ interactivePause conf
   = case cfInteractive conf of
       True -> do
         putStr "\27[1m>\27[0m "
+        hFlush stdout
         line <- getLine
         case map toLower line of
             ""  -> return conf

@@ -3,6 +3,8 @@
 % #const time_max=TM.   % Maximum time steps to simulate before failure.
 % #const int_min=IMN.   % Minimum integer allowed to exist.
 % #const int_max=IMX.   % Maximum integer allowed to exist.
+% #const while_max=WMX. % Maximum number of while loops allowed, or 'any'.
+% #const if_max=FMX.    % Maximum number of if statements allowed, or 'any'.
 
 % In specifying a program to be learned, the following facts MAY be given:
 % preset_line_instr(L,I) % At line L, the instruction I is forced to occur.
@@ -34,25 +36,25 @@ feature(G) :- subfeature(_,G).
 disallow(G) :- subfeature(F,G), disallow(F).
 allow(F)    :- feature(F), not disallow(F).
 
+int(int_min..int_max).
+
 %-------------------------------------------------------------------------------
 % Exactly one instruction per line.
 1{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
 line(1..line_max).
 
-% All test examples must halt with the correct value.
+% Every test example must halt:
 :- run_does_not_halt(R).
+
+% Every test example must match any given input/output example:
 :- run_var_out(R,V,Actual), out(R,V,Expected), Actual != Expected.
 
-%0{ while_line(L) : line(L) }while_max :- while_max != any.
-%0{ if_line(L) : line(L) }if_max       :- if_max    != any.
-%while_line(L) :- line_instr(L, while(_, _)).
-%if_line(L) :- line_instr(L, if(_, _)).
+% Limit number of while and if statements according to configuration.
+0{ while_line(L) : line(L) }while_max :- while_max != any.
+0{ if_line(L) : line(L) }if_max       :- if_max    != any.
+while_line(L) :- line_instr(L, while(_, _)).
+if_line(L) :- line_instr(L, if(_, _)).
 
-
-%------------------------------------------------------------------------------- 
-% Line numbers and integer bounds.
-
-int(int_min..int_max).
 
 %-------------------------------------------------------------------------------
 % Instructions.
