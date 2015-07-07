@@ -11,12 +11,12 @@ logic_variable(x0; y0; y1).
 
 template(1, pre("X+Y > 0, X0 = X, Y0 = Y")).
 template(2, mid("gcd(X,Y,G1), gcd(X0,Y0,G1), X0+Y0 > 0, X+Y > 0")).
-template(3, instr(while(gt(var(y), con(0)), auto))).
+template(3, while(gt(var(y), con(0)))).
 template(4, mid("gcd(X,Y,G1), gcd(X0,Y0,G1), Y > 0, Y1 = Y, X0+Y0 > 0, X+Y > 0")).
 template(5, mid("gcd(X,Y,G1), gcd(X0,Y0,G1), Y < Y1, X0+Y0 > 0, X+Y > 0")).
-template(5, instr(end_while)).
-template(6, mid("gcd(X,Y,G1), gcd(X0,Y0,G1), Y <= 0, X0+Y0 > 0, X+Y > 0")).
-template(7, post("gcd(X0,Y0,G)")).
+template(6, end_while).
+template(7, mid("gcd(X,Y,G1), gcd(X0,Y0,G1), Y <= 0, X0+Y0 > 0, X+Y > 0")).
+template(8, post("gcd(X0,Y0,G)")).
 
 % Domain-specific predicates:
 gcd(X, Y, G) :-

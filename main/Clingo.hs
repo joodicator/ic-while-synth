@@ -1,3 +1,5 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Clingo where
 
 import System.IO
@@ -7,10 +9,11 @@ import Control.Applicative
 import Data.Maybe
 import Data.List
 import Data.Char
+import Data.String
 
 type Parse a = String -> Maybe (a, String)
 
-newtype Name = Name String deriving (Eq, Show)
+newtype Name = Name String deriving (Eq, Show, IsString)
 data Fact = Fact Name [Term] deriving Show
 data Term = TInt Integer | TStr String | TFun Name [Term] deriving Show
 

@@ -4,6 +4,7 @@ module IterativeLearn where
 
 import Clingo hiding (readArgs)
 import qualified While
+import Logic
 
 import Control.Monad
 import Control.Concurrent
@@ -22,7 +23,6 @@ import System.Exit
 
 type Variable  = String
 type Value     = Integer
-type Condition = String
 type Feature   = String
 
 type LineInstr   = Clingo.Fact

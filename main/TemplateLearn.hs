@@ -21,17 +21,6 @@ import System.Environment
 import System.Exit
 
 --------------------------------------------------------------------------------
-type Template
-  = [TemplateLine]
-
-data TemplateLine
-  = TLPre Condition
-  | TLMid Condition
-  | TLPost Condition
-  | TLInstr Instruction
-  deriving Show
-
---------------------------------------------------------------------------------
 data Conf = Conf{
     cfIntRange        :: (Integer, Integer),
     cfTimeMax         :: Integer, 
