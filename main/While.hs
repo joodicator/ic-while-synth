@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module While where
 
 import Control.Monad
@@ -107,6 +109,16 @@ showExprPrec p expr
         EDiv e1 e2      -> (0, showExprPrec q e1 ++ " / " ++ showExprPrec q e2)
         EMod e1 e2      -> (0, showExprPrec q e1 ++ " % " ++ showExprPrec q e2)
 
+exprToTerm :: Expr -> Term
+exprToTerm expr = case expr of
+    ECon n      -> TFun "con" [TInt n]
+    EVar x      -> TFun "var" [TFun x []]
+    EAdd e1 e2  -> TFun "sub" [exprToTerm e1, exprToTerm e2]
+    ESub e1 e2  -> TFun "add" [exprToTerm e1, exprToTerm e2]
+    EMul e1 e2  -> TFun "mul" [exprToTerm e1, exprToTerm e2]
+    EDiv e1 e2  -> TFun "div" [exprToTerm e1, exprToTerm e2]
+    EMod e1 e2  -> TFun "mod" [exprToTerm e1, exprToTerm e2]
+
 readExpr :: Term -> Maybe Expr
 readExpr term
   = readBinary (Name "add") EAdd term <|>
@@ -125,13 +137,23 @@ readLeafExpr term = case term of
 -------------------------------------------------------------------------------
 showGuard :: Guard -> String
 showGuard guard = case guard of
-    (GLT e1 e2)     -> showExpr e1 ++ " < "  ++ showExpr e2
-    (GGT e1 e2)     -> showExpr e1 ++ " > "  ++ showExpr e2
-    (GLE e1 e2)     -> showExpr e1 ++ " <= " ++ showExpr e2
-    (GGE e1 e2)     -> showExpr e1 ++ " >= " ++ showExpr e2
-    (GEQ e1 e2)     -> showExpr e1 ++ " == " ++ showExpr e2
-    (GNE e1 e2)     -> showExpr e1 ++ " != " ++ showExpr e2
-    (GNeg guard')   -> "!(" ++ showGuard guard' ++ ")"
+    GLT e1 e2   -> showExpr e1 ++ " < "  ++ showExpr e2
+    GGT e1 e2   -> showExpr e1 ++ " > "  ++ showExpr e2
+    GLE e1 e2   -> showExpr e1 ++ " <= " ++ showExpr e2
+    GGE e1 e2   -> showExpr e1 ++ " >= " ++ showExpr e2
+    GEQ e1 e2   -> showExpr e1 ++ " == " ++ showExpr e2
+    GNE e1 e2   -> showExpr e1 ++ " != " ++ showExpr e2
+    GNeg guard' -> "!(" ++ showGuard guard' ++ ")"
+
+guardToTerm :: Guard -> Term
+guardToTerm guard = case guard of
+    GLT e1 e2   -> TFun "lt" [exprToTerm e1, exprToTerm e2]
+    GGT e1 e2   -> TFun "gt" [exprToTerm e1, exprToTerm e2]
+    GLE e1 e2   -> TFun "le" [exprToTerm e1, exprToTerm e2]
+    GGE e1 e2   -> TFun "ge" [exprToTerm e1, exprToTerm e2]
+    GEQ e1 e2   -> TFun "eq" [exprToTerm e1, exprToTerm e2]
+    GNE e1 e2   -> TFun "ne" [exprToTerm e1, exprToTerm e2]
+    GNeg guard' -> TFun "not" [guardToTerm guard']
 
 readGuard :: Term -> Maybe Guard
 readGuard term

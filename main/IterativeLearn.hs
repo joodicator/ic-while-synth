@@ -8,13 +8,11 @@ import Logic
 
 import Control.Monad
 import Control.Concurrent
-import Control.Concurrent.MVar
 import Control.Applicative
 
 import Data.List
 import Data.Maybe
 import Data.Char
-import Data.Foldable (fold)
 import Data.Functor.Identity
 
 import System.IO

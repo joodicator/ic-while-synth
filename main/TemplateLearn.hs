@@ -1,5 +1,7 @@
 #!/usr/bin/env runghc
 
+{-# LANGUAGE OverloadedStrings, ViewPatterns #-}
+
 import Clingo hiding (readArgs)
 import qualified While
 
@@ -7,6 +9,9 @@ import IterativeLearn hiding (
     main, Conf(..), defaultConf, readConfFacts, readConfFile,
     readArgs, readArgsFlag, interactivePause, showInteractiveHelp)
 import qualified IterativeLearn as IL
+
+import Template
+import Logic
 
 import Data.List
 import Data.Maybe
@@ -47,7 +52,7 @@ defaultConf = Conf{
     cfLogicVars       = [],
     cfReadOnly        = [],
     cfDisallow        = [],
-    cfTemplate        = [],
+    cfTemplate        = Template [],
     cfConfFile        = undefined,
     cfThreads         = 1,
     cfEchoClingo      = False,
@@ -69,9 +74,7 @@ readConfFacts :: [Fact] -> Conf -> Conf
 readConfFacts facts conf
   = (readConfFacts' conf facts){ cfTemplate=template }
   where
-    template = map snd . sortBy (compare `on` fst) $ do
-        Fact (Name "template") [TInt n, tline] <- facts
-        return (n, readTemplateLine tline)
+    template = either error id $ answerToTemplate facts
     readConfFacts' conf (fact : facts) = case fact of
         Fact (Name "int_range") [TInt imin, TInt imax] ->
             readConfFacts' (conf{ cfIntRange=(imin, imax) }) facts
@@ -98,14 +101,6 @@ readConfFacts facts conf
         _ ->
             readConfFacts' conf facts
     readConfFacts' conf [] = conf
-
-readTemplateLine :: Term -> TemplateLine
-readTemplateLine line = case line of
-    (TFun (Name "pre")   [TStr cond]) -> TLPre cond
-    (TFun (Name "mid")   [TStr cond]) -> TLMid cond
-    (TFun (Name "post")  [TStr cond]) -> TLPost cond
-    (TFun (Name "instr") [instr])     -> TLInstr instr
-    _ -> error $ "invalid template line: " ++ show line
 
 --------------------------------------------------------------------------------
 main = do
@@ -152,7 +147,7 @@ templateLearnConf conf
 -- satisfying the given template; otherwise, exits with failure.
 templateLearn :: Conf -> Template -> IO Program
 templateLearn conf tmpl = do
-    prog <- Program . program 1 <$> templateLearn' conf (normaliseTemplate tmpl)
+    prog <- Program . program 1 <$> templateLearn' conf tmpl
     putStrLn "The following program satisfies all conditions of the template:"
     printProgram prog
     return prog
@@ -188,20 +183,32 @@ templateLearn conf tmpl = do
 
 --------------------------------------------------------------------------------
 -- As templateLearn, but returns a list of instructions possibly containing
--- 'auto' as the body-length parameter of while loops, and requires the template
--- to be normalised, as by normaliseTemplate.
+-- 'auto' as the body-length parameter of while loops.
 templateLearn' :: Conf -> Template -> IO [Instruction]
-templateLearn' conf tmpl = case tmpl of
-  TLMid _ : tmpl'@(TLInstr _ : _) -> do
+templateLearn' conf (Template parts) = case parts of
+  TPInstr (TISet var expr) : (Template -> tmpl') -> do
+    let exprTerm = While.exprToTerm expr
+    (TFun "set" [TFun var [], exprTerm] :) <$> templateLearn' conf tmpl'
+  TPBlock BTIf guard body : (Template -> tmpl') -> do
+    -- Subprogram inside an if body.
+    frag <- templateLearn' conf body
+    let guardTerm = While.guardToTerm guard
+    let head = TFun "if" [guardTerm, TInt (genericLength frag)]
+    ((head : frag) ++) <$> templateLearn' conf tmpl'
+  TPBlock BTWhile guard body : (Template -> tmpl') -> do
+    -- Subprogram inside a while body.
+    frag <- templateLearn' conf body
+    let guardTerm = While.guardToTerm guard
+    let head = TFun "while" [guardTerm, TInt (genericLength frag)]
+    ((head : frag ++ [TFun "end_while" []]) ++) <$> templateLearn' conf tmpl'
+  TPCond _ preCond : tmpl'@(TPCond _ postCond : _) -> do
+    -- Subprogram between two conditions.
+    frag <- templateLearn'' conf (preCond, postCond)
+    (frag ++) <$> templateLearn' conf (Template tmpl')
+  _ : (Template -> tmpl') ->
+    -- Anything else ignored.  
     templateLearn' conf tmpl'
-  TLInstr instr : tmpl' -> do
-    instrs <- templateLearn' conf tmpl'
-    return (instr : instrs)
-  TLMid preCond : tmpl'@(TLMid postCond : _) -> do
-    instrs <- templateLearn'' conf (preCond, postCond)
-    instrs' <- templateLearn' conf tmpl'
-    return (instrs ++ instrs')
-  [TLMid _] -> do
+  [] ->
     return []
 
 --------------------------------------------------------------------------------
@@ -258,28 +265,6 @@ templateLearn'' conf (preCond, postCond) = do
       | v' `elem` inputVars  = "In_" ++ v'
       | otherwise            = v
       where v' = headMap toLower v
-
---------------------------------------------------------------------------------
--- Normalises a program template by:
--- 1. Rejecting templates containing misplaced preconditions/postconditions.
--- 2. Inserting an empty precondition and/or postcondition if there are none.
--- 3. Encoding the precondition/postcondition as midconditions.
-normaliseTemplate :: Template -> Template
-normaliseTemplate tmpl
-  | or [True | TLPre _ <- drop 1 tmpl]
-  = error $ "precondition not at beginning of template"
-  | or [True | TLPost _ <- drop 1 $ reverse tmpl]
-  = error $ "postcondition not at end of template"
-  | null [c | TLPre c <- take 1 tmpl]
-  = normaliseTemplate $ [TLPre ""] ++ tmpl
-  | null [c | TLPost c <- take 1 $ reverse tmpl]
-  = normaliseTemplate $ tmpl ++ [TLPost ""]
-  | otherwise
-  = map normaliseLine tmpl
-  where
-    normaliseLine (TLPre cond)  = TLMid cond
-    normaliseLine (TLPost cond) = TLMid cond
-    normaliseLine l             = l
 
 --------------------------------------------------------------------------------
 interactivePause :: Conf -> IO Conf
