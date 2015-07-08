@@ -14,10 +14,10 @@ logic_variable(x0; n0; y1).
 
 template(1, pre("N>1, 0<X,X<N, gcd(X,N,1), X0=X, N0=N")).
 template(2, while(lt(var(m), var(n)))).
-template(3, inv("Y<=Xi, M<N:Y<Xi, M==N:Y>=Xi, modinv(X,N,Xi)")).
+template(3, inv("Y<=Xi, M<N : Y<Xi, M==N : Y>=Xi, modinv(X0,N0,Xi)")).
 template(4, var("Y", increasing)).
 template(5, end_while).
-template(6, post("X0*Y #mod N0 == 1, Y<N0")).
+template(6, post("modinv(X0,N0,Y)")).
 
 % Domain-specific predicates:
 modinv(X, N, Y) :-

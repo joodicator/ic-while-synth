@@ -171,6 +171,17 @@ readNegation term = do
     guard <- readGuard guardTerm
     return (GNeg guard)
 
+-- Negate a guard without increasing the tree depth.
+negateGuard :: Guard -> Guard
+negateGuard guard = case guard of
+    GLT e1 e2   -> GGE e1 e2
+    GGT e1 e2   -> GLE e1 e2
+    GLE e1 e2   -> GGT e1 e2
+    GGE e1 e2   -> GLE e1 e2
+    GEQ e1 e2   -> GNE e1 e2
+    GNE e1 e2   -> GEQ e1 e2
+    GNeg guard' -> guard'
+
 -------------------------------------------------------------------------------
 readBinary :: Name -> (Expr -> Expr -> a) -> Term -> Maybe a
 readBinary name con term = do

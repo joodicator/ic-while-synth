@@ -31,10 +31,10 @@ data Conf = Conf{
     cfTimeMax         :: Integer, 
     cfLineLimitMax    :: Maybe Integer,
     cfConstants       :: [Value],   
-    cfProgramVars     :: [Variable],
-    cfLogicVars       :: [Variable],
     cfReadOnly        :: [Variable],
     cfDisallow        :: [Feature],
+    cfProgramVars     :: [Variable],
+    cfLogicVars       :: [Variable],
     cfTemplate        :: Template,
     cfConfFile        :: FilePath,
     cfThreads         :: Integer,
@@ -48,11 +48,11 @@ defaultConf = Conf{
     cfTimeMax         = error "time_max undefined",
     cfLineLimitMax    = Nothing,
     cfConstants       = [],
-    cfProgramVars     = [],
-    cfLogicVars       = [],
     cfReadOnly        = [],
     cfDisallow        = [],
-    cfTemplate        = Template [],
+    cfProgramVars     = [],
+    cfLogicVars       = [],
+    cfTemplate        = emptyTemplate,
     cfConfFile        = undefined,
     cfThreads         = 1,
     cfEchoClingo      = False,
@@ -72,9 +72,12 @@ readConfFile filePath conf = do
 
 readConfFacts :: [Fact] -> Conf -> Conf
 readConfFacts facts conf
-  = (readConfFacts' conf facts){ cfTemplate=template }
+  = (readConfFacts' conf facts){
+        cfTemplate    = template,
+        cfProgramVars = tcProgramVars . teConf $ template,
+        cfLogicVars   = tcLogicVars   . teConf $ template }
   where
-    template = either error id $ answerToTemplate facts
+    template = either error normaliseTemplate $ answerToTemplate facts
     readConfFacts' conf (fact : facts) = case fact of
         Fact (Name "int_range") [TInt imin, TInt imax] ->
             readConfFacts' (conf{ cfIntRange=(imin, imax) }) facts
@@ -84,10 +87,6 @@ readConfFacts facts conf
             readConfFacts' (conf{ cfLineLimitMax=Just lmax }) facts
         Fact (Name "constant") [TInt con] ->
             readConfFacts' (conf{ cfConstants=con : cfConstants conf }) facts
-        Fact (Name "program_variable") [TFun (Name var) []] ->
-            readConfFacts' (conf{ cfProgramVars=var : cfProgramVars conf }) facts
-        Fact (Name "logic_variable") [TFun (Name var) []] ->
-            readConfFacts' (conf{ cfLogicVars=var : cfLogicVars conf }) facts
         Fact (Name "read_only_variable") [TFun (Name var) []] ->
             readConfFacts' (conf{ cfReadOnly=var : cfReadOnly conf }) facts
         Fact (Name "disallow_feature") [TFun (Name feat) []] ->
@@ -106,8 +105,8 @@ readConfFacts facts conf
 main = do
     args <- getArgs
     let ([confPath], conf) = readArgs args defaultConf
-    conf@Conf{cfTemplate=tmpl} <- readConfFile confPath conf
-    void $ templateLearn conf tmpl
+    conf <- readConfFile confPath conf
+    void $ templateLearnConf conf
 
 readArgs :: [String] -> Conf -> ([String], Conf)
 readArgs args@(arg : _) conf | "-" `isPrefixOf` arg
@@ -146,8 +145,8 @@ templateLearnConf conf
 -- With respect to the given configuration, returns a program if one exists
 -- satisfying the given template; otherwise, exits with failure.
 templateLearn :: Conf -> Template -> IO Program
-templateLearn conf tmpl = do
-    prog <- Program . program 1 <$> templateLearn' conf tmpl
+templateLearn conf tmpl@Template{ teParts=parts } = do
+    prog <- Program . program 1 <$> templateLearn' conf parts
     putStrLn "The following program satisfies all conditions of the template:"
     printProgram prog
     return prog
@@ -184,18 +183,18 @@ templateLearn conf tmpl = do
 --------------------------------------------------------------------------------
 -- As templateLearn, but returns a list of instructions possibly containing
 -- 'auto' as the body-length parameter of while loops.
-templateLearn' :: Conf -> Template -> IO [Instruction]
-templateLearn' conf (Template parts) = case parts of
-  TPInstr (TISet var expr) : (Template -> tmpl') -> do
+templateLearn' :: Conf -> [TemplatePart] -> IO [Instruction]
+templateLearn' conf parts = case parts of
+  TPInstr (TISet var expr) : tmpl' -> do
     let exprTerm = While.exprToTerm expr
     (TFun "set" [TFun var [], exprTerm] :) <$> templateLearn' conf tmpl'
-  TPBlock BTIf guard body : (Template -> tmpl') -> do
+  TPBlock BTIf guard body : tmpl' -> do
     -- Subprogram inside an if body.
     frag <- templateLearn' conf body
     let guardTerm = While.guardToTerm guard
     let head = TFun "if" [guardTerm, TInt (genericLength frag)]
     ((head : frag) ++) <$> templateLearn' conf tmpl'
-  TPBlock BTWhile guard body : (Template -> tmpl') -> do
+  TPBlock BTWhile guard body : tmpl' -> do
     -- Subprogram inside a while body.
     frag <- templateLearn' conf body
     let guardTerm = While.guardToTerm guard
@@ -204,8 +203,8 @@ templateLearn' conf (Template parts) = case parts of
   TPCond _ preCond : tmpl'@(TPCond _ postCond : _) -> do
     -- Subprogram between two conditions.
     frag <- templateLearn'' conf (preCond, postCond)
-    (frag ++) <$> templateLearn' conf (Template tmpl')
-  _ : (Template -> tmpl') ->
+    (frag ++) <$> templateLearn' conf tmpl'
+  _ : tmpl' ->
     -- Anything else ignored.  
     templateLearn' conf tmpl'
   [] ->
