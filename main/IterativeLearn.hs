@@ -13,13 +13,11 @@ import Control.Applicative
 import Data.List
 import Data.Maybe
 import Data.Char
-import Data.Functor.Identity
 
 import System.IO
 import System.Environment
 import System.Exit
 
-type Variable  = String
 type Value     = Integer
 type Feature   = String
 
@@ -507,32 +505,3 @@ programLength :: Program -> Integer
 programLength (Program facts)
   = genericLength . catMaybes . map While.readLineInstr $ facts
 
---------------------------------------------------------------------------------
-traverseFreeVariables
-  :: Applicative f => (Variable -> f Variable) -> Condition -> f Condition
-traverseFreeVariables act cond@(c : _) | isVariableHead c
-  = (++) <$> act var <*> traverseFreeVariables act tail
-  where (var, tail) = span isVariableBody cond
-traverseFreeVariables act cond@(_ : _)
-  = (head ++) <$> traverseFreeVariables act tail
-  where (head, tail) = break isVariableHead cond
-traverseFreeVariables _ ""
-  = pure ""
-
-isVariableHead c = isUpper c
-isVariableBody c = isAlphaNum c || c == '_'
-
-mapFreeVariables :: (Variable -> Variable) -> Condition -> Condition
-mapFreeVariables f cond 
-  = runIdentity $ traverseFreeVariables (pure . f) cond
-
-freeVariables :: Condition -> [Variable]
-freeVariables cond
-  = nub . sort . getConst $ traverseFreeVariables (\v -> Const [v]) cond
-
-isFreeIn :: Variable -> Condition -> Bool
-isFreeIn var = elem var . freeVariables
-
-headMap :: (a -> a) -> [a] -> [a]
-headMap f (x : xs) = f x : xs
-headMap _ []       = []
