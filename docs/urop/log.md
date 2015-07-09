@@ -6,7 +6,7 @@ For example, the program `aliquot` which classifies numbers as prime (indicated 
 
 I suspect that the problem of correct but bizarre programs being synthesised could be mitigated by requiring them to be minimal (or close to minimal) in other senses than just the line number, for example in the set of constants used. This could also make synthesis faster, and easier for the user.
 
-I also noticed a problem with the counterexample finder generating examples that impose unreasonable requirements on the program synthesised, which is filed as [https://github.com/JosephCrowe/ic-while-synth/issues/3](issue #3).
+I also noticed a problem with the counterexample finder generating examples that impose unreasonable requirements on the program synthesiser, which is filed as [https://github.com/JosephCrowe/ic-while-synth/issues/3](issue #3).
 
 Relevant commits: [2be2473](https://github.com/JosephCrowe/ic-while-synth/commit/2be2473f51ce64fe8f4935afeda419059ea08564) [947bd6c](https://github.com/JosephCrowe/ic-while-synth/commit/947bd6c231a2a75a7dad801688a576dde7e226bc)
 
