@@ -33,6 +33,8 @@ data Conf = Conf{
     cfConstants       :: [Value],   
     cfReadOnly        :: [Variable],
     cfDisallow        :: [Feature],
+    cfIfStatementsMax :: Maybe Integer,
+    cfWhileLoopsMax   :: Maybe Integer,
     cfProgramVars     :: [Variable],
     cfLogicVars       :: [Variable],
     cfTemplate        :: Template,
@@ -50,6 +52,8 @@ defaultConf = Conf{
     cfConstants       = [],
     cfReadOnly        = [],
     cfDisallow        = [],
+    cfIfStatementsMax = Nothing,
+    cfWhileLoopsMax   = Nothing,
     cfProgramVars     = [],
     cfLogicVars       = [],
     cfTemplate        = emptyTemplate,
@@ -91,6 +95,10 @@ readConfFacts facts conf
             readConfFacts' (conf{ cfReadOnly=var : cfReadOnly conf }) facts
         Fact (Name "disallow_feature") [TFun (Name feat) []] ->
             readConfFacts' (conf{ cfDisallow=feat : cfDisallow conf }) facts
+        Fact (Name "if_statements_max") [TInt fmax] ->
+            readConfFacts' (conf{ cfIfStatementsMax=Just fmax }) facts
+        Fact (Name "while_loops_max") [TInt wmax] ->
+            readConfFacts' (conf{ cfWhileLoopsMax=Just wmax }) facts
         Fact (Name "echo_clingo") [] ->
             readConfFacts' (conf{ cfEchoClingo=True }) facts
         Fact (Name "echo_asp") [] ->
@@ -222,23 +230,25 @@ templateLearn'' conf (preCond, postCond) = do
     putStrLn $ "   Post: " ++ postCondStr ++ "."
     
     let iterativeConf = IL.defaultConf{
-        IL.cfIntRange      = cfIntRange conf,
-        IL.cfTimeMax       = cfTimeMax conf,
-        IL.cfLineLimitMax  = cfLineLimitMax conf,
-        IL.cfConstants     = cfConstants conf,
-        IL.cfDisallow      = cfDisallow conf,
-        IL.cfConfFile      = cfConfFile conf,
-        IL.cfThreads       = cfThreads conf,
-        IL.cfEchoClingo    = cfEchoClingo conf,
-        IL.cfEchoASP       = cfEchoASP conf,
-        IL.cfInteractive   = cfInteractive conf,
-        IL.cfLogicVars     = cfLogicVars conf,
-        IL.cfReadOnly      = cfReadOnly conf,
-        IL.cfInputVars     = inputVars,
-        IL.cfOutputVars    = outputVars,
-        IL.cfExtraVars     = extraVars,
-        IL.cfPreCondition  = iterativePreCond,
-        IL.cfPostCondition = iterativePostCond }
+        IL.cfIntRange        = cfIntRange conf,
+        IL.cfTimeMax         = cfTimeMax conf,
+        IL.cfLineLimitMax    = cfLineLimitMax conf,
+        IL.cfConstants       = cfConstants conf,
+        IL.cfDisallow        = cfDisallow conf,
+        IL.cfIfStatementsMax = cfIfStatementsMax conf,
+        IL.cfWhileLoopsMax   = cfWhileLoopsMax conf,
+        IL.cfConfFile        = cfConfFile conf,
+        IL.cfThreads         = cfThreads conf,
+        IL.cfEchoClingo      = cfEchoClingo conf,
+        IL.cfEchoASP         = cfEchoASP conf,
+        IL.cfInteractive     = cfInteractive conf,
+        IL.cfLogicVars       = cfLogicVars conf,
+        IL.cfReadOnly        = cfReadOnly conf,
+        IL.cfInputVars       = inputVars,
+        IL.cfOutputVars      = outputVars,
+        IL.cfExtraVars       = extraVars,
+        IL.cfPreCondition    = iterativePreCond,
+        IL.cfPostCondition   = iterativePostCond }
     Program lineInstrs <- iterativeLearnConf iterativeConf
 
     putStrLn ""

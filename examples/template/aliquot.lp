@@ -3,8 +3,8 @@
 time_limit(15).
 int_range(0, ceiling).
 
-con(0..3).
-disallow_feature(div; sub; mul).
+constant(0..3).
+disallow_feature(div; sub; mul; while).
 
 program_variable(x; d; t; a).
 logic_variable(d0).
@@ -13,9 +13,12 @@ read_only_variable(x).
 while_max(1).
 
 template(1, pre("X > 0")).
-template(2, mid("partial_divisor_sum(A, X, D), A == 1, X > 0")).
-template(2, mid("divisor_sum(X, D), D0=D")).
-template(3, post("T==0:prime(X), T==1:deficient(X):not prime(X), T==2:perfect(X), T==3:excessive(X)")).
+template(2, while(lt(var(a), var(x)))).
+template(3, inv("partial_divisor_sum(A, X, D), X > 0")).
+template(4, var("A", increasing)).
+template(5, end_while).
+template(6, mid("divisor_sum(X, D), D0=D")).
+template(7, post("T==0:prime(X), T==1:deficient(X):not prime(X), T==2:perfect(X), T==3:excessive(X)")).
 
 % Domain-specific predicates:
 divisor_sum(X, D) :-

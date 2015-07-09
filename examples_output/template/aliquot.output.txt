@@ -1,0 +1,433 @@
+[jjc311@potoo01:~/ws/main]$ ./TemplateLearn.hs -ec -j4 ../examples/template/aliquot.lp 
+Synthesising the program fragment between conditions:
+   Pre:  X > 0.
+   Post: partial_divisor_sum(A, X, D), X > 0.
+Searching for a program with 0-3 lines satisfying 0 example(s)...
+0-> Answer: 1
+0-> 
+0-> SATISFIABLE
+Found the following program:
+   (empty program)
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,10) counter_in(d,10) counter_in(a,10) run_var_out(counter,x,10) run_var_out(counter,d,10) run_var_out(counter,a,10) postcon(0,1) postcon(1,2) postcon(3,4) postcon(3,3) postcon(8,10) postcon(8,9) postcon(8,8) postcon(8,7) postcon(8,6) postcon(3,5) counter_out(a,10) counter_out(d,10) counter_out(x,10) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    a=10, d=10, x=10
+   Expected: a=1, d=0 | a=2, d=1 | a=3, d=3 | a=4, d=3 | a=5, d=3 | ...
+   Output:   a=10, d=10
+Searching for a program with 0-3 lines satisfying 1 example(s)...
+0-> UNSATISFIABLE
+1-> UNSATISFIABLE
+2-> Answer: 1
+2-> line_instr(2,set(a,mod(con(2),var(x)))) line_instr(1,set(d,mod(var(a),con(3)))) 
+2-> SATISFIABLE
+Found the following program:
+   1. d = a % 3
+   2. a = 2 % x
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,10) run_does_not_halt(counter) run_var_out(counter,x,10) run_var_out(counter,d,unset) run_var_out(counter,a,unset) postcon(0,1) postcon(1,2) postcon(3,4) postcon(3,3) postcon(8,10) postcon(8,9) postcon(8,8) postcon(8,7) postcon(8,6) postcon(3,5) counter_out(a,unset) counter_out(d,unset) counter_out(x,10) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    x=10
+   Expected: a=1, d=0 | a=2, d=1 | a=3, d=3 | a=4, d=3 | a=5, d=3 | ...
+   Output:   (none)
+Searching for a program with 2-5 lines satisfying 2 example(s)...
+2-> Answer: 1
+2-> line_instr(2,set(d,mod(con(3),var(a)))) line_instr(1,set(a,mod(con(2),var(x)))) 
+2-> SATISFIABLE
+Found the following program:
+   1. a = 2 % x
+   2. d = 3 % a
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,2) run_does_not_halt(counter) run_var_out(counter,a,0) run_var_out(counter,x,2) run_var_out(counter,d,unset) postcon(0,1) postcon(1,2) counter_out(d,unset) counter_out(x,2) counter_out(a,0) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    x=2
+   Expected: a=1, d=0 | a=2, d=1
+   Output:   a=0
+Searching for a program with 2-5 lines satisfying 3 example(s)...
+2-> Answer: 1
+2-> line_instr(2,set(d,mod(con(3),var(a)))) line_instr(1,set(a,con(2))) 
+2-> SATISFIABLE
+Found the following program:
+   1. a = 2
+   2. d = 3 % a
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,1) run_var_out(counter,a,2) run_var_out(counter,d,1) run_var_out(counter,x,1) postcon(0,1) counter_out(x,1) counter_out(d,1) counter_out(a,2) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    x=1
+   Expected: a=1, d=0
+   Output:   a=2, d=1
+Searching for a program with 2-5 lines satisfying 4 example(s)...
+2-> Answer: 1
+2-> line_instr(2,set(a,con(1))) line_instr(1,set(d,con(0))) 
+2-> SATISFIABLE
+Found the following program:
+   1. d = 0
+   2. a = 1
+Searching for a counterexample to falsify the postcondition...
+--> UNSATISFIABLE
+Success: the postcondition could not be falsified.
+
+Synthesising the program fragment between conditions:
+   Pre:  partial_divisor_sum(A, X, D), X > 0, V1 = A, A<X.
+   Post: partial_divisor_sum(A, X, D), X > 0, V2 = A, V2 > V1.
+Searching for a program with 0-3 lines satisfying 0 example(s)...
+0-> Answer: 1
+0-> 
+0-> SATISFIABLE
+Found the following program:
+   (empty program)
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,2) counter_in(v1,1) counter_in(d,0) counter_in(a,1) run_var_out(counter,x,2) run_var_out(counter,v1,1) run_var_out(counter,d,0) run_var_out(counter,a,1) postcon(1,2) counter_out(a,1) counter_out(d,0) counter_out(v1,1) counter_out(x,2) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    a=1, d=0, v1=1, x=2
+   Expected: a=2, d=1
+   Output:   a=1, d=0
+Searching for a program with 0-3 lines satisfying 1 example(s)...
+0-> UNSATISFIABLE
+1-> UNSATISFIABLE
+2-> Answer: 1
+2-> line_instr(2,set(d,mod(con(3),var(a)))) line_instr(1,set(a,mod(var(x),con(3)))) 
+2-> SATISFIABLE
+Found the following program:
+   1. a = x % 3
+   2. d = 3 % a
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,3) counter_in(v1,2) counter_in(d,1) counter_in(a,2) run_does_not_halt(counter) run_var_out(counter,a,0) run_var_out(counter,x,3) run_var_out(counter,v1,2) run_var_out(counter,d,unset) postcon(1,3) counter_out(d,unset) counter_out(v1,2) counter_out(x,3) counter_out(a,0) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    a=2, d=1, v1=2, x=3
+   Expected: a=3, d=1
+   Output:   a=0
+Searching for a program with 2-5 lines satisfying 2 example(s)...
+2-> Answer: 1
+2-> line_instr(2,set(d,mod(con(1),var(a)))) line_instr(1,set(a,add(var(a),con(1)))) 
+2-> SATISFIABLE
+Found the following program:
+   1. a = a + 1
+   2. d = 1 % a
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,4) counter_in(v1,3) counter_in(d,3) counter_in(a,3) run_var_out(counter,a,4) run_var_out(counter,d,1) run_var_out(counter,x,4) run_var_out(counter,v1,3) postcon(3,4) counter_out(v1,3) counter_out(x,4) counter_out(d,1) counter_out(a,4) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    a=3, d=3, v1=3, x=4
+   Expected: a=4, d=3
+   Output:   a=4, d=1
+Searching for a program with 2-5 lines satisfying 3 example(s)...
+2-> UNSATISFIABLE
+3-> Answer: 1
+3-> line_instr(3,set(a,add(var(a),con(1)))) line_instr(2,set(d,mod(var(a),con(3)))) line_instr(1,if(lt(var(a),con(2)),1)) 
+3-> SATISFIABLE
+Found the following program:
+   1. if (a < 2):
+   2.     d = a % 3
+   3. a = a + 1
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,4) counter_in(v1,2) counter_in(d,1) counter_in(a,2) run_var_out(counter,d,1) run_var_out(counter,v1,2) run_var_out(counter,x,4) run_var_out(counter,a,3) postcon(3,4) postcon(3,3) counter_out(a,3) counter_out(x,4) counter_out(v1,2) counter_out(d,1) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    a=2, d=1, v1=2, x=4
+   Expected: a=3, d=3 | a=4, d=3
+   Output:   a=3, d=1
+Searching for a program with 3-6 lines satisfying 4 example(s)...
+3-> UNSATISFIABLE
+4-> Answer: 1
+4-> line_instr(4,set(a,var(x))) line_instr(3,set(d,mod(con(3),var(x)))) line_instr(2,if(le(var(d),var(a)),1)) line_instr(1,set(a,mod(var(x),con(3)))) 
+4-> SATISFIABLE
+Found the following program:
+   1. a = x % 3
+   2. if (d <= a):
+   3.     d = 3 % x
+   4. a = x
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,3) counter_in(v1,1) counter_in(d,0) counter_in(a,1) run_var_out(counter,x,3) run_var_out(counter,v1,1) run_var_out(counter,d,0) run_var_out(counter,a,3) postcon(1,3) postcon(1,2) counter_out(a,3) counter_out(d,0) counter_out(v1,1) counter_out(x,3) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    a=1, d=0, v1=1, x=3
+   Expected: a=2, d=1 | a=3, d=1
+   Output:   a=3, d=0
+Searching for a program with 4-7 lines satisfying 5 example(s)...
+4-> Answer: 1
+4-> line_instr(4,set(d,mod(con(3),var(a)))) line_instr(3,if(lt(con(3),var(a)),1)) line_instr(2,set(a,var(x))) line_instr(1,set(d,con(1))) 
+4-> SATISFIABLE
+Found the following program:
+   1. d = 1
+   2. a = x
+   3. if (3 < a):
+   4.     d = 3 % a
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,5) counter_in(v1,3) counter_in(d,1) counter_in(a,3) run_var_out(counter,x,5) run_var_out(counter,v1,3) run_var_out(counter,a,5) run_var_out(counter,d,3) postcon(1,5) postcon(1,4) counter_out(d,3) counter_out(a,5) counter_out(v1,3) counter_out(x,5) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    a=3, d=1, v1=3, x=5
+   Expected: a=4, d=1 | a=5, d=1
+   Output:   a=5, d=3
+Searching for a program with 4-7 lines satisfying 6 example(s)...
+4-> Answer: 1
+4-> line_instr(4,set(a,var(x))) line_instr(3,set(d,mod(con(3),var(a)))) line_instr(2,if(le(var(a),var(x)),1)) line_instr(1,set(a,add(var(a),var(a)))) 
+4-> SATISFIABLE
+Found the following program:
+   1. a = a + a
+   2. if (a <= x):
+   3.     d = 3 % a
+   4. a = x
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,4) counter_in(v1,1) counter_in(d,0) counter_in(a,1) run_var_out(counter,x,4) run_var_out(counter,v1,1) run_var_out(counter,d,1) run_var_out(counter,a,4) postcon(3,4) postcon(3,3) postcon(1,2) counter_out(a,4) counter_out(d,1) counter_out(v1,1) counter_out(x,4) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    a=1, d=0, v1=1, x=4
+   Expected: a=2, d=1 | a=3, d=3 | a=4, d=3
+   Output:   a=4, d=1
+Searching for a program with 4-7 lines satisfying 7 example(s)...
+4-> Answer: 1
+4-> line_instr(4,set(d,mod(con(3),var(x)))) line_instr(3,if(lt(var(d),con(1)),1)) line_instr(2,set(a,var(x))) line_instr(1,set(d,mod(var(x),con(2)))) 
+4-> SATISFIABLE
+Found the following program:
+   1. d = x % 2
+   2. a = x
+   3. if (d < 1):
+   4.     d = 3 % x
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,6) counter_in(v1,4) counter_in(d,6) counter_in(a,4) run_var_out(counter,x,6) run_var_out(counter,v1,4) run_var_out(counter,a,6) run_var_out(counter,d,3) postcon(6,6) postcon(6,5) counter_out(d,3) counter_out(a,6) counter_out(v1,4) counter_out(x,6) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    a=4, d=6, v1=4, x=6
+   Expected: a=5, d=6 | a=6, d=6
+   Output:   a=6, d=3
+Searching for a program with 4-7 lines satisfying 8 example(s)...
+4-> Answer: 1
+4-> line_instr(4,set(a,add(var(a),con(1)))) line_instr(3,set(d,add(var(a),var(d)))) line_instr(2,if(lt(var(t),con(1)),1)) line_instr(1,set(t,mod(var(x),var(a)))) 
+4-> SATISFIABLE
+Found the following program:
+   1. t = x % a
+   2. if (t < 1):
+   3.     d = a + d
+   4. a = a + 1
+Searching for a counterexample to falsify the postcondition...
+--> UNSATISFIABLE
+Success: the postcondition could not be falsified.
+
+Synthesising the program fragment between conditions:
+   Pre:  partial_divisor_sum(A, X, D), X > 0, A>=X.
+   Post: divisor_sum(X, D), D0=D.
+Searching for a program with 0-3 lines satisfying 0 example(s)...
+0-> Answer: 1
+0-> 
+0-> SATISFIABLE
+Found the following program:
+   (empty program)
+Searching for a counterexample to falsify the postcondition...
+--> UNSATISFIABLE
+Success: the postcondition could not be falsified.
+
+Synthesising the program fragment between conditions:
+   Pre:  divisor_sum(X, D), D0=D.
+   Post: T==0:prime(X), T==1:deficient(X):not prime(X), T==2:perfect(X), T==3:excessive(X).
+Searching for a program with 0-3 lines satisfying 0 example(s)...
+0-> Answer: 1
+0-> 
+0-> SATISFIABLE
+Found the following program:
+   (empty program)
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,10) counter_in(t,10) counter_in(d0,8) counter_in(d,8) run_var_out(counter,x,10) run_var_out(counter,t,10) run_var_out(counter,d0,8) run_var_out(counter,d,8) postcon(1) counter_out(d,8) counter_out(d0,8) counter_out(t,10) counter_out(x,10) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    d=8, d0=8, t=10, x=10
+   Expected: t=1
+   Output:   t=10
+Searching for a program with 0-3 lines satisfying 1 example(s)...
+0-> UNSATISFIABLE
+1-> Answer: 1
+1-> line_instr(1,set(t,mod(var(t),con(3)))) 
+1-> SATISFIABLE
+Found the following program:
+   1. t = t % 3
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,10) counter_in(t,9) counter_in(d0,8) counter_in(d,8) run_var_out(counter,t,0) run_var_out(counter,d,8) run_var_out(counter,d0,8) run_var_out(counter,x,10) postcon(1) counter_out(x,10) counter_out(d0,8) counter_out(d,8) counter_out(t,0) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    d=8, d0=8, t=9, x=10
+   Expected: t=1
+   Output:   t=0
+Searching for a program with 1-4 lines satisfying 2 example(s)...
+1-> Answer: 1
+1-> line_instr(1,set(t,con(1))) 
+1-> SATISFIABLE
+Found the following program:
+   1. t = 1
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,7) counter_in(d0,1) counter_in(d,1) run_var_out(counter,t,1) run_var_out(counter,d,1) run_var_out(counter,d0,1) run_var_out(counter,x,7) postcon(0) counter_out(x,7) counter_out(d0,1) counter_out(d,1) counter_out(t,1) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    d=1, d0=1, x=7
+   Expected: t=0
+   Output:   t=1
+Searching for a program with 1-4 lines satisfying 3 example(s)...
+1-> Answer: 1
+1-> line_instr(1,set(t,mod(con(1),var(d)))) 
+1-> SATISFIABLE
+Found the following program:
+   1. t = 1 % d
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,6) counter_in(d0,6) counter_in(d,6) run_var_out(counter,t,1) run_var_out(counter,d,6) run_var_out(counter,d0,6) run_var_out(counter,x,6) postcon(2) counter_out(x,6) counter_out(d0,6) counter_out(d,6) counter_out(t,1) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    d=6, d0=6, x=6
+   Expected: t=2
+   Output:   t=1
+Searching for a program with 1-4 lines satisfying 4 example(s)...
+1-> UNSATISFIABLE
+2-> Answer: 1
+2-> line_instr(2,set(t,mod(var(d),con(3)))) line_instr(1,set(d,add(var(d),con(2)))) 
+2-> SATISFIABLE
+Found the following program:
+   1. d = d + 2
+   2. t = d % 3
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,9) counter_in(d0,4) counter_in(d,4) run_var_out(counter,d,6) run_var_out(counter,t,0) run_var_out(counter,x,9) run_var_out(counter,d0,4) postcon(1) counter_out(d0,4) counter_out(x,9) counter_out(t,0) counter_out(d,6) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    d=4, d0=4, x=9
+   Expected: t=1
+   Output:   t=0
+Searching for a program with 2-5 lines satisfying 5 example(s)...
+2-> UNSATISFIABLE
+3-> Answer: 1
+3-> line_instr(3,set(t,con(2))) line_instr(2,if(le(var(x),var(d)),1)) line_instr(1,set(t,mod(con(1),var(d)))) 
+3-> SATISFIABLE
+Found the following program:
+   1. t = 1 % d
+   2. if (x <= d):
+   3.     t = 2
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,1) counter_in(d0,0) counter_in(d,0) run_does_not_halt(counter) run_var_out(counter,d,0) run_var_out(counter,d0,0) run_var_out(counter,x,1) run_var_out(counter,t,unset) postcon(1) counter_out(t,unset) counter_out(x,1) counter_out(d0,0) counter_out(d,0) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    d=0, d0=0, x=1
+   Expected: t=1
+   Output:   (none)
+Searching for a program with 3-6 lines satisfying 6 example(s)...
+3-> UNSATISFIABLE
+5-> Answer: 1
+5-> line_instr(5,set(t,mod(var(a),con(2)))) line_instr(4,set(a,add(var(d),con(1)))) line_instr(3,if(lt(var(d),var(x)),2)) line_instr(2,set(t,mod(con(2),var(d)))) line_instr(1,if(le(var(x),var(d)),1)) 
+5-> SATISFIABLE
+4-> Answer: 1
+4-> line_instr(4,set(t,mod(var(a),con(2)))) line_instr(3,set(a,add(var(d),con(1)))) line_instr(2,if(lt(var(d),var(x)),2)) line_instr(1,set(t,con(2))) 
+4-> SATISFIABLE
+Found the following program:
+   1. t = 2
+   2. if (d < x):
+   3.     a = d + 1
+   4.     t = a % 2
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,8) counter_in(d0,7) counter_in(d,7) run_var_out(counter,t,0) run_var_out(counter,a,8) run_var_out(counter,x,8) run_var_out(counter,d0,7) run_var_out(counter,d,7) postcon(1) counter_out(d,7) counter_out(d0,7) counter_out(x,8) counter_out(a,8) counter_out(t,0) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    d=7, d0=7, x=8
+   Expected: t=1
+   Output:   t=0
+Searching for a program with 4-7 lines satisfying 7 example(s)...
+6-> Answer: 1
+6-> line_instr(6,set(t,mod(con(2),var(x)))) line_instr(5,if(le(var(x),var(d)),1)) line_instr(4,set(t,mod(con(1),var(d)))) line_instr(3,if(lt(con(0),var(d)),1)) line_instr(2,set(t,con(1))) line_instr(1,if(lt(var(d),con(2)),1)) 
+6-> SATISFIABLE
+7-> Answer: 1
+7-> line_instr(7,set(t,add(var(d),con(1)))) line_instr(6,set(d,mod(con(1),var(x)))) line_instr(5,if(lt(var(a),con(1)),2)) line_instr(4,set(t,mod(con(1),var(a)))) line_instr(3,if(lt(con(0),var(a)),1)) line_instr(2,set(a,mod(var(d),var(x)))) line_instr(1,set(a,mod(con(1),var(x)))) 
+7-> SATISFIABLE
+5-> Answer: 1
+5-> line_instr(5,set(t,mod(var(a),var(d)))) line_instr(4,set(a,add(var(a),con(2)))) line_instr(3,set(d,add(var(x),con(1)))) line_instr(2,if(le(var(x),var(a)),2)) line_instr(1,set(a,add(var(d),con(1)))) 
+5-> SATISFIABLE
+4-> UNSATISFIABLE
+Found the following program:
+   1. a = d + 1
+   2. if (x <= a):
+   3.     d = x + 1
+   4.     a = a + 2
+   5. t = a % d
+Searching for a counterexample to falsify the postcondition...
+--> Answer: 1
+--> counter_in(x,2) counter_in(d0,1) counter_in(d,1) run_var_out(counter,a,4) run_var_out(counter,d,3) run_var_out(counter,d0,1) run_var_out(counter,x,2) run_var_out(counter,t,1) postcon(0) counter_out(t,1) counter_out(x,2) counter_out(d0,1) counter_out(d,3) counter_out(a,4) 
+--> Optimization: 0 
+--> OPTIMUM FOUND
+Found the following counterexample:
+   Input:    d=1, d0=1, x=2
+   Expected: t=0
+   Output:   t=1
+Searching for a program with 5-8 lines satisfying 8 example(s)...
+8-> Answer: 1
+8-> line_instr(8,set(t,mod(con(3),var(t)))) line_instr(7,set(t,add(var(d),con(1)))) line_instr(6,if(le(var(d),con(3)),2)) line_instr(5,set(t,mod(con(2),var(x)))) line_instr(4,set(d,mod(con(1),var(d)))) line_instr(3,if(lt(var(d),var(x)),1)) line_instr(2,set(d,add(var(d),var(x)))) line_instr(1,if(lt(var(d),con(1)),1)) 
+8-> SATISFIABLE
+6-> Answer: 1
+6-> line_instr(6,set(t,mod(con(2),var(d)))) line_instr(5,if(lt(var(a),con(1)),1)) line_instr(4,set(t,con(1))) line_instr(3,set(d,add(var(a),var(d)))) line_instr(2,set(a,mod(var(x),var(d)))) line_instr(1,if(lt(con(0),var(d)),2)) 
+6-> SATISFIABLE
+7-> Answer: 1
+7-> line_instr(7,set(t,mod(var(d),var(x)))) line_instr(6,if(lt(var(x),var(d)),1)) line_instr(5,set(t,mod(var(a),con(2)))) line_instr(4,set(d,add(var(d),var(t)))) line_instr(3,set(a,add(var(d),con(1)))) line_instr(2,set(t,mod(con(2),var(x)))) line_instr(1,if(le(var(d),var(x)),3)) 
+7-> SATISFIABLE
+5-> Answer: 1
+5-> line_instr(5,set(t,mod(con(3),var(t)))) line_instr(4,if(lt(var(d),var(x)),1)) line_instr(3,set(t,mod(con(2),var(x)))) line_instr(2,if(lt(con(1),var(d)),1)) line_instr(1,set(t,add(var(d),con(2)))) 
+5-> SATISFIABLE
+Found the following program:
+   1. t = d + 2
+   2. if (1 < d):
+   3.     t = 2 % x
+   4. if (d < x):
+   5.     t = 3 % t
+Searching for a counterexample to falsify the postcondition...
+--> UNSATISFIABLE
+Success: the postcondition could not be falsified.
+
+The following program satisfies all conditions of the template:
+   1. d = 0
+   2. a = 1
+   3. while (a < x):
+   4.     t = x % a
+   5.     if (t < 1):
+   6.         d = a + d
+   7.     a = a + 1
+   8. end_while
+   9. t = d + 2
+  10. if (1 < d):
+  11.     t = 2 % x
+  12. if (d < x):
+  13.     t = 3 % t
