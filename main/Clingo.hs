@@ -74,7 +74,7 @@ runClingo options inputs = do
             CICode code -> return code
             CIFile path -> return $ "#include \"" ++ path ++ "\"."
         when (echoInput) $ do
-            let code' = unlines $ do
+            code' <- return . unlines $ do
                 line <- lines code
                 let prefix = maybe "<-- " (++ "<- ") (rcIdentifier options)
                 return $ ansiDarkGreen ++ prefix ++ line ++ ansiClear

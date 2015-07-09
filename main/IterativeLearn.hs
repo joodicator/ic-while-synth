@@ -343,10 +343,10 @@ findProgramASP exs lims conf
     exampleLines = do
         example <- exs
         let (id, Input inps) = (exID example, exInput example)
-        let ins = do
+        ins <- return $ do
             (var, val) <- inps
             return $ "in(" ++ id ++ "," ++ var ++ "," ++ show val ++ ")."
-        let outs = do
+        outs <- return $ do
             UserExample{ exOutput=Output outps } <- return example
             (var, val) <- outps
             return $ "out(" ++ id ++ "," ++ var ++ "," ++ show val ++ ")."
@@ -387,17 +387,17 @@ findCounterexample prog conf = do
     result <- runClingoConf [CICode code] Nothing conf
     case result of
         CRSatisfiable (answer : _) -> do
-            let inputs = do
+            inputs <- return $ do
                 Fact (Name "counter_in") args <- answer
                 let [TFun (Name name) [], TInt value] = args
                 guard $ name `elem` cfInputVars conf
                 return (name, value)
-            let outputs = do
+            outputs <- return $ do
                 Fact (Name "counter_out") args <- answer
                 [TFun (Name name) [], TInt value] <- [args]
                 guard $ name `elem` cfOutputVars conf
                 return (name, value)
-            let expected = do
+            expected <- return $ do
                 Fact (Name "postcon") args <- answer
                 let names = [v | v <- outputVars,
                              ("Out_"++v) `isFreeIn` postCond]
