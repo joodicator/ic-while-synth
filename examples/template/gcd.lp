@@ -7,16 +7,14 @@ constant(0).
 disallow_feature(mul; div; add; sub).
 
 program_variable(x; y; g).
-logic_variable(x0; y0; y1).
+logic_variable(gg).
 
-template(1, pre("X+Y > 0, X0 = X, Y0 = Y")).
-template(2, mid("gcd(X,Y,G1), gcd(X0,Y0,G1), X0+Y0 > 0, X+Y > 0")).
-template(3, while(gt(var(y), con(0)))).
-template(4, mid("gcd(X,Y,G1), gcd(X0,Y0,G1), Y > 0, Y1 = Y, X0+Y0 > 0, X+Y > 0")).
-template(5, mid("gcd(X,Y,G1), gcd(X0,Y0,G1), Y < Y1, X0+Y0 > 0, X+Y > 0")).
-template(6, end_while).
-template(7, mid("gcd(X,Y,G1), gcd(X0,Y0,G1), Y <= 0, X0+Y0 > 0, X+Y > 0")).
-template(8, post("gcd(X0,Y0,G)")).
+template(1, pre("X+Y>0, gcd(X,Y,Gg)")).
+template(2, while(gt(var(y), con(0)))).
+template(3, inv("gcd(X,Y,Gg)")).
+template(4, var("Y", dec)).
+template(5, end_while).
+template(6, post("G=Gg")).
 
 % Domain-specific predicates:
 gcd(X, Y, G) :-

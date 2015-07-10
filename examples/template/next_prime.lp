@@ -4,22 +4,24 @@
 int_range(0,ceiling).
 time_limit(25).
 constant(0; 1).
-disallow_feature(div; mul; sub).
+disallow_feature(div; mul; sub; while).
 
 while_max(1).
 if_max(1).
 
 program_variable(p; a; b).
-logic_variable(p0; p1; q).
+logic_variable(p0; q).
 
-template(1, pre("prime(P), P0=P, next_prime(P,Q)")).
-template(2, mid("next_prime(P0,Q), A>0:P==Q, A<=0:P<Q, P0<=P, P<=Q, prime(P0)")).
-template(3, instr(while(le(var(a), con(0)), auto))).
-template(4, mid("next_prime(P0,Q), A>0:P==Q, A<=0:P<Q, P0<=P, P<=Q, prime(P0), A<=0, P1=P")).
-template(5, mid("next_prime(P0,Q), A>0:P==Q, A<=0:P<Q, P0<=P, P<=Q, prime(P0), Q-P < Q-P1")).
-template(6, instr(end_while)).
-template(7, mid("next_prime(P0,Q), A>0:P==Q, A<=0:P<Q, P0<=P, P<=Q, prime(P0), A>0")).
-template(8, post("prime(P), P > P0, not prime(Q) : Q=P0+1..P-1")).
+template( 1, pre("prime(P), next_prime(P,Q), P0=P")).
+template( 2, while(gt(var(a), con(0)))).
+template( 3,   inv("A==0 : P==Q, A>0 : P!=Q, P0<=P,P<=Q")).
+template( 4,   var("P", increasing)).
+template( 5,   while(gt(var(a), con(0)))).
+template( 6,     inv("P #mod K != 0 : K=2..B-1, A>0 : P #mod B != 0, A<=0 : P #mod B == 0, 1<B,B<=P")).
+template( 7,     var("B", increasing)).
+template( 8,   end_while).
+template( 9, end_while).
+template(10, post("P == Q")).
 
 % Domain-specific predicates:
 prime(N) :- N=2..ceiling, N #mod K != 0 : K=2..N-1.

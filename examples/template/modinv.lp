@@ -11,14 +11,14 @@ if_statements_max(2).
 
 program_variable(x; y; n; m).
 read_only_variable(x; n).
-logic_variable(x0; n0; y1).
+logic_variable(x0; n0; xi).
 
-template(1, pre("1<N, N<=10, 0<X,X<N, gcd(X,N,1), X0=X, N0=N")).
+template(1, pre("1<N,N<=10, 0<X,X<N, gcd(X,N,1), modinv(X,N,Xi)")).
 template(2, while(lt(var(m), var(n)))).
-template(3, inv("Y<=Xi, M<N:Y<Xi, M==N:Y>=Xi, modinv(X0,N0,Xi), N<=10,X=X0,N=N0")).
+template(3, inv("Y<=Xi, M<N : Y<Xi, M==N : Y==Xi")).
 template(4, var("Y", increasing)).
 template(5, end_while).
-template(6, post("modinv(X0,N0,Y)")).
+template(6, post("Y == Xi")).
 
 % Domain-specific predicates:
 modinv(X, N, Y) :-

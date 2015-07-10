@@ -18,6 +18,7 @@ import While
 --------------------------------------------------------------------------------
 type Variable  = String
 type Condition = String
+type Lexeme    = String
 
 --------------------------------------------------------------------------------
 -- Conversion to and from Conditions.
@@ -44,6 +45,34 @@ exprToCond expr = case expr of
 --------------------------------------------------------------------------------
 -- Traversal of various components of Conditions.
 
+traverseFreeVariables
+  :: Applicative f => (Variable -> f Variable) -> Condition -> f Condition
+traverseFreeVariables act
+  = traverseLexemes $ \lexeme -> case lexeme of
+        c:_ | isUpper c -> act  lexeme
+        _               -> pure lexeme
+
+traverseConjuncts
+  :: Applicative f => (Condition -> f Condition) -> Condition -> f Condition
+traverseConjuncts act
+  = fmap reassemble . traverse act . map trim . conjuncts . otoList . Lexemes
+  where
+    reassemble = intercalate ", " . filter (not . all isSpace)
+    trim = dropWhile isSpace . reverse . dropWhile isSpace . reverse
+    conjuncts :: [Lexeme] -> [Condition]
+    conjuncts xs = case xs of
+        "(" : (endParen -> (h, conjuncts -> h' : t)) -> ('(':h ++ h') : t
+        "," : (conjuncts -> t)                       -> ""            : t
+        x   : (conjuncts -> h : t)                   -> (x ++ h)      : t
+        []                                           -> [""]
+        _                                            -> error "impossible"
+    endParen :: [Lexeme] -> (String, [Lexeme])
+    endParen xs = case xs of
+        "(" : (endParen -> (h, t)) -> ('(':h, t)
+        ")" : xs                   -> (")",   xs)
+        x   : (endParen -> (h, t)) -> (x++h,  t)
+        _                          -> error "impossible"
+
 traverseLexemes
   :: Applicative f => (String -> f String) -> Condition -> f Condition
 traverseLexemes act cond = case cond of
@@ -69,7 +98,7 @@ traverseLexemes act cond = case cond of
         -- A comment extending to the end of the line.
         act ('%' : comment)
     (sym -> Just (symbol, tail)) ->
-        -- An symbol of two or more characters.
+        -- A symbol of two or more characters.
         (++) <$> act symbol <*> traverseLexemes act tail
     symbol : tail ->
         -- A symbol of one character.
@@ -87,32 +116,9 @@ traverseLexemes act cond = case cond of
         c       : (com -> (h,t))              -> (c:h,         t)
         ""                                    -> ("",          "")
     sym s = listToMaybe $ do
-        p <- [":-", "<=", ">=", "!="]
+        p <- [":-", "<=", ">=", "!=", ".."]
         s <- maybeToList $ stripPrefix p s
         return (p, s)
-
-traverseFreeVariables
-  :: Applicative f => (Variable -> f Variable) -> Condition -> f Condition
-traverseFreeVariables act
-  = traverseLexemes $ \lexeme -> case lexeme of
-        var@((isUpper -> True) : _) -> act lexeme
-        _                           -> pure lexeme
-
-traverseConjuncts
-  :: Applicative f => (Condition -> f Condition) -> Condition -> f Condition
-traverseConjuncts act
-  = fmap (intercalate ", ") . traverse act . conjuncts . otoList . Lexemes
-  where
-    conjuncts = map trim . conjuncts'
-    trim = dropWhile isSpace . reverse . dropWhile isSpace . reverse
-    conjuncts' xs = case xs of
-        "(" : (endParen -> (h, conjuncts' -> h' : t)) -> (h ++ h') : t
-        "," : (conjuncts' -> t)                       -> ""        : t
-        x   : (conjuncts' -> h : t)                   -> (x ++ h)  : t
-        []                                            -> [""]
-    endParen xs = case xs of
-        "(" : (endParen -> (h, t)) -> ('(':h, t)
-        ")" : xs                   -> (")",   xs)
 
 -- The following functions are kept for (at least) backward-compatibility:
 
@@ -122,18 +128,24 @@ mapFreeVariables f
 
 subFreeVariable :: Variable -> Variable -> Condition -> Condition
 subFreeVariable v v'
-  = unVariables . omap (\u -> if u==v then v' else u) . Variables
+  = subFreeVariables [(v, v')]
+
+subFreeVariables :: [(Variable, Variable)] -> Condition -> Condition
+subFreeVariables subs
+  = mapFreeVariables $ \v -> fromMaybe v $ lookup v subs'
+  where subs' = [(headUp v, headUp v') | (v, v') <- subs]
 
 freeVariables :: Condition -> [Variable]
 freeVariables
-  = otoList . Variables
+  = nub . sort . otoList . Variables
 
 isFreeIn :: Variable -> Condition -> Bool
 isFreeIn var
-  = oany (== var) . Variables
+  = oany (== (headUp var)) . Variables
 
 --------------------------------------------------------------------------------
 -- MonoTraversable instances for Condition traversals.
+
 newtype Lexemes   = Lexemes   { unLexemes   :: Condition }
 newtype Variables = Variables { unVariables :: Condition }
 newtype Conjuncts = Conjuncts { unConjuncts :: Condition }
@@ -188,6 +200,7 @@ instance MonoTraversableDefault mono => MonoFunctor mono where
 
 --------------------------------------------------------------------------------
 -- Miscellaneous utilities.
+
 headMap :: (a -> a) -> [a] -> [a]
 headMap f (x : xs) = f x : xs
 headMap _ []       = []

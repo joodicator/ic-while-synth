@@ -79,9 +79,11 @@ readConfFacts facts conf
   = (readConfFacts' conf facts){
         cfTemplate    = template,
         cfProgramVars = tcProgramVars . teConf $ template,
-        cfLogicVars   = tcLogicVars   . teConf $ template }
+        cfLogicVars   = tcLogicVars   . teConf $ template,
+        cfReadOnly    = tcReadOnly    . teConf $ template }
   where
-    template = either error normaliseTemplate $ answerToTemplate facts
+    template  = either error id $ answerToTemplate facts
+
     readConfFacts' conf (fact : facts) = case fact of
         Fact (Name "int_range") [TInt imin, TInt imax] ->
             readConfFacts' (conf{ cfIntRange=(imin, imax) }) facts
@@ -91,8 +93,6 @@ readConfFacts facts conf
             readConfFacts' (conf{ cfLineLimitMax=Just lmax }) facts
         Fact (Name "constant") [TInt con] ->
             readConfFacts' (conf{ cfConstants=con : cfConstants conf }) facts
-        Fact (Name "read_only_variable") [TFun (Name var) []] ->
-            readConfFacts' (conf{ cfReadOnly=var : cfReadOnly conf }) facts
         Fact (Name "disallow_feature") [TFun (Name feat) []] ->
             readConfFacts' (conf{ cfDisallow=feat : cfDisallow conf }) facts
         Fact (Name "if_statements_max") [TInt fmax] ->
@@ -154,7 +154,27 @@ templateLearnConf conf
 -- satisfying the given template; otherwise, exits with failure.
 templateLearn :: Conf -> Template -> IO Program
 templateLearn conf tmpl@Template{ teParts=parts } = do
-    prog <- Program . program 1 <$> templateLearn' conf parts
+    putStrLn "The following template was specified:"
+    printTemplate tmpl
+    putStrLn ""
+
+    let tmpl' = normaliseTemplate $ tmpl
+    putStrLn "Which was expanded into the following 'normal' form:"
+    printTemplate tmpl'
+    putStrLn ""
+
+    let tmpl'' = completeTemplate $ tmpl'
+    putStrLn "Which was further expanded into the following 'complete' form:"
+    printTemplate tmpl''
+    putStrLn ""
+
+    let conf' = conf{
+        cfTemplate    = tmpl'',
+        cfProgramVars = tcProgramVars . teConf $ tmpl'',
+        cfLogicVars   = tcLogicVars   . teConf $ tmpl'',
+        cfReadOnly    = tcReadOnly    . teConf $ tmpl'' }
+
+    prog <- Program . program 1 <$> templateLearn' conf' (teParts tmpl'')
     putStrLn "The following program satisfies all conditions of the template:"
     printProgram prog
     return prog
@@ -191,7 +211,7 @@ templateLearn conf tmpl@Template{ teParts=parts } = do
 --------------------------------------------------------------------------------
 -- As templateLearn, but returns a list of instructions possibly containing
 -- 'auto' as the body-length parameter of while loops.
-templateLearn' :: Conf -> [TemplatePart] -> IO [Instruction]
+templateLearn' :: Conf -> [TePart] -> IO [Instruction]
 templateLearn' conf parts = case parts of
   TPInstr (TISet var expr) : tmpl' -> do
     let exprTerm = While.exprToTerm expr

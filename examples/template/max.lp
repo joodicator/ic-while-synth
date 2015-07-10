@@ -8,10 +8,11 @@ disallow(arithmetic).
 program_variable(x1; x2; x3; x4; x5; max).
 read_only_variable(x1; x2; x3; x4; x5).
 
-template(1, mid("max(X1,X2, Max)")).
-template(2, mid("max(X1,X2,X3, Max)")).
-template(3, mid("max(X1,X2,X3,X4, Max)")).
-template(4, post("max(X1,X2,X3,X4,X5, Max)")).
+template(1, pre("int(X1;X2;X3;X4;X5)")).
+template(2, mid("max(X1,X2, Max)")).
+template(3, mid("max(X1,X2,X3, Max)")).
+template(4, mid("max(X1,X2,X3,X4, Max)")).
+template(5, post("max(X1,X2,X3,X4,X5, Max)")).
 
 % Domain-specific predicates:
 dom(0..5).

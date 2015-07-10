@@ -14,10 +14,10 @@ while_max(1).
 
 template(1, pre("X > 0")).
 template(2, while(lt(var(a), var(x)))).
-template(3, inv("partial_divisor_sum(A, X, D), X > 0")).
+template(3, inv("partial_divisor_sum(A, X, D)")).
 template(4, var("A", increasing)).
 template(5, end_while).
-template(6, mid("divisor_sum(X, D), D0=D")).
+template(6, mid("divisor_sum(X, D)")).
 template(7, post("T==0:prime(X), T==1:deficient(X):not prime(X), T==2:perfect(X), T==3:excessive(X)")).
 
 % Domain-specific predicates:
