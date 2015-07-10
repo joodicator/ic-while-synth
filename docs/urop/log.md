@@ -1,3 +1,7 @@
+# Friday 10 July 2015
+
+Mostly experimented and thought of ways to improve the synthesiser, and ways to reason about its correctness. Came up with some ideas that could acted upon, which I have written up in (some) detail in [issue #4](https://github.com/JosephCrowe/ic-while-synth/issues/4).
+
 # Thursday 9 July 2015
 
 Implemented an algorithm to propagate information from later to earlier conditions in a template, fixing [issue #2](https://github.com/JosephCrowe/ic-while-synth/issues/2). Also added a user-readable display of the template in its various stages to the program output.
