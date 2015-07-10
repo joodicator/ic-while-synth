@@ -1,3 +1,15 @@
+# Thursday 9 July 2015
+
+Implemented an algorithm to propagate information from later to earlier conditions in a template, fixing [issue #2](https://github.com/JosephCrowe/ic-while-synth/issues/2). Also added a user-readable display of the template in its various stages to the program output.
+
+* The `diff` program used to motivate the problem can now be synthesised from the [original template](https://github.com/JosephCrowe/ic-while-synth/blob/28d9ffea1d5f4287afe2c611cdf6b7c0e5f7dd7d/examples/template/diff.lp), and produces the [desired program](https://github.com/JosephCrowe/ic-while-synth/blob/28d9ffea1d5f4287afe2c611cdf6b7c0e5f7dd7d/examples_output/template/diff.output.txt).
+
+* A more substantial example can be seen in the `gcd` program, which now requires a rather less complex [specification](https://github.com/JosephCrowe/ic-while-synth/blob/28d9ffea1d5f4287afe2c611cdf6b7c0e5f7dd7d/examples/template/gcd.lp) to produce the [correct program](https://github.com/JosephCrowe/ic-while-synth/blob/28d9ffea1d5f4287afe2c611cdf6b7c0e5f7dd7d/examples_output/template/gcd.output.txt).
+
+Of interest in both of the above examples might be the output at the beginning which shows the template being transformed from the format given by the user.
+
+Relevant commits: [6b73383](https://github.com/JosephCrowe/ic-while-synth/commit/6b733836be7ad8f084b9584055202fe4fa9bef94) [6216572](https://github.com/JosephCrowe/ic-while-synth/commit/62165728635a53e4107597714d5e7612bf5e239e)
+
 # Wednesday 8 July 2015
 
 Implemented transformation of templates containing (in)variants to templates containing just midconditions,  consequently allowing the user the specify their templates with less work.
