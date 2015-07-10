@@ -11,6 +11,7 @@ import Data.List
 import Data.Char
 import Data.MonoTraversable
 import Control.Monad
+import Control.Applicative
 
 --------------------------------------------------------------------------------
 -- The Template data type and its components:

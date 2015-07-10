@@ -1,0 +1,96 @@
+[jjc311@texel01:~/ws/main]$ ./TemplateLearn.hs ../examples/template/diff.lp 
+The following template was specified:
+[Program vars: x y z; Logic vars: x0 y0]
+   1. pre: X > Y, X0=X, Y0=Y.
+   2. mid: X=Y0, Y=X0.
+   3. post: X = X0-Y0, X > 0.
+
+Which was expanded into the following 'normal' form:
+[Program vars: x y z; Logic vars: x0 y0]
+   1. pre: X > Y, X0=X, Y0=Y.
+   2. mid: X=Y0, Y=X0.
+   3. post: X = X0-Y0, X > 0.
+
+Which was further expanded into the following 'complete' form:
+[Program vars: x y z; Logic vars: x0 x1 y0 y1]
+   1. pre: X > Y, X0=X, Y0=Y, X1=X, Y1=Y.
+   2. mid: X=Y0, Y=X0, X1 > Y1, X0=X1, Y0=Y1.
+   3. post: X = X0-Y0, X > 0.
+
+Synthesising the program fragment between conditions:
+   Pre:  X > Y, X0=X, Y0=Y, X1=X, Y1=Y.
+   Post: X=Y0, Y=X0, X1 > Y1, X0=X1, Y0=Y1.
+Searching for a program with 0 lines satisfying 0 example(s)...
+Found the following program:
+   (empty program)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x=10, x0=10, x1=10, y=9, y0=9, y1=9
+   Expected: x=9, y=10
+   Output:   x=10, y=9
+Searching for a program with 0 lines satisfying 1 example(s)...
+No such program found.
+Searching for a program with 1 lines satisfying 1 example(s)...
+No such program found.
+Searching for a program with 2 lines satisfying 1 example(s)...
+No such program found.
+Searching for a program with 3 lines satisfying 1 example(s)...
+Found the following program:
+   1. x = y - x
+   2. y = y - x
+   3. x = x + y
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x=10, x0=10, x1=10, y=-2, y0=-2, y1=-2
+   Expected: x=-2, y=10
+   Output:   y=-2
+Searching for a program with 3 lines satisfying 2 example(s)...
+Found the following program:
+   1. z = x
+   2. x = y % z
+   3. y = z
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x=1, x0=1, x1=1, y=-1, y0=-1, y1=-1
+   Expected: x=-1, y=1
+   Output:   x=0, y=1
+Searching for a program with 3 lines satisfying 3 example(s)...
+Found the following program:
+   1. z = y
+   2. y = x
+   3. x = z
+Searching for a counterexample to falsify the postcondition...
+Success: the postcondition could not be falsified.
+
+Synthesising the program fragment between conditions:
+   Pre:  X=Y0, Y=X0, X1 > Y1, X0=X1, Y0=Y1.
+   Post: X = X0-Y0, X > 0.
+Searching for a program with 0 lines satisfying 0 example(s)...
+Found the following program:
+   (empty program)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x=9, x0=10, x1=10, y=10, y0=9, y1=9
+   Expected: x=1
+   Output:   x=9
+Searching for a program with 0 lines satisfying 1 example(s)...
+No such program found.
+Searching for a program with 1 lines satisfying 1 example(s)...
+Found the following program:
+   1. x = y % x
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    x=-10, x0=-5, x1=-5, y=-5, y0=-10, y1=-10
+   Expected: x=5
+   Output:   x=-5
+Searching for a program with 1 lines satisfying 2 example(s)...
+Found the following program:
+   1. x = y - x
+Searching for a counterexample to falsify the postcondition...
+Success: the postcondition could not be falsified.
+
+The following program satisfies all conditions of the template:
+   1. z = y
+   2. y = x
+   3. x = z
+   4. x = y - x

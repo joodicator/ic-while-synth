@@ -11,7 +11,7 @@ logic_variable(gg).
 
 template(1, pre("X+Y>0, gcd(X,Y,Gg)")).
 template(2, while(gt(var(y), con(0)))).
-template(3, inv("gcd(X,Y,Gg)")).
+template(3, inv("gcd(X,Y,Gg), X+Y>0")).
 template(4, var("Y", dec)).
 template(5, end_while).
 template(6, post("G=Gg")).

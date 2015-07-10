@@ -10,6 +10,7 @@ import Data.Functor.Identity
 
 import Data.Monoid
 import Data.MonoTraversable
+import Data.Traversable
 import Control.Applicative
 
 import Clingo

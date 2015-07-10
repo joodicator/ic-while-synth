@@ -1,43 +1,81 @@
-[jjc311@pixel35:~/ws/main]$ time ./TemplateLearn.hs -j4 ../examples/template/gcd.lp 
+[jjc311@texel01:~/ws/main]$ time ./TemplateLearn.hs ../examples/template/gcd.lp 
+The following template was specified:
+[Program vars: g x y; Logic vars: gg]
+   1. pre: X+Y>0, gcd(X,Y,Gg).
+   2. while (y > 0):
+   3.     inv: gcd(X,Y,Gg), X+Y>0.
+   4.     var: Y; decreasing.
+   5. end_while
+   6. post: G=Gg.
+
+Which was expanded into the following 'normal' form:
+[Program vars: g x y; Logic vars: gg v0 v1]
+   1. pre: X+Y>0, gcd(X,Y,Gg).
+   2. mid: gcd(X,Y,Gg), X+Y>0.
+   3. while (y > 0):
+   4.     mid: gcd(X,Y,Gg), X+Y>0, V0=Y, Y>0.
+   5.     mid: gcd(X,Y,Gg), X+Y>0, V1=Y, V1<V0.
+   6. end_while
+   7. mid: gcd(X,Y,Gg), X+Y>0, Y<=0.
+   8. post: G=Gg.
+
+Which was further expanded into the following 'complete' form:
+[Program vars: g x y; Logic vars: gg v0 v1 x0 y0]
+   1. pre: X+Y>0, gcd(X,Y,Gg), X0=X, Y0=Y.
+   2. mid: gcd(X,Y,Gg), X+Y>0.
+   3. while (y > 0):
+   4.     mid: gcd(X,Y,Gg), X+Y>0, V0=Y, Y>0, X0+Y0>0, gcd(X0,Y0,Gg).
+   5.     mid: gcd(X,Y,Gg), X+Y>0, V1=Y, V1<V0.
+   6. end_while
+   7. mid: gcd(X,Y,Gg), X+Y>0, Y<=0, X0+Y0>0, gcd(X0,Y0,Gg).
+   8. post: G=Gg.
+
 Synthesising the program fragment between conditions:
-   Pre:  X+Y > 0, X0 = X, Y0 = Y.
-   Post: gcd(X,Y,G1), gcd(X0,Y0,G1), X0+Y0 > 0, X+Y > 0.
-Searching for a program with 0-3 lines satisfying 0 example(s)...
+   Pre:  X+Y>0, gcd(X,Y,Gg), X0=X, Y0=Y.
+   Post: gcd(X,Y,Gg), X+Y>0.
+Searching for a program with 0 lines satisfying 0 example(s)...
 Found the following program:
    (empty program)
 Searching for a counterexample to falsify the postcondition...
 Success: the postcondition could not be falsified.
 
 Synthesising the program fragment between conditions:
-   Pre:  gcd(X,Y,G1), gcd(X0,Y0,G1), Y > 0, Y1 = Y, X0+Y0 > 0, X+Y > 0.
-   Post: gcd(X,Y,G1), gcd(X0,Y0,G1), Y < Y1, X0+Y0 > 0, X+Y > 0.
-Searching for a program with 0-3 lines satisfying 0 example(s)...
+   Pre:  gcd(X,Y,Gg), X+Y>0, V0=Y, Y>0, X0+Y0>0, gcd(X0,Y0,Gg).
+   Post: gcd(X,Y,Gg), X+Y>0, V1=Y, V1<V0.
+Searching for a program with 0 lines satisfying 0 example(s)...
 Found the following program:
    (empty program)
 Searching for a counterexample to falsify the postcondition...
 Found the following counterexample:
-   Input:    x=10, x0=0, y=6, y0=2, y1=6
-   Expected: x=0, y=2 | x=2, y=0 | x=2, y=2 | x=2, y=4 | x=4, y=2 | ...
-   Output:   x=10, y=6
-Searching for a program with 0-3 lines satisfying 1 example(s)...
+   Input:    gg=6, v0=6, x=0, x0=0, y=6, y0=6
+   Expected: x=6, y=0
+   Output:   x=0, y=6
+Searching for a program with 0 lines satisfying 1 example(s)...
+No such program found.
+Searching for a program with 1 lines satisfying 1 example(s)...
+No such program found.
+Searching for a program with 2 lines satisfying 1 example(s)...
 Found the following program:
-   1. y = x % y
+   1. x = y
+   2. y = y % x
 Searching for a counterexample to falsify the postcondition...
 Found the following counterexample:
-   Input:    x=10, x0=0, y=1, y0=1, y1=1
-   Expected: x=1, y=0
+   Input:    gg=1, v0=2, x=3, x0=1, y=2, y0=0
+   Expected: x=0, y=1 | x=1, y=0 | x=1, y=1 | x=2, y=1 | x=3, y=1 | ...
+   Output:   x=2, y=0
+Searching for a program with 2 lines satisfying 2 example(s)...
+No such program found.
+Searching for a program with 3 lines satisfying 2 example(s)...
+Found the following program:
+   1. if (x < y):
+   2.     x = y
+   3. y = x % y
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Input:    gg=5, v0=5, x=10, x0=5, y=5, y0=0
+   Expected: x=5, y=0
    Output:   x=10, y=0
-Searching for a program with 1-4 lines satisfying 2 example(s)...
-Found the following program:
-   1. g = x
-   2. x = y % g
-   3. y = g % x
-Searching for a counterexample to falsify the postcondition...
-Found the following counterexample:
-   Input:    x=0, x0=2, y=2, y0=0, y1=2
-   Expected: x=2, y=0
-   Output:   y=2
-Searching for a program with 3-6 lines satisfying 3 example(s)...
+Searching for a program with 3 lines satisfying 3 example(s)...
 Found the following program:
    1. g = y
    2. y = x % y
@@ -46,17 +84,19 @@ Searching for a counterexample to falsify the postcondition...
 Success: the postcondition could not be falsified.
 
 Synthesising the program fragment between conditions:
-   Pre:  gcd(X,Y,G1), gcd(X0,Y0,G1), Y <= 0, X0+Y0 > 0, X+Y > 0.
-   Post: gcd(X0,Y0,G).
-Searching for a program with 0-3 lines satisfying 0 example(s)...
+   Pre:  gcd(X,Y,Gg), X+Y>0, Y<=0, X0+Y0>0, gcd(X0,Y0,Gg).
+   Post: G=Gg.
+Searching for a program with 0 lines satisfying 0 example(s)...
 Found the following program:
    (empty program)
 Searching for a counterexample to falsify the postcondition...
 Found the following counterexample:
-   Input:    g=9, x=10, x0=0, y=0, y0=10
+   Input:    g=9, gg=10, x=10, x0=0, y=0, y0=10
    Expected: g=10
    Output:   g=9
-Searching for a program with 0-3 lines satisfying 1 example(s)...
+Searching for a program with 0 lines satisfying 1 example(s)...
+No such program found.
+Searching for a program with 1 lines satisfying 1 example(s)...
 Found the following program:
    1. g = x
 Searching for a counterexample to falsify the postcondition...
@@ -70,6 +110,6 @@ The following program satisfies all conditions of the template:
    5. end_while
    6. g = x
 
-real    0m8.233s
-user    0m8.175s
-sys     0m0.116s
+real	0m4.819s
+user	0m4.665s
+sys	0m0.129s
