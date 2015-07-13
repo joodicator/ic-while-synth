@@ -1,3 +1,9 @@
+# Monday 13 July 2015
+
+Started writing a report summarising the work done so far on the UROP placement. A work-in-progress version is available [here](http://www.doc.ic.ac.uk/~jjc311/while-synth/UROP_Report_WIP.pdf).
+
+Relevant commits: [e17f350](https://github.com/JosephCrowe/ic-while-synth/commit/e17f350970ba1b51bc3caa545aa5f1d2a4518b9b)
+
 # Friday 10 July 2015
 
 Mostly experimented and thought of ways to improve the synthesiser, and ways to reason about its correctness. Came up with some ideas that could acted upon, which I have written up in (some) detail in [issue #4](https://github.com/JosephCrowe/ic-while-synth/issues/4). 
