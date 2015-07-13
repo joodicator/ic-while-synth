@@ -1,0 +1,193 @@
+\documentclass[a4paper,twoside,notitlepage,12pt]{article}
+\usepackage{parskip}
+\usepackage[nottoc,numbib]{tocbibind}
+\usepackage{fullpage}
+\usepackage{hyperref}
+\usepackage{verbatim}
+\usepackage{fancyvrb}
+\usepackage{tabularx}
+
+
+\DefineVerbatimEnvironment{verbatim}{Verbatim}{
+    frame=single, baselinestretch=1}
+\makeatletter
+\addto@hook\every@verbatim{\small}
+\makeatother
+
+\renewcommand{\bibsection}{\section{\bibname}}
+\setcounter{tocdepth}{2}
+
+
+\begin{document}
+
+\begin{titlepage}
+\begin{center}
+    {\Large \bfseries Synthesis of Simple While Programs \\ using Answer Set Programming}
+
+    {\large UROP Project Status, 13 July 2015} \\[0.5cm]
+    
+    {\large Joseph Crowe} \texttt{<jjc311@imperial.ac.uk>}
+    
+    \url{http://www.doc.ic.ac.uk/~jjc311/while-synth}\\[2cm]
+
+    \tableofcontents
+\end{center}
+\end{titlepage}
+
+\section{Introduction to the Problem}
+
+The project is concerned with the automatic synthesis of computer programs in a simple 
+Turing-complete imperative programming language with integer arithmetic, branching, and
+looping, such as the following:
+
+\begin{verbatim}
+// Input x, a non-negative integer.
+s = 0;
+d = 1;
+while (d < x): {
+    m = x % d;
+    if (m < 1) {
+        s = s + d;
+    }
+    d = d + 1;
+}
+// Output s, the sum of the proper divisors of x.
+\end{verbatim}
+
+The details of this language are subject to change as the project progresses, but it is 
+conceptually the same as the basic imperative subset common to the C and Python 
+programming languages. The syntax and semantics are documented in Chapter 4 of 
+\cite{final}, as they were at the time of writing.
+
+The task is to provide a way to automatically synthesise such a program from a 
+specification given by the user, consisting of:
+
+\begin{enumerate}
+    \item A \emph{language bias} saying what syntactic elements are allowed to occur in 
+    the synthesised program: for example, what integer constants and arithmetic 
+    operators may be used, or how many \verb|if| and \verb|while| statements may 
+    occur, and how they may be structured; and \textbf{one or both} of:
+
+    \item A \emph{list of examples}, saying exactly what the output of the program 
+    should be when certain variables are initialised with certain input values. For 
+    example, the following, which specifies by example the above 
+    sum-of-divisors program:
+    
+    \begin{tabular}{| r || r | r | r | r | r | r | r | r | r | r | r | r |}
+        \hline
+        Input $x$  & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 9 & 10 & 11 & 12 \\
+        \hline
+        Output $s$ & 0 & 0 & 1 & 1 & 3 & 1 & 6 & 1 & 4 &  7 &  1 & 16 \\
+        \hline
+    \end{tabular}
+
+    \item A \emph{functional specification} written as logical propositions --- a 
+    \emph{precondition} which must hold for the inputs, at the beginning of the 
+    program, and a \emph{postcondition} which must hold for the outputs, at the end of 
+    the program --- saying exactly what the valid inputs for the program are and 
+    what output is expected for each such input. For example, the following, which 
+    again specifies $s$ to end as sum of the proper divisors $k$ of $x_0$:
+    
+    \begin{tabular}{|ll|}
+        \hline
+        Pre:  & $x > 0,\ x_0 = x$ \\
+        Post: & $s = \sum\{k : k|x_0,\ 0<k<x_0\}$ \\
+        \hline
+    \end{tabular}
+    
+\end{enumerate}
+
+\section{Summary of Previous Work}
+
+As this research placement is a continuation of an undergraduate final-year individual 
+project, there is an existing body of work that is being extended. This work is 
+described in more detail in \cite{final}, but a summary of what was produced will be 
+given here.
+
+Note: this section will refer to files in the project's git repository as they they 
+were at the end of the individual project, which can be seen using the following 
+\emph{tag} on GitHub:
+
+\begin{center} 
+    \url{https://github.com/JosephCrowe/ic-while-synth/tree/indiv_final/main}
+\end{center}
+
+\subsection{Program Simulator}
+
+An Answer Set Program, \verb|run.lp|, which computes execution traces of While 
+programs, was written to serve as a component for both \ref{sec:psynx} and 
+\ref{sec:pgenx}. Because of concerns relating to the grounding of the program, a 
+modified version is used in \verb|learn.lp| for \ref{sec:psynx} when synthesising 
+programs (however, it is possible this could be changed to avoid that duplication). For 
+details of the how \verb|run.lp| is implemented, refer to Section~4.3 of \cite{final}.
+
+\subsubsection{Input Format}
+
+Firstly, the simulator must be configured with the following ASP constants, to define 
+execution limits:
+
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\verb|#const time_max=TMX.| &
+If more than \verb|TMX| instructions are processed in a single execution trace, that 
+trace will fail and be considered to have not terminated. \\
+\hline
+\verb|#const int_min=IMN.| &
+If the value of any variable becomes less than \verb|IMN|, the current execution trace 
+will fail. \\
+\hline
+\verb|#const int_max=IMX.| &
+If the value of any variables becomes greater than \verb|IMX|, the current execution 
+trace will fail. \\
+\hline
+\end{tabularx}
+
+Secondly, the program itself is encoded by introducing several facts of the form
+\begin{verbatim}
+line_instr(N, I).
+\end{verbatim}
+where \verb|N| is a \emph{line number} starting at 1 and increasing by exactly 1 for
+each subsequent line, and \verb|I| is an \emph{instruction}, representing a syntactic
+element of the program of one of the following forms:
+
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\verb|set(V, E)| &
+Set variable \verb|V| is to the value of expression \verb|E| \\
+\hline
+\verb|if(B, L)| &
+Execute the next \verb|L| lines if and only if boolean guard \verb|B| holds \\
+\hline
+\verb|while(B, L)| &
+For as long as \verb|B| holds, repeatedly execute the next \verb|L| lines, which must 
+be immediately followed by \verb|end_while|. \\
+\hline
+\verb|end_while| &
+May only occur \verb|L| lines after a \verb|while(B, L)| instruction. Marks the point 
+where execution may return to the corresponding loop header. \\
+\hline
+\end{tabularx}
+
+\emph{Variables} are simply represented as nullary function symbols, e.g.\ \verb|x|, 
+\verb|y|,\ \verb|z|,\ etc, giving the name of the variable. For the syntax of boolean 
+guards and expressions, and commentary on why this representation was chosen, refer to 
+Section~4.2 of \cite{final}.
+
+\subsubsection{Output Format}
+
+\subsubsection{Invocation}
+
+\subsection{Synthesis of Programs from Examples} \label{sec:psynx}
+
+\subsection{Automatic Generation of Examples} \label{sec:pgenx}
+
+\section{Current Extensions}
+
+\begin{thebibliography}{9}
+    \bibitem{final}
+        Crowe, J. (2015).
+        Synthesis of Simple While Programs using Answer Set Programming (Final Report).
+        \url{http://www.doc.ic.ac.uk/~jjc311/while-synth/WS_FinalReport.pdf}
+\end{thebibliography}
+
+\end{document}
