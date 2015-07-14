@@ -10,9 +10,6 @@
 
 \DefineVerbatimEnvironment{verbatim}{Verbatim}{
     frame=single, baselinestretch=1}
-\makeatletter
-\addto@hook\every@verbatim{\small}
-\makeatother
 
 \renewcommand{\bibsection}{\section{\bibname}}
 \setcounter{tocdepth}{2}
@@ -104,6 +101,10 @@ project, there is an existing body of work that is being extended. This work is
 described in more detail in \cite{final}, but a summary of what was produced will be 
 given here.
 
+All Answer Set Programs referred to in this section are written for Clingo 3.0.5 
+\cite{clingo3}. They may work in earlier versions of Clingo 3, but will almost
+certainly not work in Clingo 4.
+
 Note: this section will refer to files in the project's git repository as they they 
 were at the end of the individual project, which can be seen using the following 
 \emph{tag} on GitHub:
@@ -173,11 +174,109 @@ where execution may return to the corresponding loop header. \\
 guards and expressions, and commentary on why this representation was chosen, refer to 
 Section~4.2 of \cite{final}.
 
+Finally, each execution trace must be assigned an identifier (which may be any ASP 
+term, and the initial values of relevant variables specified. If no traces are defined, 
+a default trace with identifier \verb|0| is used, which starts with all variables 
+uninitialised. In \verb|run.lp|, a trace is referred to as a \emph{run}, and the syntax 
+for defining one is:
+
+\begin{verbatim}
+in(R, V1, C1).
+in(R, V2, C2).
+...
+in(R, Vn, Cn).
+\end{verbatim}
+
+For the run with identifier \verb|R|, this initialises variable \verb|Vi| to the value 
+\verb|Ci| (which must be an integer respecting \verb|int_min| and \verb|int_max|) for 
+each \verb|i| from \verb|1| to \verb|n|.
+
 \subsubsection{Output Format}
+
+For each variable \verb|V| and run \verb|R|, the answer set of \verb|run.lp| will 
+contain a fact of one of the following forms:
+
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\verb|run_var_out(R, V, C_final)| &
+The final value of \verb|V| was the integer \verb|C_final|. \\
+\hline
+\verb|run_var_out(R, V, unset)| &
+\verb|V| was never set during this run. \\
+\hline
+\verb|run_does_not_halt(R)| &
+Due to timeout or some other error condition, the run did not successfully halt. \\
+\hline
+\end{tabularx}
 
 \subsubsection{Invocation}
 
+To execute a simulation task, include the relevant constants and facts in an Answer Set 
+Program before \verb|run.lp|. This could be done by concatenating the definitions with 
+\verb|run.lp|'s text, with an \verb|#include| directive, or by giving multiple 
+arguments to \verb|clingo|. An example of the second method is given below, for the 
+sum-of-divisors program given earlier in this document.
+
+\begin{verbatim}[samepage=true, fontsize=\footnotesize,
+                 label=run\_sum\_of\_divisors.lp]
+#const time_max=50.
+#const int_min=0.
+#const int_max=20.
+
+line_instr(1, set(s, con(0))).               % s = 0;
+line_instr(2, set(d, con(1))).               % d = 1;
+line_instr(3, while(lt(var(d), var(x)), 4)). % while (d < x) {
+line_instr(4, set(m, mod(var(x), var(d)))).  %     m = x % d;
+line_instr(5, if(lt(var(m), con(1)), 1)).    %     if (m < 1)
+line_instr(6, set(s, add(var(s), var(d)))).  %         s = s + d;
+line_instr(7, set(d, add(var(d), con(1)))).  %     d = d + 1;
+line_instr(8, end_while).                    % }
+
+in(r0,x,0). in(r1,x,1). in(r2,x,2). in(r3,x,3). in(r4,x,4). in(r5,x,5). in(r6,x,6).
+
+#include "run.lp".
+\end{verbatim}
+
+Running this with \verb|clingo| produces the following output (the list of facts has 
+been rearranged to be more easily readable, but is otherwise unchanged):
+
+\begin{verbatim}[samepage=true, fontsize=\footnotesize,
+                 label=clingo run\_sum\_of\_divisors.lp]
+Answer: 1
+run_var_out(r0,s,0) run_var_out(r0,x,0) run_var_out(r0,d,1) run_var_out(r0,m,unset)
+run_var_out(r1,s,0) run_var_out(r1,x,1) run_var_out(r1,d,1) run_var_out(r1,m,unset)
+run_var_out(r2,s,1) run_var_out(r2,x,2) run_var_out(r2,d,2) run_var_out(r2,m,0)
+run_var_out(r3,s,1) run_var_out(r3,x,3) run_var_out(r3,d,3) run_var_out(r3,m,1)
+run_var_out(r4,s,3) run_var_out(r4,x,4) run_var_out(r4,d,4) run_var_out(r4,m,1)
+run_var_out(r5,s,1) run_var_out(r5,x,5) run_var_out(r5,d,5) run_var_out(r5,m,1)
+run_var_out(r6,s,6) run_var_out(r6,x,6) run_var_out(r6,d,6) run_var_out(r6,m,1)
+SATISFIABLE
+
+Models      : 1     
+Time        : 36.300
+  Prepare   : 36.080
+  Prepro.   : 0.220
+  Solving   : 0.000
+\end{verbatim}
+
 \subsection{Synthesis of Programs from Examples} \label{sec:psynx}
+
+The basic form of program synthesis supported by the system takes a list of 
+input/output examples, and tries to synthesise a program \emph{of a fixed length}. This 
+is achieved by the ASP \verb|learn.lp|.
+
+A practical user interface is provided by \verb|IterativeLearn.hs|, which searches 
+incrementally for a program of (potentially) arbitrary length by repeatedly invoking 
+\verb|learn.lp|. The synthesis task is read from a user-written configuration file that 
+abstracts the details of the underlying ASP invocation.
+
+\subsubsection{Input Format}
+
+
+
+\subsubsection{Output Format}
+
+\subsubsection{Invocation}
 
 \subsection{Automatic Generation of Examples} \label{sec:pgenx}
 
@@ -185,9 +284,11 @@ Section~4.2 of \cite{final}.
 
 \begin{thebibliography}{9}
     \bibitem{final}
-        Crowe, J. (2015).
-        Synthesis of Simple While Programs using Answer Set Programming (Final Report).
-        \url{http://www.doc.ic.ac.uk/~jjc311/while-synth/WS_FinalReport.pdf}
+        Synthesis of Simple While Programs using Answer Set Programming (Final Report). 
+        \\ \url{http://www.doc.ic.ac.uk/~jjc311/while-synth/WS_FinalReport.pdf}
+    \bibitem{clingo3}
+        Clingo 3.0.5. \emph{The Potsdam Answer Set Solving Collection.}
+        \\ \url{http://sourceforge.net/projects/potassco/files/clingo/3.0.5}
 \end{thebibliography}
 
 \end{document}
