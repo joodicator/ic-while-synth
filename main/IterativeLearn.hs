@@ -100,7 +100,8 @@ defaultConf = Conf{
 readConfFile :: FilePath -> Conf -> IO Conf
 readConfFile filePath conf = do
     let options = runClingoOptions{ rcEchoStdout=False }
-    result <- runClingo options [CIFile filePath]
+    let code = "#const line_max=0."
+    result <- runClingo options [CICode code, CIFile filePath]
     case result of
         CRSatisfiable (answer:_) -> do
             let conf' = readConfFacts answer conf
@@ -191,7 +192,7 @@ readArgsFlag (arg : args) conf
   = let Just param = stripPrefix "-j" arg in
     readArgs args (conf{ cfThreads = read param })
   | "--threads=" `isPrefixOf` arg
-  = let Just param = stripPrefix "--threads" arg in
+  = let Just param = stripPrefix "--threads=" arg in
     readArgs args (conf{ cfThreads = read param })
   | otherwise
   = error $ "Unrecognised option: " ++ arg
