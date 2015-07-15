@@ -6,6 +6,7 @@
 \usepackage{verbatim}
 \usepackage{fancyvrb}
 \usepackage{tabularx}
+\usepackage{ltablex}
 
 \DefineVerbatimEnvironment{verbatim}{Verbatim}{
     frame=single, baselinestretch=1}
@@ -106,13 +107,8 @@ All Answer Set Programs referred to in this section are written for Clingo 3.0.5
 \cite{clingo3}. They may work in earlier versions of Clingo 3, but will almost
 certainly not work in Clingo 4.
 
-Note: this section will refer to files in the project's git repository as they they 
-were at the end of the individual project, which can be seen using the following 
-\emph{tag} on GitHub:
-
-\begin{center} 
-    \url{https://github.com/JosephCrowe/ic-while-synth/tree/indiv_final/main}
-\end{center}
+Files referred to in this section can be found in the project's GitHub repository at \\
+\url{https://github.com/JosephCrowe/ic-while-synth/tree/master/main}.
 
 \subsection{Program Simulator}
 
@@ -132,15 +128,15 @@ execution limits:
 \hline
 \verb|#const time_max=TMX.| &
 If more than \verb|TMX| instructions are processed in a single execution trace, that 
-trace will fail and be considered to have not terminated. \\
+trace will fail and be considered to have not terminated. \\*
 \hline
 \verb|#const int_min=IMN.| &
 If the value of any variable becomes less than \verb|IMN|, the current execution trace 
-will fail. \\
+will fail. \\*
 \hline
 \verb|#const int_max=IMX.| &
 If the value of any variables becomes greater than \verb|IMX|, the current execution 
-trace will fail. \\
+trace will fail. \\*
 \hline
 \end{tabularx}
 
@@ -155,18 +151,18 @@ element of the program of one of the following forms:
 \begin{tabularx}{\textwidth}{|l|X|}
 \hline
 \verb|set(V, E)| &
-Set variable \verb|V| is to the value of expression \verb|E| \\
+Set variable \verb|V| is to the value of expression \verb|E| \\*
 \hline
 \verb|if(B, L)| &
-Execute the next \verb|L| lines if and only if boolean guard \verb|B| holds \\
+Execute the next \verb|L| lines if and only if boolean guard \verb|B| holds \\*
 \hline
 \verb|while(B, L)| &
 For as long as \verb|B| holds, repeatedly execute the next \verb|L| lines, which must 
-be immediately followed by \verb|end_while|. \\
+be immediately followed by \verb|end_while|. \\*
 \hline
 \verb|end_while| &
 May only occur \verb|L| lines after a \verb|while(B, L)| instruction. Marks the point 
-where execution may return to the corresponding loop header. \\
+where execution may return to the corresponding loop header. \\*
 \hline
 \end{tabularx}
 
@@ -176,7 +172,7 @@ guards and expressions, and commentary on why this representation was chosen, re
 Section~4.2 of \cite{final}.
 
 Finally, each execution trace must be assigned an identifier (which may be any ASP 
-term, and the initial values of relevant variables specified. If no traces are defined, 
+term), and the initial values of relevant variables specified. If no traces are defined, 
 a default trace with identifier \verb|0| is used, which starts with all variables 
 uninitialised. In \verb|run.lp|, a trace is referred to as a \emph{run}, and the syntax 
 for defining one is:
@@ -200,13 +196,13 @@ contain a fact of one of the following forms:
 \begin{tabularx}{\textwidth}{|l|X|}
 \hline
 \verb|run_var_out(R, V, C_final)| &
-The final value of \verb|V| was the integer \verb|C_final|. \\
+The final value of \verb|V| was the integer \verb|C_final|. \\*
 \hline
 \verb|run_var_out(R, V, unset)| &
-\verb|V| was never set during this run. \\
+\verb|V| was never set during this run. \\*
 \hline
 \verb|run_does_not_halt(R)| &
-Due to timeout or some other error condition, the run did not successfully halt. \\
+Due to timeout or some other error condition, the run did not successfully halt. \\*
 \hline
 \end{tabularx}
 
@@ -218,6 +214,7 @@ Program before \verb|run.lp|. This could be done by concatenating the definition
 arguments to \verb|clingo|. An example of the second method is given below, for the 
 sum-of-divisors program given earlier in this document.
 
+\clearpage
 \begin{verbatim}[samepage=true, fontsize=\footnotesize,
                  label=run\_sum\_of\_divisors.lp]
 #const time_max=50.
@@ -241,8 +238,8 @@ in(r0,x,0). in(r1,x,1). in(r2,x,2). in(r3,x,3). in(r4,x,4). in(r5,x,5). in(r6,x,
 Running this with \verb|clingo| produces the following output (the list of facts has 
 been rearranged to be more easily readable, but is otherwise unchanged):
 
-\begin{verbatim}[samepage=true, fontsize=\footnotesize,
-                 label=clingo run\_sum\_of\_divisors.lp]
+\begin{verbatim}[samepage=true, fontsize=\footnotesize]
+$ clingo run_sum_of_divisors.lp
 Answer: 1
 run_var_out(r0,s,0) run_var_out(r0,x,0) run_var_out(r0,d,1) run_var_out(r0,m,unset)
 run_var_out(r1,s,0) run_var_out(r1,x,1) run_var_out(r1,d,1) run_var_out(r1,m,unset)
@@ -282,7 +279,7 @@ answer set examined to obtain the configuration:
 
 \begin{tabularx}{\textwidth}{|l|l|X|}
 \hline
-\textbf{Fact} & \textbf{Count} & \textbf{Description} \\
+\textbf{Fact} & \textbf{Count} & \textbf{Description} \endhead
 \hline
 \verb|int_range(Imin, Imax).| & $1$ &
 Only programs in which variable values remain in the inclusive interval 
@@ -334,6 +331,12 @@ The variable V may not be written to in the program. \\
 In the synthesised program, the instruction at line \verb|L| is fixed to 
 \verb|I|. \verb|L| may be written in terms of the constant \verb|line_max|, 
 which stands for the last line in the program. \\
+\hline
+\verb|disallow_feature(F).| & $0..$ &
+The given language feature is prevented from occurring in the program, where the 
+feature \verb|F| may be one of \verb|if|, \verb|while|, \verb|add|, \verb|sub|, 
+\verb|mul|, \verb|div|, \verb|mod|, or \verb|arithmetic|, where the latter stands for 
+all arithmetic operators as a shorthand. \\
 \hline
 \end{tabularx}
 
@@ -396,11 +399,126 @@ Note: due to a technical detail, it is currently necessary to run
 \verb|IterativeLearn.hs| from the same directory in which it resides, when 
 running it in interpreted mode.
 
+\verb|IterativeLearn.hs| also exposes an API allowing programmatic invocation of its 
+functionality via Haskell. Among others, the \verb|IterativeLearn| module contains the 
+following relevant exports:
+
+\begin{verbatim}[frame=none]
+iterativeLearnConf :: Conf -> IO Program
+readConfFile       :: FilePath -> Conf -> IO Conf
+defaultConf        :: Conf
+
+newtype Program = Program [LineInstr]
+type LineInstr  = Clingo.Fact
+\end{verbatim}
+
+\verb|iterativeLearnConf| takes a value of type \verb|Conf|, which represents the 
+ambient configuration of a synthesis task, and gives an \verb|IO| action 
+either resulting in a value of type \verb|Program| or terminating the process with an 
+error message.
+
+\verb|Program| is simply a \verb|newtype| wrapper around a list of \verb|line_instr| 
+facts represented as the type \verb|Fact| exported by the module \verb|Clingo|. See 
+\verb|Clingo.hs| for more information about this, and \verb|While.hs| for utilities
+capable of parsing such a representation.
+
+The default configuration is given by \verb|defaultConf|, but this contains some 
+undefined fields, so it is necessary to at least update it with respect to a 
+configuration file, using \verb|readConfFile|.
+
+A minimal Haskell program using this interface might be:
+
+\begin{verbatim}
+import qualified IterativeLearn as IL
+
+main = do
+    conf <- IL.readConfFile "config.lp" IL.defaultConf
+    prog <- IL.iterativeLearnConf conf
+    return () -- Do nothing with the generated program.
+\end{verbatim}
+
+It is acknowledged that an interface with fewer side-effects, perhaps using a function 
+\verb|:: Conf -> IO (Maybe Program)| combined with a configuration option to 
+suppress the default textual output, would be more useful; but this does not currently 
+exist.
+
 \subsubsection{Example Usage}
 
+Below is a configuration file written for \verb|IterativeLearn| specifying a synthesis 
+task for part of the sum-of-divisors program, where the remaining parts are given by 
+the user:
 
+\begin{verbatim}[samepage=true, fontsize=\footnotesize, label=sum\_of\_divisors\_ex.lp]
+int_range(0, 10).
+time_limit(40).
+line_limit_min(4).
+
+constant(1).
+disallow_feature(sub; div; mul; while).
+
+input_variable(x).
+output_variable(s).
+read_only_variable(x; d).
+extra_variable(d; m).
+
+ in(r1,x,1).  in(r2,x,2).  in(r3,x,3).  in(r4,x,4).  in(r5,x,5).  in(r6,x,6).
+out(r1,s,0). out(r2,s,1). out(r3,s,1). out(r4,s,3). out(r5,s,1). out(r6,s,6).
+
+preset_line_instr(1, set(s, con(0))).
+preset_line_instr(2, set(d, con(1))).
+preset_line_instr(3, while(lt(var(d), var(x)), line_max-4)).
+preset_line_instr(line_max-1, set(d, add(var(d), con(1)))).
+preset_line_instr(line_max, end_while).
+\end{verbatim}
+
+This specification is executed with \verb|IterativeLearn| on a machine with 4 CPU 
+cores, so we allow 4 concurrent threads. We also enable the display of Clingo's output 
+so we can see progress during concurrent batches (some lines are rearranged to fit on 
+this page):
+
+\begin{verbatim}[samepage=true, fontsize=\footnotesize]
+$ ./IterativeLearn.hs --threads=4 --echo-clingo sum_of_divisors_ex.lp
+Searching for a program with 4-7 lines satisfying 6 example(s)...
+4-> UNSATISFIABLE
+5-> UNSATISFIABLE
+6-> UNSATISFIABLE
+7-> UNSATISFIABLE
+No such program found.
+Searching for a program with 8-11 lines satisfying 6 example(s)...
+8-> Answer: 1
+8-> line_instr(1,set(s,con(0)))              line_instr(5,if(lt(var(m),con(1)),1))
+    line_instr(2,set(d,con(1)))              line_instr(6,set(s,add(var(d),var(s))))
+    line_instr(3,while(lt(var(d),var(x)),4)) line_instr(7,set(d,add(var(d),con(1))))
+    line_instr(4,set(m,mod(var(x),var(d))))  line_instr(8,end_while)
+8-> SATISFIABLE
+Found the following program:
+   1. s = 0
+   2. d = 1
+   3. while (d < x):
+   4.     m = x % d
+   5.     if (m < 1):
+   6.         s = d + s
+   7.     d = d + 1
+   8. end_while
+\end{verbatim}
+
+This example is used to showcase many of the features of the synthesiser, but 
+it does rely on the user specifying in advance several of the program's lines, 
+including its looping structure, since without this the problem could not be solved in 
+a reasonable time. These restrictions will be partially lifted when we use more 
+advanced ideas, described later.
 
 \subsection{Automatic Generation of Examples} \label{sec:pgenx}
+
+\subsubsection{Input Format}
+
+\subsubsection{Output Format}
+
+\subsubsection{Implementation}
+
+\subsubsection{Invocation}
+
+\subsubsection{Example Usage}
 
 \clearpage
 \section{Current Extensions}
