@@ -7,7 +7,6 @@
 \usepackage{fancyvrb}
 \usepackage{tabularx}
 
-
 \DefineVerbatimEnvironment{verbatim}{Verbatim}{
     frame=single, baselinestretch=1}
 
@@ -21,7 +20,7 @@
 \begin{center}
     {\Large \bfseries Synthesis of Simple While Programs \\ using Answer Set Programming}
 
-    {\large UROP Project Status, 13 July 2015} \\[0.5cm]
+    {\large UROP Project Status, 14 July 2015} \\[0.5cm]
     
     {\large Joseph Crowe} \texttt{<jjc311@imperial.ac.uk>}
     
@@ -31,6 +30,7 @@
 \end{center}
 \end{titlepage}
 
+\clearpage
 \section{Introduction to the Problem}
 
 The project is concerned with the automatic synthesis of computer programs in a simple 
@@ -94,6 +94,7 @@ specification given by the user, consisting of:
     
 \end{enumerate}
 
+\clearpage
 \section{Summary of Previous Work}
 
 As this research placement is a continuation of an undergraduate final-year individual 
@@ -262,26 +263,149 @@ Time        : 36.300
 \subsection{Synthesis of Programs from Examples} \label{sec:psynx}
 
 The basic form of program synthesis supported by the system takes a list of 
-input/output examples, and tries to synthesise a program \emph{of a fixed length}. This 
-is achieved by the ASP \verb|learn.lp|.
+input/output examples, and tries to synthesise a program \emph{of a fixed length}.
+This is achieved by the ASP \verb|learn.lp|. Refer to Section~5.2.1 of 
+\cite{final} and to the comments in \verb|learn.lp| for more details of its 
+implementation and usage.
 
-A practical user interface is provided by \verb|IterativeLearn.hs|, which searches 
-incrementally for a program of (potentially) arbitrary length by repeatedly invoking 
-\verb|learn.lp|. The synthesis task is read from a user-written configuration file that 
-abstracts the details of the underlying ASP invocation.
+A practical user interface is provided by \verb|IterativeLearn.hs|, which 
+searches incrementally for a program of (potentially) arbitrary length by 
+repeatedly invoking \verb|learn.lp|. The synthesis task is read from a 
+user-written configuration file that abstracts the details of the underlying 
+ASP invocation.
 
 \subsubsection{Input Format}
 
+The configuration file for \verb|IterativeLearn.hs| is an answer set program 
+which is solved using \verb|clingo|, and the following facts in its first 
+answer set examined to obtain the configuration:
 
+\begin{tabularx}{\textwidth}{|l|l|X|}
+\hline
+\textbf{Fact} & \textbf{Count} & \textbf{Description} \\
+\hline
+\verb|int_range(Imin, Imax).| & $1$ &
+Only programs in which variable values remain in the inclusive interval 
+between \verb|Imin| and \verb|Imax| for the given examples will be considered. \\
+\hline
+\verb|time_limit(Tmax).| & $1$ &
+Only programs which run to at most \verb|Tmax| time steps (i.e. executed 
+instructions) for the given examples will be considered. \\
+\hline
+\verb|line_limit_min(Lmin).| & $0..1$ &
+Start the incremental search at programs of length \verb|Lmin| instructions. 
+Programs containing fewer instructions will not be considered. If not given, 
+defaults to 0. \\
+\hline
+\verb|line_limit_max(Lmax).| & $0..1$ &
+Stop the incremental search at programs of length \verb|Lmax| instructions.
+Programs containing more instructions will not be considered. If not given, 
+the search is unbounded. \\
+\hline
+\verb|line_limit_step(Lmin).| & $0..1$ &
+Increment the program length by \verb|Lmin| upon each iteration of the search, 
+meaning that only programs with $\texttt{Lmin}+k\texttt{Lstep}$ lines for some 
+$k$ will be considered. If not given, defaults to 1. \\
+\hline
+\verb|input_variable(V).| & $0..$ &
+The variable \verb|V| is initialised to an input to the program. \\
+\hline
+\verb|output_variable(V).| & $0..$ &
+The variable \verb|V|'s final value is an output of the program. \\
+\hline
+\verb|in(R, V, C).| & $0..$ &
+In the example identified by \verb|R|, input variable \verb|V| starts as \verb|C|. \\
+\hline
+\verb|out(R, V, C).| & $0..$ &
+In the example identified by \verb|R|, output variable \verb|V| is required to 
+end with value \verb|C| in the program. \\
+\hline
+\verb|constant(C).| & $0..$ &
+The constant \verb|C| may occur in the program. \\
+\hline
+\verb|extra_variable(V).| & $0..$ &
+In addition to any input and output variables, the variable \verb|V| may occur 
+in the program. \\
+\hline
+\verb|read_only_variable(V).| & $0..$ &
+The variable V may not be written to in the program. \\
+\hline
+\verb|preset_line_instr(L, I).| & $0..$ &
+In the synthesised program, the instruction at line \verb|L| is fixed to 
+\verb|I|. \verb|L| may be written in terms of the constant \verb|line_max|, 
+which stands for the last line in the program. \\
+\hline
+\end{tabularx}
 
 \subsubsection{Output Format}
 
+\verb|learn.lp| outputs \verb|line_instr/2| facts taking the same format as 
+the input of \verb|run.lp|.
+
+\verb|IterativeLearn.hs| prints these out in a more human-readable format 
+resembling the syntax of Python (in fact, any such representation can be made 
+into a working Python function with minimal changes, which is useful for 
+manual verification of the program), and optionally (see below) also prints 
+the ASP representation of the synthesised program.
+
 \subsubsection{Invocation}
+
+\verb|IterativeLearn.hs| can be compiled or run in interpreted mode using GHC 
+\cite{ghc}. It \emph{should} also work with other compatible Haskell 
+implementations.
+
+On POSIX systems, it can be run directly as a shell script when 
+\verb|runhaskell| is present on the system path, e.g.\ from a GHC 
+installation. Below is the command-line syntax for running 
+\verb|IterativeLearn.hs| as a shell script in a Mac OS, Linux or other 
+POSIX-conformant terminal:
+
+\begin{verbatim}
+./IterativeLearn.hs [OPTIONS] CONFIG_FILE
+\end{verbatim}
+
+Where \verb|[OPTIONS]| may consist of zero or more of the following flags:
+
+\begin{tabularx}{\textwidth}{|lll|X|}
+\hline
+\verb|--interactive| &or& \verb|-i|&
+Run in interactive mode, pausing at certain points in the synthesis program 
+and presenting a command-line prompt. Enter \verb|?| on the prompt to see 
+further options. \\
+\hline
+\verb|--echo-clingo| &or& \verb|-ec| &
+Show the raw output of \verb|clingo| for each invocation. \\
+\hline
+\verb|--echo-asp|    &or& \verb|-ea| &
+Show the ASP code used with each invocation of \verb|clingo|. \\
+\hline
+\verb|--threads=N|   &or& \verb|-jN|&
+Run up to \verb|N| instances of \verb|clingo| in parallel when there is an 
+opportunity to speed up the search by doing this. \\
+\hline
+\end{tabularx}
+
+\sloppy Alternatively, the user can compile it using GHC, e.g.\ 
+\verb|ghc IterativeLearn.hs|, then use the name of the compiled binary,
+\verb|IterativeLearn| or \verb|IterativeLearn.exe|, in place of
+\verb|IterativeLearn.hs|; or directly invoke \verb|runhaskell IterativeLearn.hs|
+to run it without compiling. Both of these methods should work in Windows as well
+as on POSIX platforms.
+
+Note: due to a technical detail, it is currently necessary to run 
+\verb|IterativeLearn.hs| from the same directory in which it resides, when 
+running it in interpreted mode.
+
+\subsubsection{Example Usage}
+
+
 
 \subsection{Automatic Generation of Examples} \label{sec:pgenx}
 
+\clearpage
 \section{Current Extensions}
 
+\clearpage
 \begin{thebibliography}{9}
     \bibitem{final}
         Synthesis of Simple While Programs using Answer Set Programming (Final Report). 
@@ -289,6 +413,9 @@ abstracts the details of the underlying ASP invocation.
     \bibitem{clingo3}
         Clingo 3.0.5. \emph{The Potsdam Answer Set Solving Collection.}
         \\ \url{http://sourceforge.net/projects/potassco/files/clingo/3.0.5}
+    \bibitem{ghc}
+        The Glasgow Haskell Compiler.
+        \\ \url{https://www.haskell.org/ghc}
 \end{thebibliography}
 
 \end{document}
