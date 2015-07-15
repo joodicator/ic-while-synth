@@ -1,3 +1,9 @@
+# Tuesday 14 July 2015
+
+Continued work on UROP status report. Again, a work-in-progress report is available [here](http://www.doc.ic.ac.uk/~jjc311/while-synth/UROP_Report_WIP.pdf).
+
+Relevant commits: [8cab2e7](https://github.com/JosephCrowe/ic-while-synth/commit/8cab2e7f7d204de07a903911b412ec750d6062cc)
+
 # Monday 13 July 2015
 
 Started writing a report summarising the work done so far on the UROP placement. A work-in-progress version is available [here](http://www.doc.ic.ac.uk/~jjc311/while-synth/UROP_Report_WIP.pdf).
