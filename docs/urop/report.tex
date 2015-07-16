@@ -7,6 +7,8 @@
 \usepackage{fancyvrb}
 \usepackage{tabularx}
 \usepackage{ltablex}
+\usepackage{amsfonts}
+\usepackage{amsmath}
 
 \DefineVerbatimEnvironment{verbatim}{Verbatim}{
     frame=single, baselinestretch=1}
@@ -32,7 +34,7 @@
 \end{titlepage}
 
 \clearpage
-\section{Introduction to the Problem}
+\section{Introduction to the Problem} \label{sec:intro}
 
 The project is concerned with the automatic synthesis of computer programs in a simple 
 Turing-complete imperative programming language with integer arithmetic, branching, and
@@ -96,7 +98,7 @@ specification given by the user, consisting of:
 \end{enumerate}
 
 \clearpage
-\section{Summary of Previous Work}
+\section{Summary of Previous Work} \label{sec:prv}
 
 As this research placement is a continuation of an undergraduate final-year individual 
 project, there is an existing body of work that is being extended. This work is 
@@ -110,16 +112,16 @@ certainly not work in Clingo 4.
 Files referred to in this section can be found in the project's GitHub repository at \\
 \url{https://github.com/JosephCrowe/ic-while-synth/tree/master/main}.
 
-\subsection{Program Simulator}
+\subsection{Program Simulator} \label{sec:sim}
 
 An Answer Set Program, \verb|run.lp|, which computes execution traces of While 
-programs, was written to serve as a component for both \ref{sec:psynx} and 
-\ref{sec:pgenx}. Because of concerns relating to the grounding of the program, a 
-modified version is used in \verb|learn.lp| for \ref{sec:psynx} when synthesising 
+programs, was written to serve as a component for both \ref{sec:syx} and 
+\ref{sec:gnx}. Because of concerns relating to the grounding of the program, a 
+modified version is used in \verb|learn.lp| for \ref{sec:syx} when synthesising 
 programs (however, it is possible this could be changed to avoid that duplication). For 
 details of the how \verb|run.lp| is implemented, refer to Section~4.3 of \cite{final}.
 
-\subsubsection{Input Format}
+\subsubsection{Input Format} \label{sec:sim:inp}
 
 Firstly, the simulator must be configured with the following ASP constants, to define 
 execution limits:
@@ -188,7 +190,7 @@ For the run with identifier \verb|R|, this initialises variable \verb|Vi| to the
 \verb|Ci| (which must be an integer respecting \verb|int_min| and \verb|int_max|) for 
 each \verb|i| from \verb|1| to \verb|n|.
 
-\subsubsection{Output Format}
+\subsubsection{Output Format} \label{sec:sim:out}
 
 For each variable \verb|V| and run \verb|R|, the answer set of \verb|run.lp| will 
 contain a fact of one of the following forms:
@@ -206,7 +208,7 @@ Due to timeout or some other error condition, the run did not successfully halt.
 \hline
 \end{tabularx}
 
-\subsubsection{Invocation}
+\subsubsection{Invocation} \label{sec:sim:inv}
 
 To execute a simulation task, include the relevant constants and facts in an Answer Set 
 Program before \verb|run.lp|. This could be done by concatenating the definitions with 
@@ -257,7 +259,7 @@ Time        : 36.300
   Solving   : 0.000
 \end{verbatim}
 
-\subsection{Synthesis of Programs from Examples} \label{sec:psynx}
+\subsection{Synthesis of Programs from Examples} \label{sec:syx}
 
 The basic form of program synthesis supported by the system takes a list of 
 input/output examples, and tries to synthesise a program \emph{of a fixed length}.
@@ -271,7 +273,7 @@ repeatedly invoking \verb|learn.lp|. The synthesis task is read from a
 user-written configuration file that abstracts the details of the underlying 
 ASP invocation.
 
-\subsubsection{Input Format}
+\subsubsection{Input Format} \label{sec:syx:inp}
 
 The configuration file for \verb|IterativeLearn.hs| is an answer set program 
 which is solved using \verb|clingo|, and the following facts in its first 
@@ -340,7 +342,7 @@ all arithmetic operators as a shorthand. \\
 \hline
 \end{tabularx}
 
-\subsubsection{Output Format}
+\subsubsection{Output Format} \label{sec:syx:out}
 
 \verb|learn.lp| outputs \verb|line_instr/2| facts taking the same format as 
 the input of \verb|run.lp|.
@@ -351,7 +353,7 @@ into a working Python function with minimal changes, which is useful for
 manual verification of the program), and optionally (see below) also prints 
 the ASP representation of the synthesised program.
 
-\subsubsection{Invocation}
+\subsubsection{Invocation} \label{sec:syx:inv}
 
 \verb|IterativeLearn.hs| can be compiled or run in interpreted mode using GHC 
 \cite{ghc}. It \emph{should} also work with other compatible Haskell 
@@ -442,7 +444,7 @@ It is acknowledged that an interface with fewer side-effects, perhaps using a fu
 suppress the default textual output, would be more useful; but this does not currently 
 exist.
 
-\subsubsection{Example Usage}
+\subsubsection{Example Usage} \label{sec:syx:ex}
 
 Below is a configuration file written for \verb|IterativeLearn| specifying a synthesis 
 task for part of the sum-of-divisors program, where the remaining parts are given by 
@@ -508,20 +510,58 @@ including its looping structure, since without this the problem could not be sol
 a reasonable time. These restrictions will be partially lifted when we use more 
 advanced ideas, described later.
 
-\subsection{Automatic Generation of Examples} \label{sec:pgenx}
+\subsection{Automatic Generation of Examples} \label{sec:gnx}
 
-\subsubsection{Input Format}
+The extended functionality of \verb|IterativeLearn| includes the ability to take as input a 
+precondition and postcondition, and generate as an intermediate stage the (minimal) set of examples 
+needed to synthesise a program \emph{correct} for all inputs lying in the configured domain.
 
-\subsubsection{Output Format}
+More specifically, a program is defined for this purpose to be \emph{correct} with respect to a 
+precondition $P$ defined over the initial values of input variables, a postcondition $Q$ defined 
+over the initial values of input variables and the final values of output variables, a domain 
+$D\subseteq\mathbb{Z}$ and a time limit $T_\mathrm{max}$, iff for all combinations of inputs lying 
+in $D$ for which $P$ holds, the program terminates with $T_\mathrm{max}$ time steps or fewer and 
+$Q$ holds for its initial and final states.
 
-\subsubsection{Implementation}
+This functionality is achieved using a new component, the counterexample-finder, which consists 
+partially of dynamically generated ASP derived from the pre- and postcondition, and partially of 
+the ASP \verb|counterexample.lp|.
 
-\subsubsection{Invocation}
+\subsubsection{Input Format} \label{sec:gnx:inp}
 
-\subsubsection{Example Usage}
+The input format is the same as for the basic form of \verb|IterativeLearn| (see 
+Section~\ref{sec:syx:inp}), with the addition of the following configuration entries:
+
+\begin{tabularx}{\textwidth}{|l|l|X|}
+\hline
+\textbf{Fact} & \textbf{Count} & \textbf{Description} \endhead
+\hline
+\verb|precondition(P).| & $0..1$ &
+The precondition to use when synthesising the program, encoded as an ASP string. If not given, 
+defaults to the empty condition (always true). \\*
+\hline
+\verb|postcondition(Q).| & $0..1$ &
+The postcondition to use when synthesising the program, encoded as an ASP string. If not given, 
+defaults to the empty condition (always true). \\*
+\hline
+\end{tabularx}
+
+In the above, the encoding of \verb|P| and \verb|Q| is (currently) the same as the body of an ASP rule in Clingo 3 (excluding the terminating 
+\verb|.| character), where the first letter of each variable has been made uppercase, and therefore the variables occur as free ASP variables 
+in the condition. In order to achieve disjunction and use complicated arithmetic functions, conditions may refer to constants and predicates 
+defined in the specification file, as long as the names of these do not coincide with any used internally by \verb|learn.lp| or 
+\verb|counterexample.lp|.
+
+\subsubsection{Output Format} \label{sec:gnx:out}
+
+\subsubsection{Invocation} \label{sec:gnx:inv}
+
+\subsubsection{Example Usage} \label{sec:gnx:exu}
+
+\subsubsection{Implementation} \label{sec:gnx:imp}
 
 \clearpage
-\section{Current Extensions}
+\section{Current Extensions} \label{sec:cur}
 
 \clearpage
 \begin{thebibliography}{9}
