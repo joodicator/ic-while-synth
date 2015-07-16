@@ -1,4 +1,4 @@
-# Thursday 15 July 2015
+# Thursday 16 July 2015
 
 Continued work on UROP status report. Again, a work-in-progress report is available [here](http://www.doc.ic.ac.uk/~jjc311/while-synth/UROP_Report_WIP.pdf).
 
