@@ -1,3 +1,15 @@
+# Monday 18 July 2015
+
+* Implemented a support for a form of statically-allocated arrays in the program simulator. [`run.lp`](https://github.com/JosephCrowe/ic-while-synth/blob/3cbbeed190492f8f964dc7a235cadc9518b97ad8/main/run.lp) contains commentary on the syntax and semantics decided so far. An example is given by the [specification](https://github.com/JosephCrowe/ic-while-synth/blob/3cbbeed190492f8f964dc7a235cadc9518b97ad8/examples/run/array_sum.lp) and [output](https://github.com/JosephCrowe/ic-while-synth/blob/3cbbeed190492f8f964dc7a235cadc9518b97ad8/examples_output/run/array_sum.output.txt) of running a program that finds the sum of the elements in a given array, when its (variable) length is given in the variable `n`. This work will take place on the `arrays` branch until it is deemed ready to merge with the main codebase. Relevant commits: [3cbbeed](https://github.com/JosephCrowe/ic-while-synth/commit/3cbbeed190492f8f964dc7a235cadc9518b97ad8)
+
+* Fixed some minor concurrency issues in `IterativeLearn.hs`, allowing the `--echo-asp` option to now be usefully used with `--threads=N` for `N > 1`. These changes will also make it easier to make other improvements to the user interface. Relevant commits: [8b79f24](https://github.com/JosephCrowe/ic-while-synth/commit/8b79f2483341f5e7fa0611a652d64d30efa80f91)
+
+* Added further content to UROP status report, a draft of which is available [here](http://www.doc.ic.ac.uk/~jjc311/while-synth/UROP_Report_WIP.pdf). Relevant commits: [976c9f2](https://github.com/JosephCrowe/ic-while-synth/commit/976c9f2335e90475a0b1a8d4cff64605c2e1e3db)
+
+# Friday 17 July 2015
+
+Nothing worth mentioning, as was attending [No More Sweden](http://nomoresweden.com/about) 2015.
+
 # Thursday 16 July 2015
 
 Continued work on UROP status report. Again, a work-in-progress report is available [here](http://www.doc.ic.ac.uk/~jjc311/while-synth/UROP_Report_WIP.pdf).

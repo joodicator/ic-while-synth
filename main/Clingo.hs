@@ -42,6 +42,12 @@ data RunClingoOptions = RunClingoOptions{
     -- If True, the input ASP is copied to current stdout.
     rcEchoInput  :: Bool,
 
+    -- The function to use to write blocks of console lines.
+    rcEcho :: [String] -> IO (),
+    
+    -- If True, ANSI colour codes are included to distinguish input from output.
+    rcEchoColour :: Bool,
+    
     -- If given, annotates the output of rcEchoStdout and rcEchoInput.
     rcIdentifier :: Maybe String }
 
@@ -50,6 +56,8 @@ runClingoOptions = RunClingoOptions{
     rcClingoArgs = [],
     rcEchoStdout = True,
     rcEchoInput  = False,
+    rcEcho       = mapM_ putStrLn,
+    rcEchoColour = True,
     rcIdentifier = Nothing }
 
 --------------------------------------------------------------------------------
@@ -69,18 +77,22 @@ runClingo options inputs = do
     let args = "-" : extraArgs
     let spec = (proc "clingo" args) { std_in=CreatePipe, std_out=CreatePipe }
     (Just clingoIn, Just clingoOut, _, clingoProc) <- createProcess spec
-    forM inputs $ \input -> do
-        code <- case input of
-            CICode code -> return code
-            CIFile path -> return $ "#include \"" ++ path ++ "\"."
-        when (echoInput) $ do
-            code' <- return . unlines $ do
-                line <- lines code
-                let prefix = maybe "<-- " (++ "<- ") (rcIdentifier options)
-                return $ ansiDarkGreen ++ prefix ++ line ++ ansiClear
-            putStrLn code'
-        hPutStr clingoIn code
+
+    lines <- return . concat $ do
+        input <- inputs
+        return $ case input of
+            CICode code -> lines code
+            CIFile path -> ["#include \"" ++ path ++ "\"."]
+    hPutStr clingoIn (unlines lines)
     hClose clingoIn
+    
+    when echoInput . echo $ "" : do
+        line <- lines
+        let prefix = maybe "<-- " (++ "<- ") identifier
+        return $ case echoColour of
+            True  -> ansiDarkGreen ++ prefix ++ line ++ ansiClear
+            False -> prefix ++ line    
+
     result <- readClingo [] clingoOut
     waitForProcess clingoProc
     return result
@@ -88,7 +100,10 @@ runClingo options inputs = do
     RunClingoOptions{
         rcClingoArgs = extraArgs,
         rcEchoStdout = echoStdout,
-        rcEchoInput  = echoInput } = options
+        rcEchoInput  = echoInput,
+        rcEchoColour = echoColour,
+        rcEcho       = echo,
+        rcIdentifier = identifier } = options
     readClingo :: [[Fact]] -> Handle -> IO ClingoResult
     readClingo answers clingoOut = do
         line <- ehGetLine clingoOut
@@ -109,7 +124,10 @@ runClingo options inputs = do
     ehGetLine handle = do
         line <- hGetLine handle
         let prefix = maybe "--> " (++ "-> ") (rcIdentifier options)
-        when echoStdout $ putStrLn $ ansiDarkRed ++ prefix ++ line ++ ansiClear
+        line' <- return $ case rcEchoColour options of
+            True  -> ansiDarkRed ++ prefix ++ line ++ ansiClear
+            False -> prefix ++ line
+        when echoStdout $ rcEcho options [line']
         return line
 
 --------------------------------------------------------------------------------
