@@ -2,7 +2,9 @@
 
 Investigated various ways of expressing facts about arrays in the condition language in a way usable in Clingo. I have settled for now on writing them in Haskell's syntax, as with curried functions and its reasonably extensive standard `List` library it seems well-suited for concisely expressing list transformations.
 
-More particularly, there are several ways this could actually be implemented, and I ran some benchmarks to get an idea of their feasibility:
+Firstly, I concluded that it will be necessary to instantiate a condition once for each possible combination of lengths of the involved arrays. This is because there is no way to express variable-length structures in ASP that would generate a smaller grounding. In particular, fixing the array sizes for all examples and allowing some array elements to be "unset" would generate a larger grounding due to the possible "holes" in the array. Therefore, it remains to express facts about fixed-length arrays.
+
+I can see  several ways this could be implemented, and I ran some benchmarks to get an idea of their feasibility:
 
  # |Description | Time taken to solve over 46656 values
 ---|------------|------------------------------------------
