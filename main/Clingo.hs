@@ -44,6 +44,9 @@ data RunClingoOptions = RunClingoOptions{
 
     -- The function to use to write blocks of console lines.
     rcEcho :: [String] -> IO (),
+
+    -- If True, a textual prefix is included to distinguish input from output.
+    rcEchoPrefix :: Bool,
     
     -- If True, ANSI colour codes are included to distinguish input from output.
     rcEchoColour :: Bool,
@@ -57,6 +60,7 @@ runClingoOptions = RunClingoOptions{
     rcEchoStdout = True,
     rcEchoInput  = False,
     rcEcho       = mapM_ putStrLn,
+    rcEchoPrefix = True,
     rcEchoColour = True,
     rcIdentifier = Nothing }
 
@@ -88,7 +92,9 @@ runClingo options inputs = do
     
     when echoInput . echo $ "" : do
         line <- lines
-        let prefix = maybe "<-- " (++ "<- ") identifier
+        prefix <- return $ case echoPrefix of
+            True  -> maybe "<-- " (++ "<- ") identifier
+            False -> ""
         return $ case echoColour of
             True  -> ansiDarkGreen ++ prefix ++ line ++ ansiClear
             False -> prefix ++ line    
@@ -99,11 +105,9 @@ runClingo options inputs = do
   where
     RunClingoOptions{
         rcClingoArgs = extraArgs,
-        rcEchoStdout = echoStdout,
-        rcEchoInput  = echoInput,
-        rcEchoColour = echoColour,
-        rcEcho       = echo,
-        rcIdentifier = identifier } = options
+        rcEchoStdout = echoStdout, rcEchoInput  = echoInput,
+        rcEchoColour = echoColour, rcEchoPrefix = echoPrefix,
+        rcEcho       = echo,       rcIdentifier = identifier } = options
     readClingo :: [[Fact]] -> Handle -> IO ClingoResult
     readClingo answers clingoOut = do
         line <- ehGetLine clingoOut
@@ -123,7 +127,9 @@ runClingo options inputs = do
     ehGetLine :: Handle -> IO String
     ehGetLine handle = do
         line <- hGetLine handle
-        let prefix = maybe "--> " (++ "-> ") (rcIdentifier options)
+        prefix <- return $ case rcEchoPrefix options of
+            True  -> maybe "--> " (++ "-> ") (rcIdentifier options)
+            False -> ""
         line' <- return $ case rcEchoColour options of
             True  -> ansiDarkRed ++ prefix ++ line ++ ansiClear
             False -> prefix ++ line
