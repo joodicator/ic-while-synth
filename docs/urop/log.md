@@ -1,3 +1,33 @@
+# Wednesday 22 July 2015
+
+Investigated various ways of expressing facts about arrays in the condition language in a way usable in Clingo. I have settled for now on writing them in Haskell's syntax, as with curried functions and its reasonably extensive standard `List` library it seems well-suited for concisely expressing list transformations.
+
+More particularly, there are several ways this could actually be implemented, and I ran some benchmarks to get an idea of their feasibility:
+
+ # |Description | Time taken to solve over 46656 values
+---|------------|------------------------------------------
+1 | **Using Clingo's Lua scripting** interface, **run a compiled Haskell binary** which takes free variables as command-line argments, evaluates a predicate, and yields its truth value in the process's exit code. As you might expect, most of the time was taken in creating and destroying processes, so this is not tenable. | 195.266s
+2 | As #1, but **keep the process open throughout grounding** and communicate through pipes/files. This is a respectable improvement, but because of limitations in Lua's standard library, it will be difficult to make it both reliable and cross-platform compatible. | 3.917s
+3 | **Allow conditions to be written natively as Lua functions** rather than calling an external process. This is even more of an improvement, but Lua's syntax is not very nice at all for concisely writing predicates. | 1.701s
+4 | Rather than relying on Gringo, **generate the ground constraints** corresponding to the condition **directly in Haskell**, then (if needed) include them in an ASP for further processing. The logic in the counterexample-finder is simple enough that it might be possible to eliminate altogether the need for ASP in this component. However, this would likely suffer from scalability issues for larger domains that Clingo can more intelligently mitigate. | 0.743s
+5 | **Translate Haskell boolean expressions directly into ASP** constraint bodies, allowing the associated grounding to only accumulate in one place, and also allowing simplifying transformations to be made at the same time. The benchmark given here is based on a hypothetical, manually-written transformation from Haskell into ASP; but it seems if this were successful, it could afford a great performance benefit.  | 0.007s
+
+\#5 seemed like the potentially most promising way of proceeding, so I spent some time thinking about how it might be achieved. Using Haskell's parametric polymorphism and GHC's [`RebindableSyntax`](https://downloads.haskell.org/~ghc/7.6.3/docs/html/users_guide/syntax-extns.html#rebindable-syntax) extension, it is possible in Haskell to redefine arithmetic and boolean operators (and some other Prelude functions) so that evaluating a boolean expression results in an **abstract syntax tree** representing a boolean expression over arithmetic expressions over integer variables. This could then be mechanically translated into ASP. This is the same idea used by [simple-reflect](https://hackage.haskell.org/package/simple-reflect), but takes it further insofar as making the result computationally useful.
+
+I started implementing `Abstract.hs` which implements this idea. To show how it is useful, consider the following example, which uses the `Show` instance to print closed-form string representations of computations abstracted over named variables:
+```
+*Abstract> let xs = [IVar "X0", IVar "X1", IVar "X2", IVar "X3", IVar "X4"]
+*Abstract> xs
+[X0,X1,X2,X3,X4]
+*Abstract> reverse xs
+[X4,X3,X2,X1,X0]
+*Abstract> sum xs
+0 + X0 + X1 + X2 + X3 + X4
+*Abstract> sum xs == product xs
+0 + X0 + X1 + X2 + X3 + X4 == 1 * X0 * X1 * X2 * X3 * X4
+```
+The inputs, such as `sum xs`, are what the user would write, and the output `0 + X0 + X1 + X2 + X3 + X4` are what the ASP solver would receive.
+
 # Tuesday 21 July 2015
 
 Implemented learning of array programs from discrete examples, but not yet with the ability to generate such examples. Example programs:
