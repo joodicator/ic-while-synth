@@ -6,6 +6,8 @@ Implemented learning of array programs from discrete examples, but not yet with 
 
 A problem with supporting arrays in the counterexample-finder is that it would be necessary to be able to express facts about arrays in the pre/postcondition language. This could be done by representing arrays as linked lists, but the grounding size is likely to be large when such lists are used in a lot of places. It may be better to use dynamically-generated predicates of variable arity, which are inlined when possible, or something else.
 
+Relevant commits: [a4e55ab](https://github.com/JosephCrowe/ic-while-synth/commit/a4e55ab614f8867fd2f44751fa56aaf7c2af3979)
+
 # Monday 20 July 2015
 
 * Implemented a support for a form of statically-allocated arrays in the program simulator. [`run.lp`](https://github.com/JosephCrowe/ic-while-synth/blob/3cbbeed190492f8f964dc7a235cadc9518b97ad8/main/run.lp) contains commentary on the syntax and semantics decided so far. An example is given by the [specification](https://github.com/JosephCrowe/ic-while-synth/blob/3cbbeed190492f8f964dc7a235cadc9518b97ad8/examples/run/array_sum.lp) and [output](https://github.com/JosephCrowe/ic-while-synth/blob/3cbbeed190492f8f964dc7a235cadc9518b97ad8/examples_output/run/array_sum.output.txt) of running a program that finds the sum of the elements in a given array, when its (variable) length is given in the variable `n`. This work will take place on the `arrays` branch until it is deemed ready to merge with the main codebase. Relevant commits: [3cbbeed](https://github.com/JosephCrowe/ic-while-synth/commit/3cbbeed190492f8f964dc7a235cadc9518b97ad8)
