@@ -1,0 +1,8 @@
+$ ./learn ../examples/learn/array_last.lp 
+=== line_max=1 ===
+UNSATISFIABLE
+=== line_max=2 ===
+Answer: 1
+   1. i = len_xs - 1
+   2. x = xs[i]
+SATISFIABLE

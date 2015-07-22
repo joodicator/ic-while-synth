@@ -39,6 +39,8 @@ learn :: State -> IO ()
 learn state = do
     putStrLn $ "\ESC[1m=== line_max=" ++ show (stLineCount state) ++ " ===\ESC[0m"
     let options = runClingoOptions{
+        rcEchoPrefix = False,
+        rcEchoColour = False,
         rcClingoArgs = cfClingoArgs (stConf state) }
     result <- runClingo options [
         CICode ("#const line_max=" ++ show (stLineCount state) ++ "."),

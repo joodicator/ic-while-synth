@@ -6,9 +6,10 @@ import Clingo hiding (readArgs)
 import qualified While
 import Logic
 
+import Control.Applicative
 import Control.Monad
 import Control.Concurrent
-import Control.Applicative
+import qualified Control.Concurrent.MSem as MSem
 
 import Data.List
 import Data.Maybe
@@ -70,8 +71,8 @@ data Conf = Conf{
     cfThreads         :: Integer,
     cfEchoClingo      :: Bool,
     cfEchoASP         :: Bool,
-    cfInteractive     :: Bool }
-  deriving Show
+    cfInteractive     :: Bool,
+    cfPutLines        :: [String] -> IO () }
 
 defaultConf = Conf{
     cfIntRange        = error "int_range undefined",
@@ -95,7 +96,8 @@ defaultConf = Conf{
     cfThreads         = 1,
     cfEchoClingo      = False,
     cfEchoASP         = False,
-    cfInteractive     = False }
+    cfInteractive     = False,
+    cfPutLines        = mapM_ putStrLn }
 
 readConfFile :: FilePath -> Conf -> IO Conf
 readConfFile filePath conf = do
@@ -213,15 +215,14 @@ iterativeLearn exs lims conf = do
     let linesString = case limss of {
         [_] -> show(lmLineMax $ head limss);
         _   -> show(lmLineMax $ head limss)++"-"++show(lmLineMax $ last limss) }
-    putStrLn $ "Searching for a program with " ++ linesString
-            ++ " lines satisfying " ++ show (length exs) ++ " example(s)..."
+    cfPutLines conf ["Searching for a program with " ++ linesString ++ " lines"
+                 ++ " satisfying " ++ show (length exs) ++ " example(s)..."]
 
     mProg <- findProgramConcurrent exs limss conf
 
     case mProg of
       Just prog -> do
-        putStrLn "Found the following program:"
-        printProgram prog
+        cfPutLines conf $ ["Found the following program:"] ++ showProgram prog
         conf <- interactivePause conf
         let lineMax = programLength prog
         case cfPostCondition conf of
@@ -232,16 +233,17 @@ iterativeLearn exs lims conf = do
         let lineMax = lmLineMax lims' + cfLineLimitStep conf
         case cfLineLimitMax conf of
             Just limit | lineMax > limit -> do
-                putStrLn $ "Failure: no such program can be found within the"
-                        ++ " configured line limits."
+                cfPutLines conf ["Failure: no such program can be found within the"
+                              ++ " configured line limits."]
                 exitFailure
             _ -> do
-                putStrLn "No such program found."
+                cfPutLines conf ["No such program found."]
                 iterativeLearn exs (lims'{lmLineMax=lineMax}) conf
 
 iterativeLearn' :: Program -> [Example] -> Limits -> Conf -> IO Program
 iterativeLearn' prog exs lims conf = do
-    putStrLn "Searching for a counterexample to falsify the postcondition..."
+    cfPutLines conf [
+        "Searching for a counterexample to falsify the postcondition..."]
     mCounter <- findCounterexample prog conf
     case mCounter of
         Just cex -> do
@@ -251,32 +253,32 @@ iterativeLearn' prog exs lims conf = do
                 ceExpectedOutput = expected } = cex
 
             let deficient = null expected
-            case deficient of
-                True  -> do
-                    putStrLn $ "Failure: counterexamples were found, but"
-                            ++ " none admitting a solution the postcondition."
-                            ++ " Possible causes:"
-                    putStrLn $ "- The postcondition is unsatisfiable for some"
-                            ++ " valid input."
-                    putStrLn $ "- The precondition is satisfiable for some"
-                            ++ " invalid input."
-                    putStrLn $ "- The given int_range is too small."
-                False -> do
-                    putStrLn "Found the following counterexample:"
+            headLines <- return $ case deficient of
+                True  -> [
+                    "Failure: counterexamples were found, but none admitting a"
+                    ++ " solution the postcondition. Possible causes:",
+                    "- The postcondition is unsatisfiable for some valid input.",
+                    "- The precondition is satisfiable for some invalid input.",
+                    "- The given int_range is too small."]
+                False -> [
+                    "Found the following counterexample:"]
 
-            putStrLn $ "   Input:    " ++ (intercalate ", "
-                     $ [v++"="++show c | (v,c) <- sort input ])
-            putStrLn $ "   Expected: " ++ case expected of {
-                [] -> "(none)";
-                _  -> intercalate " | " $ [
-                    intercalate ", " [v ++ "=" ++ show c | (v,c) <- os]
-                    | Output os <- take 5 $ sort [
-                        Output (sort os) | Output os <- expected]]
-                    ++ if (length expected > 5) then ["..."] else [] }
-            putStrLn $ "   Output:   " ++ case actual of {
-                [] -> "(none)";
-                _  -> intercalate ", " [v++"="++show c | (v,c) <- sort actual ] }
+            bodyLines <- return $ ("   " ++) <$> [
+                "Input:    " ++ (intercalate ", "
+                    $ [v++"="++show c | (v,c) <- sort input ]),
+                "Expected: " ++ case expected of {
+                    [] -> "(none)";
+                    _  -> intercalate " | " $ [
+                        intercalate ", " [v ++ "=" ++ show c | (v,c) <- os]
+                        | Output os <- take 5 $ sort [
+                            Output (sort os) | Output os <- expected]]
+                        ++ if (length expected > 5) then ["..."] else [] },
+                "Output:   " ++ case actual of {
+                    [] -> "(none)";
+                    _  -> intercalate ", "
+                        $ [v++"="++show c | (v,c) <- sort actual ] } ]
 
+            cfPutLines conf $ headLines ++ bodyLines
             when deficient exitFailure
             conf <- interactivePause conf
 
@@ -285,7 +287,8 @@ iterativeLearn' prog exs lims conf = do
                 exInput  = Input input }
             iterativeLearn (ex : exs) lims conf
         Nothing -> do
-            putStrLn "Success: the postcondition could not be falsified."
+            cfPutLines conf [
+                "Success: the postcondition could not be falsified."]
             return prog
 
 --------------------------------------------------------------------------------
@@ -304,9 +307,11 @@ findProgram exs lims conf = do
 
 findProgramConcurrent :: [Example] -> [Limits] -> Conf -> IO (Maybe Program)
 findProgramConcurrent exs limss conf = do
+    outSem <- MSem.new 1
+    let conf' = conf{ cfPutLines = MSem.with outSem . cfPutLines conf }
     tasks <- forM limss $ \lims -> do
         result <- newEmptyMVar
-        thread <- forkIO $ putMVar result =<< findProgram exs lims conf
+        thread <- forkIO $ putMVar result =<< findProgram exs lims conf'
         return (thread, result)
     results <- forM (zip tasks [0..]) $ \((thread, resultMVar), i) -> do
         prior <- forM (take i tasks) $ \(_,r) -> do
@@ -422,6 +427,7 @@ findCounterexampleASP prog conf
         "#const time_max=" ++ show timeMax ++ ".",
         "#const int_min=" ++ show intMin ++ ".",
         "#const int_max=" ++ show intMax ++ ".",
+        "#const line_max=0.",
         "#include \"counterexample.lp\".",      
         "input_var("  ++ intercalate "; " inputVars  ++ ").",
         "output_var(" ++ intercalate "; " outputVars ++ ")."]
@@ -479,9 +485,8 @@ interactivePause conf
         return conf
 
 showInteractiveHelp :: IO ()
-showInteractiveHelp = do
-    putStrLn $ "Type enter to continue, c to exit interactive mode,"
-            ++ " or q to quit."
+showInteractiveHelp
+  = putStrLn "Type enter to continue, c to exit interactive mode, or q to quit."
 
 --------------------------------------------------------------------------------
 runClingoConf :: [ClingoInput] -> Maybe String -> Conf -> IO ClingoResult
@@ -489,7 +494,8 @@ runClingoConf input maybeRunID conf = do
     let options = runClingoOptions{
         rcEchoStdout = cfEchoClingo conf,
         rcEchoInput  = cfEchoASP conf,
-        rcIdentifier = maybeRunID }
+        rcIdentifier = maybeRunID,
+        rcEcho       = cfPutLines conf }
     runClingo options (input ++ [CIFile $ cfConfFile conf])
 
 showProgram :: Program -> [String]
@@ -497,10 +503,6 @@ showProgram (Program [])
   = ["   (empty program)"]
 showProgram (Program facts)
   = While.showProgram . catMaybes . map While.readLineInstr $ facts
-
-printProgram :: Program -> IO ()
-printProgram prog
-  = mapM_ putStrLn $ showProgram prog
 
 programLength :: Program -> Integer
 programLength (Program facts)
