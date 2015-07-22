@@ -14,7 +14,7 @@ More particularly, there are several ways this could actually be implemented, an
 
 \#5 seemed like the potentially most promising way of proceeding, so I spent some time thinking about how it might be achieved. Using Haskell's parametric polymorphism and GHC's [`RebindableSyntax`](https://downloads.haskell.org/~ghc/7.6.3/docs/html/users_guide/syntax-extns.html#rebindable-syntax) extension, it is possible in Haskell to redefine arithmetic and boolean operators (and some other Prelude functions) so that evaluating a boolean expression results in an **abstract syntax tree** representing a boolean expression over arithmetic expressions over integer variables. This could then be mechanically translated into ASP. This is the same idea used by [simple-reflect](https://hackage.haskell.org/package/simple-reflect), but takes it further insofar as making the result computationally useful.
 
-I started implementing `Abstract.hs` which implements this idea. To show how it is useful, consider the following example, which uses the `Show` instance to print closed-form string representations of computations abstracted over named variables:
+I started writing [`Abstract.hs`](https://github.com/JosephCrowe/ic-while-synth/blob/arrays/main/Abstract.hs) which implements this idea. To show how it is useful, consider the following example, which uses a `Show` instance to print closed-form string representations of computations abstracted over named variables:
 ```
 *Abstract> let xs = [IVar "X0", IVar "X1", IVar "X2", IVar "X3", IVar "X4"]
 *Abstract> xs
@@ -27,6 +27,8 @@ I started implementing `Abstract.hs` which implements this idea. To show how it 
 0 + X0 + X1 + X2 + X3 + X4 == 1 * X0 * X1 * X2 * X3 * X4
 ```
 The inputs, such as `sum xs`, are what the user would write, and the output `0 + X0 + X1 + X2 + X3 + X4` are what the ASP solver would receive.
+
+Relevant commits: [f80c3a2](https://github.com/JosephCrowe/ic-while-synth/commit/f80c3a23553ea6c9aa4040a8405b7aa9ba11f213)
 
 # Tuesday 21 July 2015
 
