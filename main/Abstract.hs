@@ -7,7 +7,7 @@ import Prelude (
     Num(..), Integral(..), Show(..),
     String, Maybe(..),
     (.), ($), undefined, otherwise, shows,
-    (++), map, foldr, sum)
+    (++), map, foldr, sum, product, reverse)
 
 import Data.String
 
