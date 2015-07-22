@@ -11,13 +11,6 @@ write_var(a; b; s).
 
 preset_line_instr(1, set(s, con(0))).
 preset_line_instr(2, set(a, con(0))).
-%*
-preset_line_instr(3, while(lt(var(a), var(len_xs)), 3)).
-preset_line_instr(4, set(b, array(xs,var(a)))).
-preset_line_instr(5, set(s, add(var(s), var(b)))).
-preset_line_instr(6, set(a, add(var(a), con(1)))).
-preset_line_instr(7, end_while).
-*%
 
 % sum [0] == 0
 array(r00, xs, 1).
