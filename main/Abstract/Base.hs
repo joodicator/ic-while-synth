@@ -78,9 +78,24 @@ fromBoolean = fromAbstractBool . toAbstractBool
 instance Boolean Bool where
     true  = True
     false = False
-    (&&)  = BBBi BAnd
-    (||)  = BBBi BOr
-    not   = BBUn BNot
+
+    True  && q    = q
+    False && _    = False
+    p    && True  = p
+    _    && False = False
+    p    && q = BBBi BAnd p q
+
+    True  || _     = True
+    False || q     = q
+    _     || True  = True
+    p     || False = p
+    p     || q     = BBBi BOr p q
+
+    not True          = False
+    not False         = True
+    not (BBUn BNot p) = p
+    not p             = BBUn BNot p
+
     fromAbstractBool = id
     toAbstractBool   = id
 
@@ -110,25 +125,37 @@ even x = x `rem` 2 == 0
 odd  x = x `rem` 2 /= 0
 
 instance Num Int where
+    ICon 0 + y      = y
+    x      + ICon 0 = x
     ICon x + ICon y = ICon $ x + y
-    x + y           = IIBi IAdd x y
+    x      + y      = IIBi IAdd x y
 
+    ICon 0 - y      = negate y
+    x      - ICon 0 = x
     ICon x - ICon y = ICon $ x - y
-    x - y           = IIBi ISub x y
+    x      - y      = IIBi ISub x y
 
+    ICon 0 * _      = ICon 0
+    _      * ICon 0 = ICon 0
+    ICon 1 * y      = y
+    x      * ICon 1 = x
     ICon x * ICon y = ICon $ x * y
-    x * y           = IIBi IMul x y
+    x      * y      = IIBi IMul x y
 
-    negate (ICon x) = ICon $ negate x
-    negate x        = IIUn INeg x
+    negate (IIUn INeg x) = x
+    negate (ICon x)      = ICon $ negate x
+    negate x             = IIUn INeg x
 
-    abs (ICon x)    = ICon $ abs x
-    abs  x          = IIUn IAbs x
+    abs (IIUn IAbs x)    = x
+    abs (IIUn INeg x)    = x
+    abs (ICon x)         = ICon $ abs x
+    abs x                = IIUn IAbs x
 
-    signum (ICon x) = ICon $ signum x
-    signum x        = if x == 0 then 0 else x `quot` abs x
+    signum (IIUn IAbs x) = if x == 0 then 0 else 1
+    signum (ICon x)      = ICon $ signum x
+    signum x             = if x == 0 then 0 else x `quot` abs x
 
-    fromInteger     = ICon
+    fromInteger = ICon
 
 instance IsString Int where
     fromString = IVar
@@ -182,8 +209,8 @@ instance Enum Int where
       = error "enumFromTo not supported for non-constant Abstract.Int."
 
 instance Prelude.Eq Int where
-    x == y = fromBoolean $ x == y
-    x /= y = fromBoolean $ x /= y
+    x == y = fromBoolean (x == y :: Bool)
+    x /= y = fromBoolean (x /= y :: Bool)
 
 instance Prelude.Ord Int where
     compare = compare
@@ -228,8 +255,8 @@ any p = foldr ((||) . p) false
 -- Generalised Eq class.
 class Eq a where
     infixr 4 ==, /=
-    (==) :: a -> a -> Bool
-    (/=) :: a -> a -> Bool
+    (==) :: Boolean b => a -> a -> b
+    (/=) :: Boolean b => a -> a -> b
 
 instance {-# OVERLAPPABLE #-} Prelude.Eq a => Eq a where
     x == y = fromBoolean $ x Prelude.== y
