@@ -1,3 +1,21 @@
+# Thursday 23 July 2015
+
+Completed implementation of `Abstract.Bool` and `Abstract.Int` Haskell data types, which allow boolean and integer expressions abstracted over named variables to be constructed from Haskell expressions, including those involving lists (nominally completed; it may be found that further definitions are needed to make it useful in practice).
+
+Started implementing the transformation from `Abstract.Bool` expressions to ASP syntax. The transformation involves multiple stages:
+
+  1. Convert an `Abstract.Bool` expression into a classical proposition whose *atoms* are arithmetic expressions. I have defined the type `Prop` in [`Logic.hs`](https://github.com/JosephCrowe/ic-while-synth/blob/arrays/main/Logic.hs) to this end. The transformation is slightly nontrivial where `if` expressions are involved, but I have an algorithm in mind for this
+
+  2. Put the proposition into Disjunctive Normal Form. The function [`pToDNF`](https://github.com/JosephCrowe/ic-while-synth/blob/bbe952099168ad6f67223a9a7172bd0438700f35/main/Logic.hs#L49) in `Logic.hs` implements this.
+
+  3. Convert each arithmetic expression in the DNF into ASP syntax (i.e. the type [`Expr`](https://github.com/JosephCrowe/ic-while-synth/blob/bbe952099168ad6f67223a9a7172bd0438700f35/main/ASP.hs#L37) in `ASP.hs`). This will be relatively easy, by construction of the type `Abstract.Int`, unless it's chosen to apply arithmetic simplification.
+
+  4. Make each disjunct of the DNF into an ASP constraint whose conjuncts correspond to the (possibly negated) conjuncts in the disjunct; add appropriate domain predicates to each constraint so that each variable is properly bound.
+
+It may also be necessary or desired to apply logical/arithmetical simplification at various points, to reduce the complexity of the generated code.
+
+Relevant commits: [bbe9520](https://github.com/JosephCrowe/ic-while-synth/commit/bbe952099168ad6f67223a9a7172bd0438700f35)
+
 # Wednesday 22 July 2015
 
 Investigated various ways of expressing facts about arrays in the condition language in a way usable in Clingo. I have settled for now on writing them in Haskell's syntax, as with curried functions and its reasonably extensive standard `List` library it seems well-suited for concisely expressing list transformations.
