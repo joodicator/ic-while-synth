@@ -9,7 +9,7 @@
 -- For general use, Abstract.Main should be imported instead of this module.
 
 module Abstract.Base(
-    Bool(..), IIBi(..), IIUn(..), BBBi(..), BBUn(..), BIBi(..),
+    Boolean(..), Bool(..), IIBi(..), IIUn(..), BBBi(..), BBUn(..), BIBi(..),
     Int(..), (^), even, odd,
     Eq(..), Ord(..), ifThenElse,
     length, and, or, any, all,
