@@ -1,6 +1,5 @@
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax, OverloadedStrings,
-             FlexibleInstances, UndecidableInstances,
-             NoMonomorphismRestriction, ExtendedDefaultRules #-}
+             FlexibleInstances, UndecidableInstances, OverlappingInstances #-}
 
 --------------------------------------------------------------------------------
 -- Replacements for various Prelude types and classes allowing abstract
@@ -32,7 +31,8 @@ import Data.String (IsString(..))
 import Data.Maybe (listToMaybe)
 import Control.Monad (guard)
 
-default (Bool, Int)
+data One
+data Two
 
 --------------------------------------------------------------------------------
 -- Generalised booleans.
@@ -226,7 +226,7 @@ instance Prelude.Ord Int where
 class IfThenElse a where
     ifThenElse :: Bool -> a -> a -> a
 
-instance {-# OVERLAPPABLE #-} IfThenElse a where
+instance IfThenElse a where
     ifThenElse b x y = case fromBoolean b of
         Prelude.True  -> x
         Prelude.False -> y
@@ -258,7 +258,7 @@ class Eq a where
     (==) :: Boolean b => a -> a -> b
     (/=) :: Boolean b => a -> a -> b
 
-instance {-# OVERLAPPABLE #-} Prelude.Eq a => Eq a where
+instance Prelude.Eq a => Eq a where
     x == y = fromBoolean $ x Prelude.== y
     x /= y = fromBoolean $ x Prelude./= y
 
@@ -281,7 +281,7 @@ class Ord a where
     max  :: a -> a -> a
     min  :: a -> a -> a
 
-instance {-# OVERLAPPABLE #-} Prelude.Ord a => Ord a where
+instance Prelude.Ord a => Ord a where
     compare = Prelude.compare
     x <  y = fromBoolean $ x Prelude.<  y
     x <= y = fromBoolean $ x Prelude.<= y
