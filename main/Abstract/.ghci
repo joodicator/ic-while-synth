@@ -1,0 +1,5 @@
+:set -i../
+:seti -XRebindableSyntax
+:seti -XOverloadedStrings
+:load Abstract.Main
+default (Bool, Int)

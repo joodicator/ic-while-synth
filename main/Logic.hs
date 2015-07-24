@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns, TypeFamilies,
+{-# LANGUAGE ViewPatterns, TypeFamilies, OverloadedLists,
              FlexibleInstances, UndecidableInstances #-}
 
 module Logic where
@@ -7,6 +7,7 @@ import Data.Char
 import Data.Maybe
 import Data.List
 import Data.Functor.Identity
+import qualified Data.Set as S
 
 import Data.Monoid
 import Data.MonoTraversable
@@ -17,6 +18,73 @@ import Clingo
 import While
 
 --------------------------------------------------------------------------------
+-- Logical propositions represented classically.
+--------------------------------------------------------------------------------
+
+data Prop a
+  = PTrue
+  | PFalse
+  | PAtom a
+  | PAnd (Prop a) (Prop a)
+  | POr  (Prop a) (Prop a)
+  | PNot (Prop a)
+  deriving Show
+
+data Lit a
+  = LAtom a | LNot a
+  deriving (Eq, Ord, Show)
+
+newtype Conj a
+  = Conj{ unConj :: S.Set a }
+  deriving (Eq, Ord, Show)
+
+newtype Disj a
+  = Disj{ unDisj :: S.Set a }
+  deriving (Eq, Ord, Show)
+
+type DNF a = Disj (Conj (Lit a))
+
+-- Gives a proposition in /disjunctive normal form/, i.e. as a disjunction of
+-- conjunctions of /literals/, i.e. of atoms and negated atoms.
+pToDNF :: (Eq a, Ord a) => Prop a -> DNF a
+pToDNF prop = case prop of
+    PTrue      -> Disj []
+    PFalse     -> Disj [Conj []]
+    (PAtom a)  -> Disj [Conj [LAtom a]]
+    (POr p q)  -> Disj $ unDisj (pToDNF p) `S.union` unDisj (pToDNF q)
+    (PAnd p q) -> Disj $ S.fromList [mergeC pc qc
+                       | pc <- S.toList . unDisj $ pToDNF p,
+                         qc <- S.toList . unDisj $ pToDNF q]
+    (PNot (PAtom a)) -> Disj [Conj [LNot a]]
+    (PNot p)         -> pToDNF $ pNegate p
+  where
+    -- Take the union of two conjunctions of literals, such that
+    -- both A and ¬A do not occur in the result for any atom A.
+    mergeC :: (Eq a, Ord a) => Conj (Lit a) -> Conj (Lit a) -> Conj (Lit a)
+    mergeC (Conj xs) (Conj ys)
+      = Conj $ S.filter (\x -> lNegate x `S.notMember` ys) xs `S.union`
+               S.filter (\y -> lNegate y `S.notMember` xs) ys
+
+-- Negates a proposition P in such a way that its negation ¬P either:
+-- 1. is a literal, i.e. is of the form ¬A or A for some atom A; or
+-- 2. is _not_ of the form ¬P for any proposition P.
+pNegate :: Prop a -> Prop a
+pNegate PTrue      = PFalse
+pNegate PFalse     = PTrue
+pNegate (PAtom a)  = PNot (PAtom a)
+pNegate (PAnd p q) = POr  (PNot p) (PNot q)
+pNegate (POr  p q) = PAnd (PNot p) (PNot q)
+pNegate (PNot p)   = p
+
+-- Negate a literal.
+lNegate :: Lit a -> Lit a
+lNegate (LAtom a) = (LNot  a)
+lNegate (LNot  a) = (LAtom a)
+
+--------------------------------------------------------------------------------
+-- Logical propositions represented as ASP rule bodies.
+--------------------------------------------------------------------------------
+
 type Variable  = String
 type Condition = String
 type Lexeme    = String
