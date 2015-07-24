@@ -1,5 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax, OverloadedStrings,
-             FlexibleInstances, UndecidableInstances, ExtendedDefaultRules #-}
+             FlexibleInstances, UndecidableInstances,
+             NoMonomorphismRestriction, ExtendedDefaultRules #-}
 
 --------------------------------------------------------------------------------
 -- Replacements for various Prelude types and classes allowing abstract
@@ -9,7 +10,7 @@
 
 module Abstract.Base(
     Bool(..), IIBi(..), IIUn(..), BBBi(..), BBUn(..), BIBi(..),
-    Int(..), (^),
+    Int(..), (^), even, odd,
     Eq(..), Ord(..), ifThenElse,
     length, and, or, any, all,
     module Prelude,
@@ -19,7 +20,7 @@ module Abstract.Base(
 
 import Prelude hiding (
     Bool(..), (&&), (||), not,
-    Int, (^),
+    Int, (^), even, odd,
     Eq(..), Ord(..),
     length, and, or, any, all)
 import qualified Prelude
@@ -30,6 +31,8 @@ import Data.Char (isDigit)
 import Data.String (IsString(..))
 import Data.Maybe (listToMaybe)
 import Control.Monad (guard)
+
+default (Bool, Int)
 
 --------------------------------------------------------------------------------
 -- Generalised booleans.
@@ -102,25 +105,42 @@ infixr 8 ^
 (^) :: Int -> Int -> Int
 (^) = IIBi IPow
 
+even, odd :: Int -> Bool
+even x = x `rem` 2 == 0
+odd  x = x `rem` 2 /= 0
+
 instance Num Int where
-    (+)         = IIBi IAdd
-    (-)         = IIBi ISub
-    (*)         = IIBi IMul
-    negate      = IIUn INeg
-    abs         = IIUn IAbs
-    signum x    = if x == 0 then 0 else x `quot` abs x
-    fromInteger = ICon
+    ICon x + ICon y = ICon $ x + y
+    x + y           = IIBi IAdd x y
+
+    ICon x - ICon y = ICon $ x - y
+    x - y           = IIBi ISub x y
+
+    ICon x * ICon y = ICon $ x * y
+    x * y           = IIBi IMul x y
+
+    negate (ICon x) = ICon $ negate x
+    negate x        = IIUn INeg x
+
+    abs (ICon x)    = ICon $ abs x
+    abs  x          = IIUn IAbs x
+
+    signum (ICon x) = ICon $ signum x
+    signum x        = if x == 0 then 0 else x `quot` abs x
+
+    fromInteger     = ICon
 
 instance IsString Int where
     fromString = IVar
 
 instance Integral Int where
+    ICon x `quotRem` ICon y
+      = let (q, r) = x `quotRem` y in (ICon q, ICon r)
     x `quotRem` y
       = (IIBi IDiv x y, IIBi IMod x y)
 
-    (ICon x) `divMod` (ICon y)
+    ICon x `divMod` ICon y
       = let (d, m) = x `divMod` y in (ICon d, ICon m)
-
     _ `divMod` _ = error $
         "divMod not supported for non-constant Abstract.Int; " ++
         "use quotRem instead."
@@ -149,7 +169,7 @@ instance Enum Int where
         mResult = do
             (uName, uNum) <- splitName u
             (vName, vNum) <- splitName v
-            guard (uName == vName && vNum >= uNum)
+            guard $ uName Prelude.== vName Prelude.&& vNum Prelude.>= uNum
             return [IVar $ uName ++ show i | i <- [uNum .. vNum]]
         splitName :: String -> Maybe (String, Integer)
         splitName name = do
@@ -162,8 +182,8 @@ instance Enum Int where
       = error "enumFromTo not supported for non-constant Abstract.Int."
 
 instance Prelude.Eq Int where
-    (==) = (==)
-    (/=) = (/=)
+    x == y = fromBoolean $ x == y
+    x /= y = fromBoolean $ x /= y
 
 instance Prelude.Ord Int where
     compare = compare
@@ -208,18 +228,18 @@ any p = foldr ((||) . p) false
 -- Generalised Eq class.
 class Eq a where
     infixr 4 ==, /=
-    (==) :: Boolean b => a -> a -> b
-    (/=) :: Boolean b => a -> a -> b
+    (==) :: a -> a -> Bool
+    (/=) :: a -> a -> Bool
 
 instance {-# OVERLAPPABLE #-} Prelude.Eq a => Eq a where
     x == y = fromBoolean $ x Prelude.== y
     x /= y = fromBoolean $ x Prelude./= y
 
 instance Eq Int where
-    (ICon x) == (ICon y) = fromBoolean (x == y :: Bool)
+    (ICon x) == (ICon y) = fromBoolean $ x Prelude.== y
     x == y               = fromBoolean $ BIBi BEq x y
 
-    (ICon x) /= (ICon y) = fromBoolean (x /= y :: Bool)
+    (ICon x) /= (ICon y) = fromBoolean $ x Prelude./= y
     x /= y               = fromBoolean $ BIBi BNE x y
 
 --------------------------------------------------------------------------------
@@ -247,16 +267,16 @@ instance Ord Int where
     compare = error $
         "`compare` not supported for Abstract.Int. Use <, ==, etc, instead."
 
-    (ICon x) < (ICon y)   = fromBoolean (x < y :: Bool)
+    (ICon x) < (ICon y)   = x < y
     x < y                 = fromBoolean $ BIBi BLT x y
 
-    (ICon x) > (ICon y)   = fromBoolean (x > y :: Bool)
+    (ICon x) > (ICon y)   = x > y
     x > y                 = fromBoolean $ BIBi BGT x y
 
-    (ICon x) <= (ICon y)  = fromBoolean (x <= y :: Bool)
+    (ICon x) <= (ICon y)  = x <= y
     x <= y                = fromBoolean $ BIBi BLE x y
 
-    (ICon x) >= (ICon y)  = fromBoolean (x >= y :: Bool)
+    (ICon x) >= (ICon y)  = x >= y
     x >= y                = fromBoolean $ BIBi BGE x y
 
     max (ICon x) (ICon y) = ICon $ max x y
