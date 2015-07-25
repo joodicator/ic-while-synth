@@ -1,4 +1,4 @@
-$ ./learn ../examples/learn/array_sum.lp 
+[jjc311@texel35:~/ws-alt/main]$ time ./learn ../examples/learn/array_sum.lp
 === line_max=1 ===
 UNSATISFIABLE
 === line_max=2 ===
@@ -21,3 +21,8 @@ Answer: 1
    6.     a = a + 1
    7. end_while
 SATISFIABLE
+
+real    2m26.660s
+user    2m26.766s
+sys     0m0.392s
+

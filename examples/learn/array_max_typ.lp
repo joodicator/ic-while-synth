@@ -2,15 +2,16 @@
 #const int_min=0.
 #const int_max=3.
 
-array(xs, 3).
+array(xs, 3, elem, index).
 
-var(len_xs; i).
-var(a; m).
+var(len_xs; i,  index).
+var(a; m,       elem).
 
-con(1).
+con(1,          index).
 
 write_var(m; i; a).
-disallow(mul; div; mod; sub; while).
+disallow(mul; div; mod; sub; arithmetic; while).
+allow(arithmetic, index).
 
 preset_line_instr(1, set(i, con(0))).
 preset_line_instr(2, set(m, con(0))).
