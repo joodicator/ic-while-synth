@@ -1,3 +1,20 @@
+# Friday 24 July 2015
+
+Implemented in the program learner `learn.lp` the ability to annotate the variables and constants of a program with **types**. Each type represents a region of memory, say, within which data flow is restricted. Moreoever, it is possible for these regions to overlap where an element inhabits more than one type, allowing controlled data flow through the program. This generalises the previously suggested notion of designating certain variables as array "pointers."
+
+More specifically, zero or more *types*, represented as atoms, are assigned by the user to each variable, constant, array's elements and array's indices. Programs which contain an expression, assignment or array index where the involved types are *disjoint*, i.e. there is no type common to the type-sets being unified, are statically constrained out of the search space. An element with no user-defined types, or with the type `any`, implicitly inhabits *all* types, including the `any` type if this is not explicitly written by the user.
+
+The current implementation has immediate performance benefits; for example, the `array_sum` program annoted with types to segregate array indices from array elements, specified [here](https://github.com/JosephCrowe/ic-while-synth/blob/6aa42be55ca02b9a1ae0010e2ce21e0f138e2b1a/examples/learn/array_sum_typ.lp) with output [here](https://github.com/JosephCrowe/ic-while-synth/blob/6aa42be55ca02b9a1ae0010e2ce21e0f138e2b1a/examples_output/learn/array_sum_typ.output.txt), improves on the untyped version by halving the grounding size (of the final iteration) and reducing the total synthesis time by a factor of 2.5:
+
+`array_sum`   | Grounding size | Synthesis time
+--------------|---------------:|---------------:
+Without types |        1028433 |       146.660s
+With types    |         472419 |        59.075s
+
+Specifying types also has benefits insofar as ensuring a sensibly-structured program, exemplified by the fact that, for a particular set of human-chosen examples, the `array_max` program specified [here](https://github.com/JosephCrowe/ic-while-synth/blob/6aa42be55ca02b9a1ae0010e2ce21e0f138e2b1a/examples/learn/array_max_typ.lp) with types synthesises the [correct program](https://github.com/JosephCrowe/ic-while-synth/blob/6aa42be55ca02b9a1ae0010e2ce21e0f138e2b1a/examples_output/learn/array_max_typ.output.txt), while its untyped version with the same examples results in the [wrong program](https://github.com/JosephCrowe/ic-while-synth/blob/6aa42be55ca02b9a1ae0010e2ce21e0f138e2b1a/examples_output/learn/array_max.output.txt) (counterexample: `[1,3,6]`). It is expected that when combined with a counterexample-generator supporting arrays, type-annotation will reduce the number of examples needed to synthesise the correct program..
+
+Relevant commits: [303f2a4](https://github.com/JosephCrowe/ic-while-synth/commit/303f2a4cb6f48af4f185307113ec2382532fac60)
+
 # Thursday 23 July 2015
 
 Completed implementation of `Abstract.Bool` and `Abstract.Int` Haskell data types, which allow boolean and integer expressions abstracted over named variables to be constructed from Haskell expressions, including those involving lists (nominally completed; it may be found that further definitions are needed to make it useful in practice).
