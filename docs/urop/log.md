@@ -28,6 +28,8 @@ In order to deal with this, either some stronger simplifications need to be appl
 
 This completes parts 1 and 3 of the task outlined in the [Thursday 23 July](#thursday-23-july-2015) entry, leaving part 4 yet to be completed. After this, it will also be necessary to integrate the new system with the existing program synthesiser to fully automate this process.
 
+Relevant commits: [3f148fd](https://github.com/JosephCrowe/ic-while-synth/commit/3f148fda21a71c8cf1f3e56b3439a4d37e66c9c5) [b9f220a](https://github.com/JosephCrowe/ic-while-synth/commit/b9f220a0a33f8af461c4ec257dc88b3793a40064)
+
 # Friday 24 July 2015
 
 Implemented in the program learner `learn.lp` the ability to annotate the variables and constants of a program with **types**. Each type represents a region of memory, say, within which data flow is restricted. Moreoever, it is possible for these regions to overlap where an element inhabits more than one type, allowing controlled data flow through the program. This generalises the previously suggested notion of designating certain variables as array "pointers."
