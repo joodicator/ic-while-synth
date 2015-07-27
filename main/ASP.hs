@@ -1,4 +1,4 @@
-7{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies #-}
 
 module ASP(
     Predicate(..), Variable(..), Function(..), Constant(..), LuaFunc(..),
