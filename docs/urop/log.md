@@ -1,3 +1,33 @@
+# Monday 27 July 2015
+
+Implemented an algorithm to convert from Haskell-generated boolean expression abstracted over variables to disjunctions of ASP rule bodies.
+
+This is best demonstrated at the moment by showing a Haskell interpreter session:
+```
+> let toASP = mapM_ print . propToBodies . boolToPropASP -- helper function
+> let (z, xs) = ("Z", ["X1".."X3"])      -- variables in our domain
+> toASP $ z == max (xs !! 0) (xs !! 1)   -- maximum of two elements
+Z == X1, X1 >= X2
+Z == X2, X1 < X2
+> toASP $ all (z >=) xs && any (z ==) xs -- maximum of N elements
+Z == X1, Z >= X1, Z >= X2, Z >= X3
+Z == X2, Z >= X1, Z >= X2, Z >= X3
+Z == X3, Z >= X1, Z >= X2, Z >= X3
+```
+For the above examples it works nicely, but there are problems with redundant clauses being introduced: for example, using the standard `maximum` function instead of the custom version above, a disjunct is generated for every possible ordering of the array:
+```
+> toASP $ z == maximum xs
+Z == X1, X1 >= X2, X1 >= X3
+Z == X1, X1 >= X2, X1 >= X3, X2 >= X3
+Z == X2, X1 < X2, X1 >= X3, X2 >= X3
+Z == X2, X1 < X2, X2 >= X3
+Z == X3, X1 < X2, X2 < X3
+Z == X3, X1 < X3, X1 >= X2
+```
+In order to deal with this, either some stronger simplifications need to be applied to the output, or use of functions like `maximum` that cause a lot of logical branching must be discouraged in favour of the `any`/`all` approach.
+
+This completes parts 1 and 3 of the task outlined in the [Thursday 23 July](#thursday-23-july-2015) entry, leaving part 4 yet to be completed. After this, it will also be necessary to integrate the new system with the existing program synthesiser to fully automate this process.
+
 # Friday 24 July 2015
 
 Implemented in the program learner `learn.lp` the ability to annotate the variables and constants of a program with **types**. Each type represents a region of memory, say, within which data flow is restricted. Moreoever, it is possible for these regions to overlap where an element inhabits more than one type, allowing controlled data flow through the program. This generalises the previously suggested notion of designating certain variables as array "pointers."
