@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns, TypeFamilies,
+{-# LANGUAGE ViewPatterns, TypeFamilies, DeriveFunctor,
              FlexibleInstances, UndecidableInstances #-}
 
 module Logic where
@@ -6,12 +6,13 @@ module Logic where
 import Data.Char
 import Data.Maybe
 import Data.List
+import Data.Maybe
 import Data.Functor.Identity
 import qualified Data.Set as S
 
 import Data.Monoid
-import Data.MonoTraversable
 import Data.Traversable
+import Data.MonoTraversable
 import Control.Applicative
 
 import Clingo
@@ -28,7 +29,7 @@ data Prop a
   | PAnd (Prop a) (Prop a)
   | POr  (Prop a) (Prop a)
   | PNot (Prop a)
-  deriving Show
+  deriving (Show, Functor)
 
 data Lit a
   = LAtom a | LNot a
@@ -44,6 +45,7 @@ newtype Disj a
 
 type DNF a = Disj (Conj (Lit a))
 
+--------------------------------------------------------------------------------
 -- Gives a proposition in /disjunctive normal form/, i.e. as a disjunction of
 -- conjunctions of /literals/, i.e. of atoms and negated atoms.
 pToDNF :: (Eq a, Ord a) => Prop a -> DNF a
@@ -52,18 +54,19 @@ pToDNF prop = case prop of
     PFalse     -> Disj (S.singleton $ Conj S.empty)
     (PAtom a)  -> Disj (S.singleton $ Conj (S.singleton $ LAtom a))
     (POr p q)  -> Disj $ unDisj (pToDNF p) `S.union` unDisj (pToDNF q)
-    (PAnd p q) -> Disj $ S.fromList [mergeC pc qc
-                       | pc <- S.toList . unDisj $ pToDNF p,
-                         qc <- S.toList . unDisj $ pToDNF q]
+    (PAnd p q) -> Disj $ S.fromList [c | pc <- S.toList . unDisj $ pToDNF p,
+                                         qc <- S.toList . unDisj $ pToDNF q,
+                                         c <- maybeToList $ mergeC pc qc]
     (PNot (PAtom a)) -> Disj (S.singleton $ Conj (S.singleton $ LNot a))
     (PNot p)         -> pToDNF $ pNegate p
   where
-    -- Take the union of two conjunctions of literals, such that
-    -- both A and ¬A do not occur in the result for any atom A.
-    mergeC :: (Eq a, Ord a) => Conj (Lit a) -> Conj (Lit a) -> Conj (Lit a)
+    -- Gives Just the union of two conjunctions of literals, or Nothing
+    -- if both A and ¬A would occur in the result for any atom A.
+    mergeC :: (Eq a, Ord a) => Conj(Lit a) -> Conj(Lit a) -> Maybe(Conj(Lit a))
     mergeC (Conj xs) (Conj ys)
-      = Conj $ S.filter (\x -> lNegate x `S.notMember` ys) xs `S.union`
-               S.filter (\y -> lNegate y `S.notMember` xs) ys
+      | any (flip S.member zs . lNegate) (S.toList zs) = Nothing
+      | otherwise                                      = Just (Conj zs)
+      where zs = xs `S.union` ys
 
 -- Negates a proposition P in such a way that its negation ¬P either:
 -- 1. is a literal, i.e. is of the form ¬A or A for some atom A; or

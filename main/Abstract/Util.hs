@@ -1,7 +1,9 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Abstract.Util() where
+module Abstract.Util(
+    boolToPropASP
+) where
 
 --------------------------------------------------------------------------------
 -- Utilities for the module Abstract, that we wish to define in the presence
@@ -177,7 +179,7 @@ instance Functor Cond where
     fmap f mx = mx >>= return . f
 
 --------------------------------------------------------------------------------
--- Conversion of structures with nested conditionals to conditional in terms of
+-- Conversion of structures with nested conditionals to conditionals in terms of
 -- definite versions of those structures, i.e. with no nested conditionals.
 
 -- Definite version of Abstract.Int.
@@ -249,9 +251,12 @@ defBoolToProp bool = case bool of
 --------------------------------------------------------------------------------
 -- Conversion to ASP syntax.
 
-boolIntToASP :: DefBoolInt -> ASP.Comparison
+boolToPropASP :: A.Bool -> Logic.Prop ASP.Literal
+boolToPropASP = fmap boolIntToASP . boolToProp
+
+boolIntToASP :: DefBoolInt -> ASP.Literal
 boolIntToASP bool = case bool of
-  = DBIBi op x y -> ASP.CBiOp (bi op) (intToASP x) (intToASP y)
+    DBIBi op x y -> ASP.LCompare $ ASP.CBiOp (bi op) (intToASP x) (intToASP y)
   where
     bi op = case op of {
         A.BLT->ASP.CLT; A.BLE->ASP.CLT; A.BEq->ASP.CEq;
@@ -259,8 +264,8 @@ boolIntToASP bool = case bool of
 
 intToASP :: DefInt -> ASP.Expr
 intToASP int = case int of
-    DICon c         -> ASP.ETerm (ASP.TInt c
-    DIVar v         -> ASP.ETerm (ASP.TVar $ ASP.Variable v)
+    DICon c         -> ASP.ETerm $ ASP.TInt c
+    DIVar v         -> ASP.ETerm $ ASP.TVar (ASP.Variable v)
     DIIBi op x y    -> ASP.EBiOp (bi op) (intToASP x) (intToASP y)
     DIIUn op x      -> ASP.EUnOp (un op) (intToASP x)
   where
