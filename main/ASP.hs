@@ -241,10 +241,11 @@ instance Show Expr where
 
 showExpr :: Prec -> Expr -> String 
 showExpr pPrec expr = case expr of
-    ETerm t      -> show t
-    EBiOp op x y -> showL x ++ show op ++ showR y
-    EUnOp EAbs x -> "|" ++ show x ++ "|"
-    EUnOp op x   -> show op ++ showR x
+    _ | prec <= pPrec -> "("++ show expr ++")"
+    ETerm t           -> show t
+    EBiOp op x y      -> showL x ++ show op ++ showR y
+    EUnOp EAbs x      -> "|" ++ show x ++ "|"
+    EUnOp op x        -> show op ++ showR x
   where
     OpInfo{ oPrec=prec, oAscL=ascL, oAscR=ascR } = opInfo Clingo3 expr
     showL = showExpr $ if ascL then prec-1 else prec
