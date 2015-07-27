@@ -1,4 +1,4 @@
-:set -i../
+:cd ..
 :seti -XRebindableSyntax
 :seti -XOverloadedStrings
 :load Abstract.Main

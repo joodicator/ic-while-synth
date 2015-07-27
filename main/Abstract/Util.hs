@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Abstract.Util() where
@@ -8,38 +9,35 @@ module Abstract.Util() where
 
 import qualified Abstract.Base as A
 import qualified ASP
+import qualified Logic
+import Util
+
+import Control.Applicative
 
 --------------------------------------------------------------------------------
 -- Information about operators in various contexts.
 
-type Prec = Int
-
-data OpInfo = OpInfo{  
-    oPrec :: Prec,     -- Precedence
-    oAscL :: Bool,     -- Left-associativity
-    oAscR :: Bool }    -- Right-associativity
-
-data Context = Haskell
-
 data Expr = I A.Int | B A.Bool
 
-class Operator a where
-    info :: Context -> a -> OpInfo
+data ExprContext = Haskell
 
 instance Operator Expr where
-    info cxt (I int)  = info cxt int
-    info cxt (B bool) = info cxt bool
+    type OpContext Expr = ExprContext
+    opInfo cxt (I int)  = opInfo cxt int
+    opInfo cxt (B bool) = opInfo cxt bool
 
 instance Operator A.Int where
-    info Haskell int = case int of
+    type OpContext A.Int = ExprContext
+    opInfo Haskell int = case int of
         A.ICon _      -> OpInfo{ oPrec=10, oAscL=False, oAscR=False }
         A.IVar _      -> OpInfo{ oPrec=10, oAscL=False, oAscR=False }
         A.IIf _ _ _   -> OpInfo{ oPrec=1, oAscL=False, oAscR=True }
-        A.IIBi op _ _ -> info Haskell op
-        A.IIUn op _   -> info Haskell op
+        A.IIBi op _ _ -> opInfo Haskell op
+        A.IIUn op _   -> opInfo Haskell op
 
 instance Operator A.IIBi where
-    info Haskell op = case op of
+    type OpContext A.IIBi = ExprContext
+    opInfo Haskell op = case op of
         A.IAdd -> OpInfo{ oPrec=5, oAscL=True, oAscR=True }
         A.ISub -> OpInfo{ oPrec=5, oAscL=True, oAscR=False }
         A.IMul -> OpInfo{ oPrec=6, oAscL=True, oAscR=True }
@@ -48,30 +46,39 @@ instance Operator A.IIBi where
         A.IPow -> OpInfo{ oPrec=7, oAscL=False, oAscR=True }
 
 instance Operator A.IIUn where
-    info Haskell op = case op of
+    type OpContext A.IIUn = ExprContext
+    opInfo Haskell op = case op of
         A.INeg -> OpInfo{ oPrec=5, oAscL=False, oAscR=False }
         A.IAbs -> OpInfo{ oPrec=9, oAscL=False, oAscR=False }
-        A.ISgn -> OpInfo{ oPrec=9, oAscL=False, oAscR=False }
 
 instance Operator A.Bool where
-    info Haskell bool = case bool of
+    type OpContext A.Bool = ExprContext
+    opInfo Haskell bool = case bool of
         A.True        -> OpInfo{ oPrec=10, oAscL=False, oAscR=False }
         A.False       -> OpInfo{ oPrec=10, oAscL=False, oAscR=False }
-        A.BBBi op _ _ -> info Haskell op
-        A.BBUn op _   -> info Haskell op
-        A.BIBi op _ _ -> info Haskell op
+        A.BBBi op _ _ -> opInfo Haskell op
+        A.BBUn op _   -> opInfo Haskell op
+        A.BInt bool   -> opInfo Haskell bool
+
+instance Operator A.BoolInt where
+    type OpContext A.BoolInt = ExprContext
+    opInfo Haskell bool = case bool of
+        A.BIBi op _ _ -> opInfo Haskell op
 
 instance Operator A.BBBi where
-    info Haskell op = case op of
+    type OpContext A.BBBi = ExprContext
+    opInfo Haskell op = case op of
         A.BAnd -> OpInfo{ oPrec=3, oAscL=True, oAscR=True }
         A.BOr  -> OpInfo{ oPrec=2, oAscL=True, oAscR=True }
 
 instance Operator A.BBUn where
-    info Haskell op = case op of
+    type OpContext A.BBUn = ExprContext
+    opInfo Haskell op = case op of
         A.BNot -> OpInfo{ oPrec=9, oAscL=False, oAscR=False }
 
 instance Operator A.BIBi where
-    info Haskell op = case op of
+    type OpContext A.BIBi = ExprContext
+    opInfo Haskell op = case op of
         A.BLT -> OpInfo{ oPrec=4, oAscL=False, oAscR=False }
         A.BGT -> OpInfo{ oPrec=4, oAscL=False, oAscR=False }
         A.BLE -> OpInfo{ oPrec=4, oAscL=False, oAscR=False }
@@ -102,7 +109,6 @@ instance Show A.IIBi where
 instance Show A.IIUn where
     show A.INeg = "-"
     show A.IAbs = "abs "
-    show A.ISgn = "signum "
 
 instance Show A.BBBi where
     show A.BAnd = " && "
@@ -130,12 +136,136 @@ showExpr pPrec expr = case expr of
         A.IIf b x y   -> "if "++ showL(B b) ++
                          " then "++ showExpr prec (I x) ++ " else "++ showR(I y)
     B bool -> case bool of
-        A.True        -> "True"
-        A.False       -> "False"
-        A.BBBi op p q -> showL(B p) ++ show op ++ showR(B q)
-        A.BBUn op p   -> show op ++ showR(B p)
-        A.BIBi op x y -> showL(I x) ++ show op ++ showR(I y)
+        A.True                 -> "True"
+        A.False                -> "False"
+        A.BBBi op p q          -> showL(B p) ++ show op ++ showR(B q)
+        A.BBUn op p            -> show op ++ showR(B p)
+        A.BInt (A.BIBi op x y) -> showL(I x) ++ show op ++ showR(I y)
   where
-    OpInfo{ oPrec=prec, oAscL=ascL, oAscR=ascR } = info Haskell expr
+    OpInfo{ oPrec=prec, oAscL=ascL, oAscR=ascR } = opInfo Haskell expr
     showL = showExpr $ if ascL then prec-1 else prec
     showR = showExpr $ if ascR then prec-1 else prec
+
+
+--------------------------------------------------------------------------------
+-- General values conditional on Abstract.Bool, using an "if-then-else"
+-- structure, with Monad/Applicative/Functor instances analogous to those of [].
+data Cond a
+  = Cond{ cIf::A.Bool, cThen::a, cElse::Cond a }
+  | CDef a
+
+instance Monad Cond where
+    Cond{ cIf=b, cThen=x, cElse=my } >>= f = case f x of
+      Cond{ cIf=b', cThen=x', cElse=my' } -> do 
+        -- if b     then (f x)                   else (f y) =
+        -- if b     then (if b' then x' else y') else (f y) =
+        -- if b&&b' then x'                      else (if b then y' else (f y))
+        let my'' = my' >>= \y' -> Cond{ cIf=b, cThen=y', cElse=my >>= f }
+        Cond{ cIf=b A.&& b', cThen=x', cElse=my'' }
+      CDef x' -> do
+        -- if b then (f x) else (f y) =
+        -- if b then x'    else (f y)
+        Cond{ cIf=b, cThen=x', cElse=my>>=f }
+    CDef x >>= f = f x
+    return = CDef
+
+instance Applicative Cond where
+    pure      = return
+    mf <*> mx = mf >>= \f -> f <$> mx
+
+instance Functor Cond where
+    fmap f mx = mx >>= return . f
+
+--------------------------------------------------------------------------------
+-- Conversion of structures with nested conditionals to conditional in terms of
+-- definite versions of those structures, i.e. with no nested conditionals.
+
+-- Definite version of Abstract.Int.
+data DefInt
+  = DICon Integer
+  | DIVar String
+  | DIIBi A.IIBi DefInt DefInt
+  | DIIUn A.IIUn DefInt
+
+-- Definite version of Abstract.BoolInt.
+data DefBoolInt
+  = DBIBi A.BIBi DefInt DefInt
+
+-- Definite version of Abstract.Bool.
+data DefBool
+  = DTrue
+  | DFalse
+  | DBBBi A.BBBi DefBool DefBool
+  | DBBUn A.BBUn DefBool
+  | DBInt DefBoolInt
+
+-- Move conditionals in Abstract.Int to the top level.
+intToCond :: A.Int -> Cond DefInt
+intToCond int = case int of
+    A.ICon c      -> DICon <$> pure c
+    A.IVar v      -> DIVar <$> pure v
+    A.IIBi op x y -> DIIBi op <$> intToCond x <*> intToCond y
+    A.IIUn op x   -> DIIUn op <$> intToCond x
+    A.IIf b x y   -> Cond b `flip` intToCond y =<< intToCond x
+
+-- Move conditionals in Abstract.BoolInt to the top level.
+boolIntToCond :: A.BoolInt -> Cond DefBoolInt
+boolIntToCond bool = case bool of
+    A.BIBi op x y -> DBIBi op <$> intToCond x <*> intToCond y
+
+-- Convert a conditional BoolInt into a pure boolean structure.
+condToBool :: Cond DefBoolInt -> DefBool
+condToBool Cond{ cIf=b, cThen=x, cElse=y }
+  = DBBBi A.BOr (DBBBi A.BAnd b' $ DBInt x) (DBBBi A.BAnd b'' $ condToBool y)
+  where
+    b'  = boolToDef b
+    b'' = DBBUn A.BNot b'
+condToBool (CDef b) = DBInt b
+
+-- Convert conditionals in Abstract.Bool into pure boolean structure.
+boolToDef :: A.Bool -> DefBool
+boolToDef bool = case bool of
+    A.True         -> DTrue
+    A.False        -> DFalse
+    A.BBBi op b b' -> DBBBi op (boolToDef b) (boolToDef b')
+    A.BBUn op b    -> DBBUn op (boolToDef b)
+    A.BInt b       -> condToBool . boolIntToCond $ b
+
+--------------------------------------------------------------------------------
+-- Conversion to classical propositions.
+
+boolToProp :: A.Bool -> Logic.Prop DefBoolInt
+boolToProp = defBoolToProp . boolToDef
+
+defBoolToProp :: DefBool -> Logic.Prop DefBoolInt
+defBoolToProp bool = case bool of
+    DTrue             -> Logic.PTrue
+    DFalse            -> Logic.PFalse
+    DBBBi A.BAnd b b' -> Logic.PAnd (defBoolToProp b) (defBoolToProp b')
+    DBBBi A.BOr  b b' -> Logic.POr  (defBoolToProp b) (defBoolToProp b')
+    DBBUn A.BNot b    -> Logic.PNot (defBoolToProp b)
+    DBInt bool        -> Logic.PAtom bool
+
+--------------------------------------------------------------------------------
+-- Conversion to ASP syntax.
+
+boolIntToASP :: DefBoolInt -> ASP.Comparison
+boolIntToASP bool = case bool of
+  = DBIBi op x y -> ASP.CBiOp (bi op) (intToASP x) (intToASP y)
+  where
+    bi op = case op of {
+        A.BLT->ASP.CLT; A.BLE->ASP.CLT; A.BEq->ASP.CEq;
+        A.BGT->ASP.CGT; A.BGE->ASP.CGE; A.BNE->ASP.CNE }
+
+intToASP :: DefInt -> ASP.Expr
+intToASP int = case int of
+    DICon c         -> ASP.ETerm (ASP.TInt c
+    DIVar v         -> ASP.ETerm (ASP.TVar $ ASP.Variable v)
+    DIIBi op x y    -> ASP.EBiOp (bi op) (intToASP x) (intToASP y)
+    DIIUn op x      -> ASP.EUnOp (un op) (intToASP x)
+  where
+    bi op = case op of {
+        A.IAdd->ASP.EAdd; A.IMul->ASP.EMul; A.IMod->ASP.EMod;
+        A.ISub->ASP.ESub; A.IDiv->ASP.EDiv; A.IPow->ASP.EPow }
+    un op = case op of {
+        A.INeg->ASP.ENeg; A.IAbs->ASP.EAbs }

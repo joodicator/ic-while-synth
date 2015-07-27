@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns, TypeFamilies, OverloadedLists,
+{-# LANGUAGE ViewPatterns, TypeFamilies,
              FlexibleInstances, UndecidableInstances #-}
 
 module Logic where
@@ -48,14 +48,14 @@ type DNF a = Disj (Conj (Lit a))
 -- conjunctions of /literals/, i.e. of atoms and negated atoms.
 pToDNF :: (Eq a, Ord a) => Prop a -> DNF a
 pToDNF prop = case prop of
-    PTrue      -> Disj []
-    PFalse     -> Disj [Conj []]
-    (PAtom a)  -> Disj [Conj [LAtom a]]
+    PTrue      -> Disj S.empty
+    PFalse     -> Disj (S.singleton $ Conj S.empty)
+    (PAtom a)  -> Disj (S.singleton $ Conj (S.singleton $ LAtom a))
     (POr p q)  -> Disj $ unDisj (pToDNF p) `S.union` unDisj (pToDNF q)
     (PAnd p q) -> Disj $ S.fromList [mergeC pc qc
                        | pc <- S.toList . unDisj $ pToDNF p,
                          qc <- S.toList . unDisj $ pToDNF q]
-    (PNot (PAtom a)) -> Disj [Conj [LNot a]]
+    (PNot (PAtom a)) -> Disj (S.singleton $ Conj (S.singleton $ LNot a))
     (PNot p)         -> pToDNF $ pNegate p
   where
     -- Take the union of two conjunctions of literals, such that

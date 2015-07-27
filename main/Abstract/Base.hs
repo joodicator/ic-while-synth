@@ -8,7 +8,8 @@
 -- For general use, Abstract.Main should be imported instead of this module.
 
 module Abstract.Base(
-    Boolean(..), Bool(..), IIBi(..), IIUn(..), BBBi(..), BBUn(..), BIBi(..),
+    Boolean(..), Bool(..), BoolInt(..),
+    IIBi(..), IIUn(..), BBBi(..), BBUn(..), BIBi(..),
     Int(..), (^), even, odd,
     Eq(..), Ord(..), ifThenElse,
     length, and, or, any, all,
@@ -41,7 +42,10 @@ data Bool
   | False               -- Constant False
   | BBBi BBBi Bool Bool -- Boolean-valued binary operation on booleans
   | BBUn BBUn Bool      -- Boolean-valued unary operation on booleans
-  | BIBi BIBi Int Int   -- Boolean-valued binary operation on integers
+  | BInt BoolInt        -- Atomic proposition involving integers
+
+data BoolInt
+  = BIBi BIBi Int Int   -- Boolean-valued binary operation on integers
 
 data BBBi = BAnd | BOr
 data BBUn = BNot
@@ -57,7 +61,7 @@ data Int
   | IIf Bool Int Int    -- Conditional integer value
 
 data IIBi = IAdd | ISub | IMul | IDiv | IMod | IPow
-data IIUn = INeg | IAbs | ISgn
+data IIUn = INeg | IAbs
 
 --------------------------------------------------------------------------------
 -- Generalised Bool operations.
@@ -264,10 +268,10 @@ instance Prelude.Eq a => Eq a where
 
 instance Eq Int where
     (ICon x) == (ICon y) = fromBoolean $ x Prelude.== y
-    x == y               = fromBoolean $ BIBi BEq x y
+    x == y               = fromBoolean $ BInt $ BIBi BEq x y
 
     (ICon x) /= (ICon y) = fromBoolean $ x Prelude./= y
-    x /= y               = fromBoolean $ BIBi BNE x y
+    x /= y               = fromBoolean $ BInt $ BIBi BNE x y
 
 --------------------------------------------------------------------------------
 -- Generalised Ord class.
@@ -295,16 +299,16 @@ instance Ord Int where
         "`compare` not supported for Abstract.Int. Use <, ==, etc, instead."
 
     (ICon x) < (ICon y)   = x < y
-    x < y                 = fromBoolean $ BIBi BLT x y
+    x < y                 = fromBoolean $ BInt $ BIBi BLT x y
 
     (ICon x) > (ICon y)   = x > y
-    x > y                 = fromBoolean $ BIBi BGT x y
+    x > y                 = fromBoolean $ BInt $ BIBi BGT x y
 
     (ICon x) <= (ICon y)  = x <= y
-    x <= y                = fromBoolean $ BIBi BLE x y
+    x <= y                = fromBoolean $ BInt $ BIBi BLE x y
 
     (ICon x) >= (ICon y)  = x >= y
-    x >= y                = fromBoolean $ BIBi BGE x y
+    x >= y                = fromBoolean $ BInt $ BIBi BGE x y
 
     max (ICon x) (ICon y) = ICon $ max x y
     max x y               = if x < y then y else x
