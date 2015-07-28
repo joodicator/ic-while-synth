@@ -1,16 +1,24 @@
-#const time_max=20.
-#const int_min=0.
-#const int_max=3.
+time_limit(20).
+int_range(0, 3).
 
-var(len_xs; a; b; s).
 array(xs, 3).
+input_array(xs).
+input_variable(len_xs).
+output_variable(s).
+extra_variable(i; x).
 
-con(0; 1).
-disallow(mul; div; mod; if; sub).
-write_var(a; b; s).
+constant(0; 1).
+disallow_feature(mul; div; mod; if; sub).
+read_only_variable(len_xs).
+read_only_array(xs).
 
-preset_line_instr(1, set(s, con(0))).
-preset_line_instr(2, set(a, con(0))).
+preset_line_instr(1,set(s,con(0))).
+preset_line_instr(2,set(i,con(0))).
+%preset_line_instr(3,while(lt(var(i),var(len_xs)),3)).
+%preset_line_instr(4,set(x,array(xs,var(i)))).
+%preset_line_instr(5,set(s,add(var(s),var(x)))).
+%preset_line_instr(6,set(i,add(var(i),con(1)))).
+%preset_line_instr(7,end_while).
 
 % sum [0] == 0
 array(r00, xs, 1).

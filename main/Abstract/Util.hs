@@ -2,6 +2,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Abstract.Util(
+    HsExpr(..), HsVar(..), HsInput(..),
     haskellToBool, boolToPropASP
 ) where
 

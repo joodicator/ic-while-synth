@@ -4,6 +4,14 @@
 #show counter_in/2.
 #show counter_out/2.
 
+% Generate input/output variable declarations for each array element.
+input_var(array(A,I))  :- var(array(A,I)), input_array(A).
+output_var(array(A,I)) :- var(array(A,I)), output_array(A).
+
+% Select a length for each array.
+1{ counter_array(A,L) : L=0..Lmax }1 :- array(A,Lmax).
+array(counter, A, L) :- counter_array(A, L).
+
 % Select values for input variables which satisfy our constraints.
 0{ counter_in(V, C) : int(C) }1 :- input_var(V).
 

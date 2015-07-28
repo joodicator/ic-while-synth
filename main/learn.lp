@@ -29,7 +29,10 @@ in(never,never,never)           :- out(never,never,never).
 out(never,never,never)          :- preset_line_instr(never,never).
 preset_line_instr(never,never)  :- con(never).
 con(never)                      :- write_array(never).
-write_array(never)              :- in(never,never,never).
+write_array(never)              :- array(never,never,never,never).
+array(never,never,never,never)  :- con(never,never).
+con(never,never)                :- var(never,never).
+var(never,never)                :- in(never,never,never).
 
 %-------------------------------------------------------------------------------
 % Features allowed in the program.
@@ -114,8 +117,9 @@ expr_type(mod(E1,E2),T) :- expr(mod(E1,E2)), leaf_type(E1,T), leaf_type(E2,T).
 
 %-------------------------------------------------------------------------------
 % Exactly one instruction per line.
-1{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L).
+1{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L), not line_preset(L).
 line(1..line_max).
+line_preset(L) :- preset_line_instr(L,_).
 
 % Every test example must halt:
 :- run_does_not_halt(R).
