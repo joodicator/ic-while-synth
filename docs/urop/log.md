@@ -1,3 +1,14 @@
+# Tuesday 28 July 2015
+
+Partially implement integration of the existing Haskell-to-ASP infrastructure into the program learner and counterexample finder. In particular, implemented:
+* Synthesis of ASP rules, complete with arbitrary rule heads and variable domains, from classical propositions such as those generated from Haskell.
+* A meta-Haskell interpreter that produces Abstract.Bool values (based on the [hint](https://hackage.haskell.org/package/hint) package, which is itself based on GHC's API).
+* Support for Arrays in `IterativeLearn.hs`. 
+
+For minimal functionality, it remains to implement support for Haskell-based conditions in `IterativeLearn.hs`. Further, it wll be necessary to implement support for arrays and Haskell conditions in `TemplateLearn.hs`.
+
+Relevant commits: [67447c1](https://github.com/JosephCrowe/ic-while-synth/commit/67447c120fac322480c64cadbf9b70a6f130a649) [19f4542](https://github.com/JosephCrowe/ic-while-synth/commit/19f4542a9acd0da4cd6446f7fed1abec7f12d688) [77bba19](https://github.com/JosephCrowe/ic-while-synth/commit/77bba1902956464874a14221de8c97092f48e177)
+
 # Monday 27 July 2015
 
 Implemented an algorithm to convert from Haskell-generated boolean expression abstracted over variables to disjunctions of ASP rule bodies.
