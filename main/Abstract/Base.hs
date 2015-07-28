@@ -32,9 +32,6 @@ import Data.String (IsString(..))
 import Data.Maybe (listToMaybe)
 import Control.Monad (guard)
 
-data One
-data Two
-
 --------------------------------------------------------------------------------
 -- Generalised booleans.
 data Bool

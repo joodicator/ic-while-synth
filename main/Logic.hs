@@ -1,22 +1,19 @@
-{-# LANGUAGE ViewPatterns, TypeFamilies, DeriveFunctor,
-             FlexibleInstances, UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns, TypeFamilies, DeriveFunctor #-}
 
 module Logic where
 
 import Data.Char
 import Data.Maybe
 import Data.List
-import Data.Maybe
-import Data.Functor.Identity
 import qualified Data.Set as S
 
-import Data.Monoid
 import Data.Traversable
 import Data.MonoTraversable
 import Control.Applicative
 
 import Clingo
 import While
+import Util
 
 --------------------------------------------------------------------------------
 -- Logical propositions represented classically.
@@ -49,40 +46,47 @@ type DNF a = Disj (Conj (Lit a))
 -- Gives a proposition in /disjunctive normal form/, i.e. as a disjunction of
 -- conjunctions of /literals/, i.e. of atoms and negated atoms.
 pToDNF :: (Eq a, Ord a) => Prop a -> DNF a
-pToDNF prop = case prop of
-    PTrue      -> Disj S.empty
-    PFalse     -> Disj (S.singleton $ Conj S.empty)
-    (PAtom a)  -> Disj (S.singleton $ Conj (S.singleton $ LAtom a))
-    (POr p q)  -> Disj $ unDisj (pToDNF p) `S.union` unDisj (pToDNF q)
-    (PAnd p q) -> Disj $ S.fromList [c | pc <- S.toList . unDisj $ pToDNF p,
-                                         qc <- S.toList . unDisj $ pToDNF q,
-                                         c <- maybeToList $ mergeC pc qc]
-    (PNot (PAtom a)) -> Disj (S.singleton $ Conj (S.singleton $ LNot a))
-    (PNot p)         -> pToDNF $ pNegate p
+pToDNF = pToDNF' LAtom
+
+-- As pToDNF, but allows a custom type for literals, rather than Logic.Lit.
+pToDNF' :: (Eq l, Ord l, Negation l) => (a -> l) -> Prop a -> Disj (Conj l)
+pToDNF' mkLit prop = case prop of
+    PTrue    -> Disj S.empty
+    PFalse   -> Disj (S.singleton $ Conj S.empty)
+    PAtom a  -> Disj (S.singleton $ Conj (S.singleton $ mkLit a))
+    POr p q  -> Disj $ unDisj (pToDNF' mkLit p) `S.union`
+                       unDisj (pToDNF' mkLit q)
+    PAnd p q -> Disj . S.fromList $ do
+        pc <- S.toList . unDisj $ pToDNF' mkLit p
+        qc <- S.toList . unDisj $ pToDNF' mkLit q
+        maybeToList $ mergeC pc qc
+    PNot (PAtom a) -> Disj(S.singleton $ Conj(S.singleton . negation $ mkLit a))
+    PNot p         -> pToDNF' mkLit $ negation p
   where
     -- Gives Just the union of two conjunctions of literals, or Nothing
     -- if both A and ¬A would occur in the result for any atom A.
-    mergeC :: (Eq a, Ord a) => Conj(Lit a) -> Conj(Lit a) -> Maybe(Conj(Lit a))
+    mergeC :: (Eq l, Ord l, Negation l) => Conj l -> Conj l -> Maybe (Conj l)
     mergeC (Conj xs) (Conj ys)
-      | any (flip S.member zs . lNegate) (S.toList zs) = Nothing
-      | otherwise                                      = Just (Conj zs)
+      | any (flip S.member zs . negation) (S.toList zs) = Nothing
+      | otherwise                                       = Just (Conj zs)
       where zs = xs `S.union` ys
 
 -- Negates a proposition P in such a way that its negation ¬P either:
 -- 1. is a literal, i.e. is of the form ¬A or A for some atom A; or
 -- 2. is _not_ of the form ¬P for any proposition P.
-pNegate :: Prop a -> Prop a
-pNegate PTrue      = PFalse
-pNegate PFalse     = PTrue
-pNegate (PAtom a)  = PNot (PAtom a)
-pNegate (PAnd p q) = POr  (PNot p) (PNot q)
-pNegate (POr  p q) = PAnd (PNot p) (PNot q)
-pNegate (PNot p)   = p
+instance Negation (Prop a) where
+    negation prop = case prop of
+        PTrue    -> PFalse
+        PFalse   -> PTrue
+        PAtom a  -> PNot (PAtom a)
+        PAnd p q -> POr  (PNot p) (PNot q)
+        POr  p q -> PAnd (PNot p) (PNot q)
+        PNot p   -> p
 
--- Negate a literal.
-lNegate :: Lit a -> Lit a
-lNegate (LAtom a) = (LNot  a)
-lNegate (LNot  a) = (LAtom a)
+instance Negation (Lit a) where
+    negation lit = case lit of
+        LAtom a -> LNot  a
+        LNot  a -> LAtom a
 
 --------------------------------------------------------------------------------
 -- Logical propositions represented as ASP rule bodies.
@@ -106,7 +110,7 @@ guardToCond guard = case guard of
     GGE e1 e2   -> exprToCond e1 ++ ">=" ++ exprToCond e2
     GEQ e1 e2   -> exprToCond e1 ++ "==" ++ exprToCond e2
     GNE e1 e2   -> exprToCond e1 ++ "!=" ++ exprToCond e2
-    GNeg guard' -> guardToCond (negateGuard guard')
+    GNeg guard' -> guardToCond (negation guard')
 
 exprToCond :: Expr -> Condition
 exprToCond expr = case expr of
@@ -141,40 +145,40 @@ traverseConjuncts act
     endParen :: [Lexeme] -> (String, [Lexeme])
     endParen xs = case xs of
         "(" : (endParen -> (h, t)) -> ('(':h, t)
-        ")" : xs                   -> (")",   xs)
+        ")" : xs'                  -> (")",   xs')
         x   : (endParen -> (h, t)) -> (x++h,  t)
         _                          -> error "impossible"
 
 traverseLexemes
   :: Applicative f => (String -> f String) -> Condition -> f Condition
 traverseLexemes act cond = case cond of
-    (span isSpace -> (space@(_:_), tail)) ->
+    (span isSpace -> (space@(_:_), cTail)) ->
         -- One or more spaces.
-        (++) <$> act space <*> traverseLexemes act tail
-    (span isDigit -> (digits@(_:_), tail)) ->
+        (++) <$> act space <*> traverseLexemes act cTail
+    (span isDigit -> (digits@(_:_), cTail)) ->
         -- One or more digits.
-        (++) <$> act digits <*> traverseLexemes act tail
-    (span (\c -> isAlphaNum c || c == '_') -> (name@(_:_), tail)) ->
+        (++) <$> act digits <*> traverseLexemes act cTail
+    (span (\c -> isAlphaNum c || c == '_') -> (name@(_:_), cTail)) ->
         -- One or more alphanumeric or underscore characters.
-        (++) <$> act name <*> traverseLexemes act tail
-    '#' : (span isAlpha -> (word, tail)) ->
+        (++) <$> act name <*> traverseLexemes act cTail
+    '#' : (span isAlpha -> (word, cTail)) ->
         -- A word starting with #.
-        (++) <$> act ('#' : word) <*> traverseLexemes act tail
-    '"' : (str -> (string, tail)) ->
+        (++) <$> act ('#' : word) <*> traverseLexemes act cTail
+    '"' : (str -> (string, cTail)) ->
         -- A string literal.
-        (++) <$> act ('"' : string) <*> traverseLexemes act tail
-    '%':'*' : (com -> (comment, tail)) ->
+        (++) <$> act ('"' : string) <*> traverseLexemes act cTail
+    '%':'*' : (com -> (comment, cTail)) ->
         -- An inline comment.
-        (++) <$> act ('%':'*': comment) <*> traverseLexemes act tail
+        (++) <$> act ('%':'*': comment) <*> traverseLexemes act cTail
     '%' : comment ->
         -- A comment extending to the end of the line.
         act ('%' : comment)
-    (sym -> Just (symbol, tail)) ->
+    (sym -> Just (symbol, cTail)) ->
         -- A symbol of two or more characters.
-        (++) <$> act symbol <*> traverseLexemes act tail
-    symbol : tail ->
+        (++) <$> act symbol <*> traverseLexemes act cTail
+    symbol : cTail ->
         -- A symbol of one character.
-        (++) <$> act [symbol] <*> traverseLexemes act tail
+        (++) <$> act [symbol] <*> traverseLexemes act cTail
     "" -> pure ""
   where
     str s = case s of
@@ -189,8 +193,8 @@ traverseLexemes act cond = case cond of
         ""                                    -> ("",          "")
     sym s = listToMaybe $ do
         p <- [":-", "<=", ">=", "!=", ".."]
-        s <- maybeToList $ stripPrefix p s
-        return (p, s)
+        s' <- maybeToList $ stripPrefix p s
+        return (p, s')
 
 -- The following functions are kept for (at least) backward-compatibility:
 
@@ -226,49 +230,17 @@ type instance Element Lexemes   = String
 type instance Element Variables = Variable
 type instance Element Conjuncts = Condition
 
-instance MonoTraversableDefault Lexemes where
-    otraverseDefault act
+instance MonoTraversableD Lexemes where
+    otraverseD act
       = fmap Lexemes . traverseLexemes act . unLexemes
 
-instance MonoTraversableDefault Variables where
-    otraverseDefault act
+instance MonoTraversableD Variables where
+    otraverseD act
       = fmap Variables . traverseFreeVariables act . unVariables
 
-instance MonoTraversableDefault Conjuncts where
-    otraverseDefault act
+instance MonoTraversableD Conjuncts where
+    otraverseD act
       = fmap Conjuncts . traverseConjuncts act . unConjuncts
-
---------------------------------------------------------------------------------
--- Default implementation of Mono{Traversable,Foldable,Functor}.
-
-class MonoTraversableDefault mono where
-    otraverseDefault :: Applicative f =>
-        (Element mono -> f (Element mono)) -> mono -> f mono
-
-instance MonoTraversableDefault mono => MonoTraversable mono where
-    otraverse = otraverseDefault
-    omapM act = unwrapMonad . otraverse (WrapMonad . act)
-
-instance MonoTraversableDefault mono => MonoFoldable mono where
-    ofoldMap f    = getConst . otraverseDefault (Const . f)
-    ofoldr  f z t = appEndo (ofoldMap (Endo . f) t) z
-    ofoldl' f     = ofoldlDefault $ \l r -> let l' = f l r in l' `seq` l'
-
-    ofoldr1Ex f t
-      = fromMaybe (error "ofoldr1Ex: empty") (ofoldr mf Nothing t)
-      where mf l Nothing  = Just l
-            mf l (Just r) = Just (f l r)
-
-    ofoldl1Ex' f t
-      = fromMaybe (error "ofoldlEx': empty") (ofoldlDefault mf Nothing t)
-      where mf Nothing  r = Just r
-            mf (Just l) r = l' `seq` Just l' where l' = f l r
-
-ofoldlDefault :: MonoFoldable mono => (a -> Element mono -> a) -> a -> mono -> a
-ofoldlDefault f z t = appEndo (getDual (ofoldMap (Dual . Endo . flip f) t)) z
-
-instance MonoTraversableDefault mono => MonoFunctor mono where
-    omap f = runIdentity . otraverse (Identity . f)
 
 --------------------------------------------------------------------------------
 -- Miscellaneous utilities.
@@ -277,6 +249,7 @@ headMap :: (a -> a) -> [a] -> [a]
 headMap f (x : xs) = f x : xs
 headMap _ []       = []
 
+headUp, headLow :: String -> String
 headUp  = headMap toUpper
 headLow = headMap toLower
 

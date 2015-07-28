@@ -1,4 +1,5 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies,
+             FlexibleInstances, FlexibleContexts #-}
 
 module ASP(
     Predicate(..), Variable(..), Function(..), Constant(..), LuaFunc(..),
@@ -15,6 +16,9 @@ import Data.List
 import Data.Char
 import Data.String
 import Data.Monoid
+import Data.Traversable
+import Data.MonoTraversable
+import Control.Applicative
 
 --------------------------------------------------------------------------------
 -- Various namespaces occurring in an Answer Set Program.
@@ -102,40 +106,89 @@ data Term
 -- assumption that negation in P is equivalent to negation-as-failure and not
 -- classical negation in ASP's sense.
 propToRules :: Head -> (Variable -> Body) -> Logic.Prop Literal -> [Rule]
-propToRules head dom prop
+propToRules rHead dom prop
   = undefined
     
 -- Given a classical proposition in ASP literals, gives a disjunctive list of
 -- rule bodies equivalent to the proposition in the same sense as propToRules.
 propToBodies :: Logic.Prop Literal -> [Body]
 propToBodies prop
-  = map disj . S.toList . Logic.unDisj $ Logic.pToDNF prop
+  = map disj . S.toList . Logic.unDisj $ Logic.pToDNF' id prop
   where
-    disj (Logic.Conj cs)   = Body . map conj $ S.toList cs
-    conj (Logic.LAtom lit) = CLiteral lit
-    conj (Logic.LNot  lit) = CLiteral (negateLiteral lit)
+    disj (Logic.Conj cs) = Body . map CLiteral $ S.toList cs
 
 --------------------------------------------------------------------------------
 -- Miscellaneous utilities.
 
-negateLiteral :: Literal -> Literal
-negateLiteral lit = case lit of
-    LAtom a    -> LNot a
-    LNot a     -> LAtom a
-    LCompare c -> LCompare (negateComparison c)
+instance Negation Literal where
+    negation lit = case lit of
+        LAtom a    -> LNot a
+        LNot a     -> LAtom a
+        LCompare c -> LCompare (negation c)
 
-negateComparison :: Comparison -> Comparison
-negateComparison comp = case comp of
-    CBiOp op x y -> CBiOp (negateCBiOp op) x y
+instance Negation Comparison where
+    negation comp = case comp of
+        CBiOp op x y -> CBiOp (negation op) x y
 
-negateCBiOp :: CBiOp -> CBiOp
-negateCBiOp op = case op of
-    CEq -> CNE
-    CNE -> CEq
-    CLT -> CGE
-    CGE -> CLT
-    CGT -> CLE
-    CLE -> CGT
+instance Negation CBiOp where
+    negation op = case op of
+        CEq -> CNE
+        CNE -> CEq
+        CLT -> CGE
+        CGE -> CLT
+        CGT -> CLE
+        CLE -> CGT
+
+-- Traversal over the free variables occurring in expressions.
+newtype FreeVars a = FreeVars{ unFreeVars :: a }
+type instance Element (FreeVars a) = Variable
+
+traverseFV
+  :: (Applicative f, MonoTraversable (FreeVars a))
+  => (Variable -> f Variable) -> a -> f a
+traverseFV f = fmap unFreeVars . otraverse f . FreeVars 
+
+instance MonoTraversableD (FreeVars Head) where
+    otraverseD f (FreeVars (Head disjs))
+      = FreeVars . Head <$> traverse (traverseFV f) disjs
+
+instance MonoTraversableD (FreeVars Body) where
+    otraverseD f (FreeVars (Body conjs))
+      = FreeVars . Body <$> traverse (traverseFV f) conjs
+
+instance MonoTraversableD (FreeVars Atom) where
+    otraverseD f (FreeVars (Atom p xs))
+      = FreeVars . Atom p <$> traverse (traverseFV f) xs
+
+instance MonoTraversableD (FreeVars Conjunct) where
+    otraverseD f (FreeVars conj) = FreeVars <$> case conj of
+        CLiteral   lt    -> CLiteral   <$> traverseFV f lt
+        CAssign    vr ex -> CAssign    <$> traverseFV f vr <*> traverseFV f ex
+        CCondition lt cn -> CCondition <$> traverseFV f lt <*> traverseFV f cn
+
+instance MonoTraversableD (FreeVars Literal) where
+    otraverseD f (FreeVars lit) = FreeVars <$> case lit of
+        LCompare cm -> LCompare <$> traverseFV f cm
+        LAtom    at -> LAtom    <$> traverseFV f at
+        LNot     at -> LNot     <$> traverseFV f at
+
+instance MonoTraversableD (FreeVars Comparison) where
+    otraverseD f (FreeVars comp) = FreeVars <$> case comp of
+        CBiOp op x y -> CBiOp op <$> traverseFV f x <*> traverseFV f y
+
+instance MonoTraversableD (FreeVars Expr) where
+    otraverseD f (FreeVars expr) = FreeVars <$> case expr of
+        ETerm    tm  -> ETerm    <$> traverseFV f tm
+        EUnOp op x   -> EUnOp op <$> traverseFV f x
+        EBiOp op x y -> EBiOp op <$> traverseFV f x <*> traverseFV f y
+
+instance MonoTraversableD (FreeVars Term) where
+    otraverseD f (FreeVars term) = FreeVars <$> case term of
+        TVar vr -> TVar <$> traverseFV f vr
+        _       -> pure term
+
+instance MonoTraversableD (FreeVars Variable) where
+    otraverseD f (FreeVars var) = FreeVars <$> f var
 
 --------------------------------------------------------------------------------
 -- Information about ASP operators.
@@ -144,7 +197,7 @@ data ASPContext = Clingo3
 
 instance Operator EBiOp where
     type OpContext EBiOp = ASPContext
-    opInfo cxt@Clingo3 op = case op of
+    opInfo Clingo3 op = case op of
         EXOr -> OpInfo{ oPrec=1, oAscL=True, oAscR=True }
         EOr  -> OpInfo{ oPrec=2, oAscL=True, oAscR=True }
         EAnd -> OpInfo{ oPrec=3, oAscL=True, oAscR=True }
@@ -157,7 +210,7 @@ instance Operator EBiOp where
 
 instance Operator EUnOp where
     type OpContext EUnOp = ASPContext
-    opInfo cxt@Clingo3 op = case op of
+    opInfo Clingo3 op = case op of
         ENeg -> OpInfo{ oPrec=7, oAscL=False, oAscR=True }
         ENot -> OpInfo{ oPrec=7, oAscL=False, oAscR=True }
         EAbs -> OpInfo{ oPrec=9, oAscL=False, oAscR=False }
@@ -198,9 +251,9 @@ instance Show LuaFunc where
       | otherwise = error $ "\""++ f ++ "\" is not a valid Lua function name."
 
 instance Show Rule where
-    show (Rule (Head []) body) = ":- " ++ show body ++ "."
-    show (Rule head (Body [])) = show head ++ "."
-    show (Rule head body)      = show head ++ " :- " ++ show body ++ "."
+    show (Rule (Head []) rBody) = ":- " ++ show rBody ++ "."
+    show (Rule rHead (Body [])) = show rHead ++ "."
+    show (Rule rHead rBody)     = show rHead ++ " :- " ++ show rBody ++ "."
 
 instance Show Head where
     show (Head ds) = intercalate " | " $ map show ds
@@ -213,9 +266,9 @@ instance Show Atom where
 
 instance Show Conjunct where
     show conj = case conj of
-        CLiteral lit         -> show lit
-        CAssign var expr     -> show var ++"="++ show expr
-        CCondition head tail -> show head ++" : "++ show tail
+        CLiteral lit           -> show lit
+        CAssign var expr       -> show var ++"="++ show expr
+        CCondition cHead cTail -> show cHead ++" : "++ show cTail
 
 instance Show Literal where
     show conj = case conj of
@@ -225,7 +278,9 @@ instance Show Literal where
 
 instance Show Comparison where
     show comp = case comp of
-        CBiOp op x y -> show x ++ show op ++ show y
+        CBiOp CGT x y -> show $ CBiOp CLT y x
+        CBiOp CGE x y -> show $ CBiOp CLE y x
+        CBiOp op  x y -> show x ++ show op ++ show y
 
 instance Show CBiOp where
     show op = case op of

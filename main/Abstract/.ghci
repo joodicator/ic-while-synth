@@ -1,4 +1,5 @@
 :cd ..
+:set -Wall
 :seti -XRebindableSyntax
 :seti -XOverloadedStrings
 :load Abstract.Main

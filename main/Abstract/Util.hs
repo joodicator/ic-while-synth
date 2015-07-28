@@ -60,7 +60,7 @@ instance Operator A.Bool where
         A.False       -> OpInfo{ oPrec=10, oAscL=False, oAscR=False }
         A.BBBi op _ _ -> opInfo Haskell op
         A.BBUn op _   -> opInfo Haskell op
-        A.BInt bool   -> opInfo Haskell bool
+        A.BInt bi     -> opInfo Haskell bi
 
 instance Operator A.BoolInt where
     type OpContext A.BoolInt = ExprContext
@@ -246,7 +246,7 @@ defBoolToProp bool = case bool of
     DBBBi A.BAnd b b' -> Logic.PAnd (defBoolToProp b) (defBoolToProp b')
     DBBBi A.BOr  b b' -> Logic.POr  (defBoolToProp b) (defBoolToProp b')
     DBBUn A.BNot b    -> Logic.PNot (defBoolToProp b)
-    DBInt bool        -> Logic.PAtom bool
+    DBInt bi          -> Logic.PAtom bi
 
 --------------------------------------------------------------------------------
 -- Conversion to ASP syntax.
