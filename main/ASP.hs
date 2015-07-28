@@ -5,7 +5,7 @@ module ASP(
     Predicate(..), Variable(..), Function(..), Constant(..), LuaFunc(..),
     Rule(..), Head(..), Body(..), Conjunct(..), Literal(..),
     Atom(..), Comparison(..), Expr(..), Term(..), CBiOp(..), EBiOp(..), EUnOp(..),
-    propToBodies, propToRules
+    propToRules
 ) where
 
 import qualified Logic
@@ -34,14 +34,12 @@ newtype LuaFunc   = LuaFunc   String deriving (IsString, Eq, Ord)
 
 data Rule = Rule Head Body
 
-newtype Head = Head [Atom]
+newtype Head = Head [Atom] deriving Monoid
 
 --------------------------------------------------------------------------------
 -- Types occurring in ASP rule bodies.
 
-newtype Body
-  = Body [Conjunct]
-  deriving Monoid
+newtype Body = Body [Conjunct] deriving Monoid
 
 -- A conjunct in a rule body (or the RHS of a condition).
 data Conjunct
@@ -106,9 +104,14 @@ data Term
 -- assumption that negation in P is equivalent to negation-as-failure and not
 -- classical negation in ASP's sense.
 propToRules :: Head -> (Variable -> Body) -> Logic.Prop Literal -> [Rule]
-propToRules rHead dom prop
-  = undefined
-    
+propToRules rHead dom
+  = map bodyToRule . propToBodies
+  where
+    bodyToRule rBody
+      = Rule rHead $ rBody <> ofoldMap dom (headVars `S.union` bodyVars)
+      where bodyVars = freeVars rBody
+    headVars = freeVars rHead
+  
 -- Given a classical proposition in ASP literals, gives a disjunctive list of
 -- rule bodies equivalent to the proposition in the same sense as propToRules.
 propToBodies :: Logic.Prop Literal -> [Body]
@@ -118,30 +121,15 @@ propToBodies prop
     disj (Logic.Conj cs) = Body . map CLiteral $ S.toList cs
 
 --------------------------------------------------------------------------------
--- Miscellaneous utilities.
+-- MonoTraversable instances for traversal over the free variables occurring
+-- in various structures.
 
-instance Negation Literal where
-    negation lit = case lit of
-        LAtom a    -> LNot a
-        LNot a     -> LAtom a
-        LCompare c -> LCompare (negation c)
-
-instance Negation Comparison where
-    negation comp = case comp of
-        CBiOp op x y -> CBiOp (negation op) x y
-
-instance Negation CBiOp where
-    negation op = case op of
-        CEq -> CNE
-        CNE -> CEq
-        CLT -> CGE
-        CGE -> CLT
-        CGT -> CLE
-        CLE -> CGT
-
--- Traversal over the free variables occurring in expressions.
 newtype FreeVars a = FreeVars{ unFreeVars :: a }
+
 type instance Element (FreeVars a) = Variable
+
+freeVars :: MonoTraversable (FreeVars a) => a -> S.Set Variable
+freeVars = S.fromList . otoList . FreeVars
 
 traverseFV
   :: (Applicative f, MonoTraversable (FreeVars a))
@@ -189,6 +177,28 @@ instance MonoTraversableD (FreeVars Term) where
 
 instance MonoTraversableD (FreeVars Variable) where
     otraverseD f (FreeVars var) = FreeVars <$> f var
+
+--------------------------------------------------------------------------------
+-- Negation instances for various structures.
+
+instance Negation Literal where
+    negation lit = case lit of
+        LAtom a    -> LNot a
+        LNot a     -> LAtom a
+        LCompare c -> LCompare (negation c)
+
+instance Negation Comparison where
+    negation comp = case comp of
+        CBiOp op x y -> CBiOp (negation op) x y
+
+instance Negation CBiOp where
+    negation op = case op of
+        CEq -> CNE
+        CNE -> CEq
+        CLT -> CGE
+        CGE -> CLT
+        CGT -> CLE
+        CLE -> CGT
 
 --------------------------------------------------------------------------------
 -- Information about ASP operators.

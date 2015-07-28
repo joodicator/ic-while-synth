@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Abstract.Util(
-    boolToPropASP
+    haskellToBool, boolToPropASP
 ) where
 
 --------------------------------------------------------------------------------
@@ -14,7 +14,10 @@ import qualified ASP
 import qualified Logic
 import Util
 
+import Language.Haskell.Interpreter
+
 import Control.Applicative
+import Data.List
 
 --------------------------------------------------------------------------------
 -- Information about operators in various contexts.
@@ -92,13 +95,13 @@ instance Operator A.BIBi where
 -- Show instances (for Haskell-like string representations).
 
 instance Show Expr where
-    show = showExpr 0
+    showsPrec prec = (++) . showExpr prec
 
 instance Show A.Int where
-    show = show . I
+    showsPrec prec = showsPrec prec . I
 
 instance Show A.Bool where
-    show = show . B
+    showsPrec prec = showsPrec prec . B
 
 instance Show A.IIBi where
     show A.IAdd = " + "
@@ -274,3 +277,35 @@ intToASP int = case int of
         A.ISub->ASP.ESub; A.IDiv->ASP.EDiv; A.IPow->ASP.EPow }
     un op = case op of {
         A.INeg->ASP.ENeg; A.IAbs->ASP.EAbs }
+
+--------------------------------------------------------------------------------
+-- Conversion from strings in Haskell syntax.
+
+type HsExpr  = String
+type HsVar   = String
+data HsInput = HsScalar A.Int | HsArray [A.Int]
+
+haskellToBool' :: HsExpr -> [(HsVar, HsInput)] -> IO A.Bool
+haskellToBool' expr vars
+  = haskellToBool expr vars >>= \result -> case result of
+        Left err   -> putStrLn err >> fail "haskellToBool' failed."
+        Right bool -> return bool
+
+haskellToBool :: HsExpr -> [(HsVar, HsInput)] -> IO (Either String A.Bool)
+haskellToBool expr vars = do
+    result <- runInterpreter $ do
+        loadModules ["Abstract.Main"]
+        setImports  ["Abstract.Main"]
+        set [languageExtensions := [RebindableSyntax]]
+        interpret ("\\"++ sArgs ++" "++ aArgs ++" -> "++ expr) infer
+    return $ case result of
+        Left (UnknownError e) -> Left $ "Unknown error: " ++ e
+        Left (NotAllowed   e) -> Left $ "Not allowed: "   ++ e
+        Left (GhcException e) -> Left $ "GHC exception: " ++ e
+        Left (WontCompile es) -> Left $ unlines [e | GhcError e <- es]
+        Right lambda            -> Right $ lambda sIns aIns
+  where
+    (sVars,sIns) = unzip [(v,i) | (v, HsScalar i) <- vars]
+    (aVars,aIns) = unzip [(v,i) | (v, HsArray  i) <- vars]
+    sArgs = "["++ intercalate "," sVars ++"]"
+    aArgs = "["++ intercalate "," aVars ++"]" 

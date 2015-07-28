@@ -1,5 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax, OverloadedStrings,
-             FlexibleInstances, UndecidableInstances, OverlappingInstances #-}
+             FlexibleInstances, UndecidableInstances, OverlappingInstances,
+             DeriveDataTypeable #-}
 
 --------------------------------------------------------------------------------
 -- Replacements for various Prelude types and classes allowing abstract
@@ -31,6 +32,7 @@ import Data.Char (isDigit)
 import Data.String (IsString(..))
 import Data.Maybe (listToMaybe)
 import Control.Monad (guard)
+import Data.Typeable (Typeable)
 
 --------------------------------------------------------------------------------
 -- Generalised booleans.
@@ -40,7 +42,8 @@ data Bool
   | BBBi BBBi Bool Bool -- Boolean-valued binary operation on booleans
   | BBUn BBUn Bool      -- Boolean-valued unary operation on booleans
   | BInt BoolInt        -- Atomic proposition involving integers
-
+  deriving Typeable
+  
 data BoolInt
   = BIBi BIBi Int Int   -- Boolean-valued binary operation on integers
 
@@ -56,6 +59,7 @@ data Int
   | IIBi IIBi Int Int   -- Integer-valued binary operation on integers
   | IIUn IIUn Int       -- Integer-valued unary operation on integers
   | IIf Bool Int Int    -- Conditional integer value
+  deriving Typeable
 
 data IIBi = IAdd | ISub | IMul | IDiv | IMod | IPow
 data IIUn = INeg | IAbs

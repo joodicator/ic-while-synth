@@ -1,9 +1,11 @@
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax, OverloadedStrings #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 module Abstract.Main(
-    module Abstract.Base,
-    module Abstract.Util
+    module Abstract.Base
 ) where
 
-import Abstract.Base hiding (BBBi(..), BBUn(..), BIBi(..), IIBi(..), IIUn(..))
-import Abstract.Util
+import Abstract.Base hiding (
+    Bool(..), BoolInt(..), Int(..),
+    BBBi(..), BBUn(..), BIBi(..), IIBi(..), IIUn(..))
+import Abstract.Base (Bool(), Int())
+import Abstract.Util()
