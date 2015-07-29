@@ -6,6 +6,7 @@ module Util where
 
 import Control.Applicative
 import Data.Maybe
+import Data.Char
 import Data.Monoid
 import Data.Functor.Identity
 import Data.MonoTraversable
@@ -33,7 +34,7 @@ class Negation a where
     negation :: a -> a
 
 --------------------------------------------------------------------------------
--- Default implementation of Mono{Traversable,Foldable,Functor}.
+-- Default implementation of Mono{Traversable,Foldable,FoldableEq,Functor}.
 
 class MonoTraversableD mono where
     otraverseD :: Applicative f =>
@@ -58,9 +59,23 @@ instance MonoTraversableD mono => MonoFoldable mono where
       where mf Nothing  r = Just r
             mf (Just l) r = l' `seq` Just l' where l' = f l r
 
+instance (MonoTraversableD mono, Eq (Element mono)) => MonoFoldableEq mono where
+    oelem    = oany . (==)
+    onotElem = oall . (/=)
+
 ofoldlDefault :: MonoFoldable mono => (a -> Element mono -> a) -> a -> mono -> a
 ofoldlDefault f z t = appEndo (getDual (ofoldMap (Dual . Endo . flip f) t)) z
 
 instance MonoTraversableD mono => MonoFunctor mono where
     omap f = runIdentity . otraverse (Identity . f)
 
+headMap :: (a -> a) -> [a] -> [a]
+headMap f (x : xs) = f x : xs
+headMap _ []       = []
+
+--------------------------------------------------------------------------------
+-- Miscellaneous utilities.
+
+headUp, headLow :: String -> String
+headUp  = headMap toUpper
+headLow = headMap toLower

@@ -4,10 +4,6 @@
 
 module IterativeLearn where
 
-import Clingo hiding (readArgs)
-import qualified While
-import Logic
-
 import Control.Applicative
 import Control.Monad
 import Control.Concurrent
@@ -16,19 +12,36 @@ import qualified Control.Concurrent.MSem as MSem
 import Data.List
 import Data.Maybe
 import Data.Char
+import Data.MonoTraversable
+import qualified Data.Map as M
 
 import System.IO
 import System.Environment
 import System.Exit
 
+import qualified Logic
+import qualified ASP
+import qualified ASPString
+import qualified While
+import qualified Abstract.Base as Abstract
+import Abstract.Util
+import Util
+import Clingo hiding (readArgs)
+
+--------------------------------------------------------------------------------
 type Value   = Integer
 type Feature = String
 
 type ArrayName = String
 type ArraySize = Integer
+type Variable  = String
 
 type LineInstr   = Clingo.Fact
 type Instruction = Clingo.Term
+
+type ArraySizes = M.Map ArrayName ArraySize
+type HsBindings = [(HsVar, HsInput)]
+type ASPProp    = Logic.Prop ASP.Literal
 
 newtype Program = Program [LineInstr] deriving Show
 newtype Input   = Input   [(WhileVar, Value)] deriving (Show, Eq, Ord)
@@ -38,6 +51,11 @@ data WhileVar
   = VScalar Variable
   | VArray ArrayName Integer
   deriving (Eq, Ord)
+
+data Condition
+  = CondASPString ASPString.Condition
+  | CondASPProp   [(M.Map ArrayName ArraySize, Logic.Prop ASP.Literal)]
+  | CondEmpty
 
 data Limits = Limits{
     lmLineMax :: Integer }
@@ -119,8 +137,8 @@ defaultConf = Conf{
     cfReadOnlyArrays  = [],
 
     cfExamples        = [],
-    cfPreCondition    = "",
-    cfPostCondition   = "",
+    cfPreCondition    = CondEmpty,
+    cfPostCondition   = CondEmpty,
 
     cfConfFile        = undefined,
     cfThreads         = 1,
@@ -136,31 +154,18 @@ readConfFile filePath conf = do
     result <- runClingo options [CICode code, CIFile filePath]
     case result of
         CRSatisfiable (answer:_) -> do
-            let conf' = readConfFacts answer conf
+            conf' <- readConfFacts answer conf
             return $ conf'{ cfConfFile=filePath }
         CRUnsatisfiable ->
             error $ filePath ++ " unsatisfiable."
         _ -> error "impossible"
 
-readConfFacts :: [Fact] -> Conf -> Conf
+readConfFacts :: [Fact] -> Conf -> IO Conf
 readConfFacts inFacts inConf
-  = (readConfFacts' inConf inFacts){ cfExamples=examples }
-  where
-    xArrays = [(e, a, l)
-        | Fact "array" [TFun(Name e)[], TFun(Name a)[], TInt l] <- inFacts]
-    ins = [(e, v, c)
-        | Fact (Name "in") [TFun(Name e)[], vt, TInt c] <- inFacts,
-          v <- maybeToList $ readVarTerm vt]
-    outs = [(e, v, c)
-        | Fact (Name "out") [TFun(Name e)[], vt, TInt c] <- inFacts,
-          v <- maybeToList $ readVarTerm vt]
-    examples = [UserExample{
-        exID     = e,
-        exArrays = [(a,l) | (e',a,l) <- xArrays, e == e'],
-        exInput  = Input  [(v,c) | (e',v,c) <- ins,  e == e'],
-        exOutput = Output [(v,c) | (e',v,c) <- outs, e == e'] }
-        | e <- nub . sort $ [e | (e,_,_) <- ins ++ outs]
-                          ++[e | (e,_,_) <- xArrays]]
+  = return inConf >>= readConfFacts'   `flip` inFacts
+                  >>= readConfFacts''  `flip` inFacts
+                  >>= readConfFacts''' `flip` inFacts
+  where    
     readConfFacts' conf (fact : facts) = case fact of
         Fact (Name "int_range") [TInt imin, TInt imax] ->
             readConfFacts' (conf{ cfIntRange=(imin, imax) }) facts
@@ -188,10 +193,6 @@ readConfFacts inFacts inConf
             readConfFacts' (conf{ cfReadOnly=var : cfReadOnly conf }) facts
         Fact (Name "disallow_feature") [TFun (Name feat) []] ->
             readConfFacts' (conf{ cfDisallow=feat : cfDisallow conf }) facts
-        Fact (Name "precondition") [TStr cond] ->
-            readConfFacts' (conf{ cfPreCondition=cond }) facts
-        Fact (Name "postcondition") [TStr cond] ->
-            readConfFacts' (conf{ cfPostCondition=cond }) facts
         Fact (Name "echo_clingo") [] ->
             readConfFacts' (conf{ cfEchoClingo=True }) facts
         Fact (Name "echo_asp") [] ->
@@ -212,7 +213,39 @@ readConfFacts inFacts inConf
                 cfReadOnlyArrays = name : cfReadOnlyArrays conf }) facts
         _ ->
             readConfFacts' conf facts
-    readConfFacts' conf [] = conf
+    readConfFacts' conf []
+      = return conf
+
+    readConfFacts'' conf (fact : facts) = case fact of
+        Fact (Name "precondition") [condTerm] ->
+            readCondTerm condTerm conf >>= \mCond -> case mCond of
+                Just cond -> readConfFacts'' (conf{ cfPreCondition=cond }) facts
+                Nothing   -> error $ "Invalid precondition: "++ showTerm condTerm
+        Fact (Name "postcondition") [condTerm] -> do
+            readCondTerm condTerm conf >>= \mCond -> case mCond of
+                Just cond -> readConfFacts'' (conf{ cfPostCondition=cond }) facts
+                Nothing   -> error $ "Invalid postcondition: "++ showTerm condTerm
+    readConfFacts'' conf []
+      = return conf
+
+    readConfFacts''' conf facts
+      = return $ conf{ cfExamples=examples }
+      where
+        xArrays = [(e, a, l)
+            | Fact "array" [TFun(Name e)[], TFun(Name a)[], TInt l] <- facts]
+        ins = [(e, v, c)
+            | Fact (Name "in") [TFun(Name e)[], vt, TInt c] <- facts,
+              v <- maybeToList $ readVarTerm vt]
+        outs = [(e, v, c)
+            | Fact (Name "out") [TFun(Name e)[], vt, TInt c] <- facts,
+              v <- maybeToList $ readVarTerm vt]
+        examples = [UserExample{
+            exID     = e,
+            exArrays = [(a,l) | (e',a,l) <- xArrays, e == e'],
+            exInput  = Input  [(v,c) | (e',v,c) <- ins,  e == e'],
+            exOutput = Output [(v,c) | (e',v,c) <- outs, e == e'] }
+            | e <- nub . sort $ [e | (e,_,_) <- ins ++ outs]
+                              ++[e | (e,_,_) <- xArrays]]
 
 --------------------------------------------------------------------------------
 main :: IO ()
@@ -279,8 +312,8 @@ iterativeLearn exs lims conf = do
         _conf <- interactivePause conf
         let lineMax = programLength prog
         case cfPostCondition _conf of
-            _:_ -> iterativeLearn' prog exs lims{lmLineMax = lineMax} _conf
-            ""  -> return prog
+            CondEmpty -> return prog
+            _         -> iterativeLearn' prog exs lims{lmLineMax = lineMax} _conf
       Nothing -> do
         let lims' = last limss
         let lineMax = lmLineMax lims' + cfLineLimitStep conf
@@ -424,7 +457,8 @@ findProgramASP exs lims conf
             return $ "out(" ++ xID ++ "," ++ varTerm var ++ "," ++ show val ++ ")."
         return $ unwords $ arrs ++ ins ++ outs
        
-    postCondLines =
+    postCondLines = case postCond of
+      CondASPString postCondString ->
         let ids = [xid
                   | PostConditionExample{ exID=xid } <- exs ] in
         let iVars = [v
@@ -440,10 +474,21 @@ findProgramASP exs lims conf
         ++ concat ["int(Out_"++ varVar v ++"), " | v <- oVars]
         ++ concat ["int("++ varVar v ++"), " | v <- plVars]
         ++ concat ["in(R,"++ varTerm v ++",In_"++ varVar v ++"), " | v <- iVars]
-        ++ postCond ++".",
+        ++ postCondString ++".",
         ":- postcon_run(R), "
         ++ concat ["run_var_out(R,"++ varTerm v ++",Out_"++ varVar v ++"), " | v <- oVars]
         ++ "not postcon("++ intercalate "," ("R" : map (("Out_"++) . varVar) oVars) ++")."]
+      CondASPProp props -> do
+        (arraySizes, prop) <- props
+        let sizeProps = [
+            PAtom $ "counter_array" [fromString aName, fromInteger aSize]
+            | (aName, aSize) <- M.toList arraySizes]
+        let prop' = foldr Logic.PAnd prop sizeProps
+        let head = ASP.Head ["postcon" [error "NOT IMPLEMENTED"]]
+        let domain = error "NOT IMPLEMENTED"
+        map show $ ASP.propToRules head domain prop'
+      CondEmpty ->
+        [":-."]
 
     allVars   = nub . sort $ inputVars ++ outputVars ++ extraVars
     allArrays = map fst arrays
@@ -572,6 +617,8 @@ showInteractiveHelp
   = putStrLn "Type enter to continue, c to exit interactive mode, or q to quit."
 
 --------------------------------------------------------------------------------
+-- Miscellaneous utilities
+
 runClingoConf :: [ClingoInput] -> Maybe String -> Conf -> IO ClingoResult
 runClingoConf input maybeRunID conf = do
     let options = runClingoOptions{
@@ -581,6 +628,7 @@ runClingoConf input maybeRunID conf = do
         rcEcho       = cfPutLines conf }
     runClingo options (input ++ [CIFile $ cfConfFile conf])
 
+--------------------------------------------------------------------------------
 showProgram :: Program -> [String]
 showProgram (Program [])
   = ["   (empty program)"]
@@ -591,6 +639,7 @@ programLength :: Program -> Integer
 programLength (Program facts)
   = genericLength . catMaybes . map While.readLineInstr $ facts
 
+--------------------------------------------------------------------------------
 readVarTerm :: Term -> Maybe WhileVar
 readVarTerm term = case term of
     TFun (Name v) []                             -> Just $ VScalar v
@@ -608,3 +657,64 @@ varVar (VArray a i) = headUp a ++ show i
 instance Show WhileVar where
     show (VScalar v)  = v
     show (VArray a i) = a ++"["++ show i ++"]"
+
+--------------------------------------------------------------------------------
+isFreeIn :: Variable -> Condition -> Bool
+isFreeIn var cond = case cond of
+    CondASPString cond' -> var `ASPString.isFreeIn` cond'
+    CondASPProp   props -> ASP.Variable var `oelem` ASP.FreeVars props
+
+readCondTerm :: Term -> Conf -> IO (Maybe Condition)
+readCondTerm term conf = case term of
+    TStr aspCond ->
+        return . Just . CondASPString $ aspCond
+    TFun "asp" [TStr aspCond] ->
+        return . Just . CondASPString $ aspCond
+    TFun "haskell" [TStr hsExpr] -> do
+        aspProp <- readHaskellCond hsExpr (hsBindings conf) (cfArrays conf)
+        return . Just . CondASPProp $ aspProp
+    _ -> return Nothing
+
+readHaskellCond
+  :: HsExpr
+  -> (ArraySizes -> HsBindings)
+  -> [(ArrayName, ArraySize)]
+  -> IO [(ArraySizes, ASPProp)]
+readHaskellCond hsExpr sizesToBindings maxArraySizes = do
+    props <- forM sizess $ readHaskellCond' hsExpr . sizesToBindings
+    return $ zip sizess props
+  where
+    sizess :: [ArraySizes]
+    sizess = M.fromList <$> sequence [[(a,s) | s <- [0..m]] | (a,m) <- maxArraySizes]
+
+readHaskellCond' :: HsExpr -> HsBindings -> IO ASPProp
+readHaskellCond' hsExpr hsBindings = do
+    result <- haskellToBool hsExpr hsBindings
+    case result of
+      Left err -> do  
+        putStrLn $ "Error in Haskell condition \""++ hsExpr ++"\":"
+        putStrLn err
+        exitFailure
+      Right bool -> do
+        return $ boolToPropASP bool
+
+hsBindings :: Conf -> ArraySizes -> HsBindings
+hsBindings conf arraySizes
+  = (varBind   "in_" <$> inVars)   ++ (varBind   "out_" <$> outVars)   ++
+    (arrayBind "in_" <$> inArrays) ++ (arrayBind "out_" <$> outArrays) ++
+    (varBind    ""   <$> logicVars)
+  where
+    varBind :: String -> WhileVar -> (HsVar, HsInput)
+    varBind prefix var = (
+        headLow $ prefix ++ varTerm var,
+        HsScalar . Abstract.IVar . headUp $ prefix ++ varVar var)
+
+    arrayBind :: String -> ArrayName -> (HsVar, HsInput)
+    arrayBind prefix name = (
+        headLow $ prefix ++ name,
+        HsArray [Abstract.IVar . headUp $ prefix ++ varVar (VArray name i)
+            | s <- maybeToList $ M.lookup name arraySizes, i <- [0..s-1]])
+
+    Conf{ cfInputVars   = inVars,    cfOutputVars   = outVars,
+          cfInputArrays = inArrays,  cfOutputArrays = outArrays,
+          cfLogicVars   = logicVars, cfArrays       = arrays } = conf

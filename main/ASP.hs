@@ -5,6 +5,7 @@ module ASP(
     Predicate(..), Variable(..), Function(..), Constant(..), LuaFunc(..),
     Rule(..), Head(..), Body(..), Conjunct(..), Literal(..),
     Atom(..), Comparison(..), Expr(..), Term(..), CBiOp(..), EBiOp(..), EUnOp(..),
+    FreeVars(..),
     propToRules
 ) where
 
@@ -54,10 +55,16 @@ data Literal
   | LNot     Atom
   deriving (Eq, Ord)
 
+instance IsString ([Expr] -> Literal) where
+    fromString = (LAtom .) . fromString
+
 -- The application of a predicate to some arguments.
 data Atom
   = Atom Predicate [Expr]
   deriving (Eq, Ord)
+
+instance IsString ([Expr] -> Atom) where
+    fromString = Atom . fromString
 
 -- Comparison of term-expressions.
 data Comparison
@@ -75,6 +82,18 @@ data Expr
   | EUnOp EUnOp Expr
   | EBiOp EBiOp Expr Expr
   deriving (Eq, Ord)
+
+instance IsString Expr where
+    fromString = ETerm . fromString
+
+instance Num Expr where
+    (+)    = EBiOp EAdd
+    (-)    = EBiOp ESub
+    (*)    = EBiOp EMul
+    negate = EUnOp ENeg
+    abs    = EUnOp EAbs
+    signum = error "signum not supported for ASP.Expr."
+    fromInteger = ETerm . TInt
 
 -- Binary arithmetic operators.
 data EBiOp
@@ -94,6 +113,12 @@ data Term
   | TFun Function [Expr]
   | TLua LuaFunc [Expr]
   deriving (Eq, Ord)
+
+instance IsString ([Expr] -> Term) where
+    fromString = TFun . fromString
+
+instance IsString Term where
+    fromString = flip TFun [] . fromString
 
 --------------------------------------------------------------------------------
 -- Conversion from classical propositions.
@@ -177,6 +202,10 @@ instance MonoTraversableD (FreeVars Term) where
 
 instance MonoTraversableD (FreeVars Variable) where
     otraverseD f (FreeVars var) = FreeVars <$> f var
+
+instance (Traversable t, MonoTraversable (FreeVars a))
+      => MonoTraversableD (FreeVars (t a)) where
+    otraverseD f (FreeVars t) = FreeVars <$> traverse (traverseFV f) t
 
 --------------------------------------------------------------------------------
 -- Negation instances for various structures.
