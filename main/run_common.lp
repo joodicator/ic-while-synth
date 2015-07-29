@@ -13,11 +13,6 @@ run(R) :- in(R,_,_).
 run_var(R,V)          :- run(R), scalar_var(V).
 run_var(R,array(A,I)) :- run_array(R,A,L), I=0..L-1.
 
-% Default maximum array lengths to the maximum of specific lengths if not given.
-max_array_given(A) :- array(A,_).
-max_array(A,L) :- array(A,L).
-max_array(A,M) :- not max_array_given(A), array(R,A,M), M>=L:array(R,A,L).
-
 % Default run-specific array lengths to the maximum length.
 run_array_given(R,A) :- array(R,A,_).
 run_array(R,A,L) :- array(R,A,L).

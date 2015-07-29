@@ -7,10 +7,16 @@ input_variable(len_xs).
 output_variable(s).
 extra_variable(i; x).
 
-constant(0; 1).
+constant(1).
 disallow_feature(mul; div; mod; if; sub).
 read_only_variable(len_xs).
 read_only_array(xs).
+
+array(xs, 3, elem, index).
+var(i; len_xs, index).
+var(x; s, elem).
+con(0; 1, index).
+con(0, elem).
 
 preset_line_instr(1,set(s,con(0))).
 preset_line_instr(2,set(i,con(0))).

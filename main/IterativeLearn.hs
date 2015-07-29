@@ -1,6 +1,5 @@
 #!/usr/bin/env runghc
 
-{-# OPTIONS_GHC -w #-}
 {-# LANGUAGE OverloadedStrings, ViewPatterns #-}
 
 module IterativeLearn where
@@ -96,6 +95,7 @@ data Conf = Conf{
     cfInteractive     :: Bool,
     cfPutLines        :: [String] -> IO () }
 
+defaultConf :: Conf
 defaultConf = Conf{
     cfIntRange        = error "int_range undefined",
     cfTimeMax         = error "time_max undefined",
@@ -140,24 +140,27 @@ readConfFile filePath conf = do
             return $ conf'{ cfConfFile=filePath }
         CRUnsatisfiable ->
             error $ filePath ++ " unsatisfiable."
+        _ -> error "impossible"
 
 readConfFacts :: [Fact] -> Conf -> Conf
-readConfFacts facts conf
-  = (readConfFacts' conf facts){ cfExamples=examples }
+readConfFacts inFacts inConf
+  = (readConfFacts' inConf inFacts){ cfExamples=examples }
   where
-    exArrays = [(e, a, l)
-        | Fact "array" [TFun(Name e)[], TFun(Name a)[], TInt l] <- facts]
+    xArrays = [(e, a, l)
+        | Fact "array" [TFun(Name e)[], TFun(Name a)[], TInt l] <- inFacts]
     ins = [(e, v, c)
-        | Fact (Name "in") [TFun(Name e)[], vt, TInt c] <- facts, v <- maybeToList $ readVarTerm vt]
+        | Fact (Name "in") [TFun(Name e)[], vt, TInt c] <- inFacts,
+          v <- maybeToList $ readVarTerm vt]
     outs = [(e, v, c)
-        | Fact (Name "out") [TFun(Name e)[], vt, TInt c] <- facts, v <- maybeToList $ readVarTerm vt]
+        | Fact (Name "out") [TFun(Name e)[], vt, TInt c] <- inFacts,
+          v <- maybeToList $ readVarTerm vt]
     examples = [UserExample{
         exID     = e,
-        exArrays = [(a,l) | (e',a,l) <- exArrays, e == e'],
+        exArrays = [(a,l) | (e',a,l) <- xArrays, e == e'],
         exInput  = Input  [(v,c) | (e',v,c) <- ins,  e == e'],
         exOutput = Output [(v,c) | (e',v,c) <- outs, e == e'] }
         | e <- nub . sort $ [e | (e,_,_) <- ins ++ outs]
-                          ++[e | (e,_,_) <- exArrays]]
+                          ++[e | (e,_,_) <- xArrays]]
     readConfFacts' conf (fact : facts) = case fact of
         Fact (Name "int_range") [TInt imin, TInt imax] ->
             readConfFacts' (conf{ cfIntRange=(imin, imax) }) facts
@@ -195,16 +198,16 @@ readConfFacts facts conf
             readConfFacts' (conf{ cfEchoASP=True }) facts
         Fact (Name "thread_count") [TInt tcount] ->
             readConfFacts' (conf{ cfThreads=tcount }) facts
-        Fact "array" [TFun(Name name)[], TInt size] ->
+        Fact (Name "array") [TFun(Name name)[], TInt size] ->
             readConfFacts' (conf{
                 cfArrays = (name,size) : cfArrays conf }) facts
-        Fact "input_array" [TFun(Name name)[]] ->
+        Fact (Name "input_array") [TFun(Name name)[]] ->
             readConfFacts' (conf{
                 cfInputArrays = name : cfInputArrays conf }) facts
-        Fact "output_array" [TFun(Name name)[]] ->
+        Fact (Name "output_array") [TFun(Name name)[]] ->
             readConfFacts' (conf{
                 cfOutputArrays = name : cfOutputArrays conf }) facts
-        Fact "read_only_array" [TFun(Name name)[]] ->
+        Fact (Name "read_only_array") [TFun(Name name)[]] ->
             readConfFacts' (conf{
                 cfReadOnlyArrays = name : cfReadOnlyArrays conf }) facts
         _ ->
@@ -212,11 +215,12 @@ readConfFacts facts conf
     readConfFacts' conf [] = conf
 
 --------------------------------------------------------------------------------
+main :: IO ()
 main = do
     args <- getArgs
     let ([confPath], conf) = readArgs args defaultConf
-    conf <- readConfFile confPath conf
-    void $ iterativeLearnConf conf
+    _conf <- readConfFile confPath conf
+    void $ iterativeLearnConf _conf
 
 readArgs :: [String] -> Conf -> ([String], Conf)
 readArgs args@(arg : _) conf | "-" `isPrefixOf` arg
@@ -226,6 +230,7 @@ readArgs (arg : args) conf | otherwise
 readArgs [] conf
   = ([], conf)
 
+readArgsFlag :: [String] -> Conf -> ([String], Conf)
 readArgsFlag (arg : args) conf
   | arg `elem` ["-i", "--interactive"]
   = readArgs args (conf{ cfInteractive=True })
@@ -244,6 +249,8 @@ readArgsFlag (arg : args) conf
     readArgs args (conf{ cfThreads = read param })
   | otherwise
   = error $ "Unrecognised option: " ++ arg
+readArgsFlag [] conf
+  = ([], conf)
 
 --------------------------------------------------------------------------------
 iterativeLearnConf :: Conf -> IO Program
@@ -269,10 +276,10 @@ iterativeLearn exs lims conf = do
     case mProg of
       Just prog -> do
         cfPutLines conf $ ["Found the following program:"] ++ showProgram prog
-        conf <- interactivePause conf
+        _conf <- interactivePause conf
         let lineMax = programLength prog
-        case cfPostCondition conf of
-            _:_ -> iterativeLearn' prog exs lims{lmLineMax = lineMax} conf
+        case cfPostCondition _conf of
+            _:_ -> iterativeLearn' prog exs lims{lmLineMax = lineMax} _conf
             ""  -> return prog
       Nothing -> do
         let lims' = last limss
@@ -280,7 +287,7 @@ iterativeLearn exs lims conf = do
         case cfLineLimitMax conf of
             Just limit | lineMax > limit -> do
                 cfPutLines conf ["Failure: no such program can be found within the"
-                              ++ " configured line limits."]
+                               ++ " configured line limits."]
                 exitFailure
             _ -> do
                 cfPutLines conf ["No such program found."]
@@ -294,6 +301,7 @@ iterativeLearn' prog exs lims conf = do
     case mCounter of
         Just cex -> do
             let Counterexample{
+                ceArrays         = arrays,
                 ceInput          = Input input,
                 ceActualOutput   = Output actual,
                 ceExpectedOutput = expected } = cex
@@ -309,7 +317,10 @@ iterativeLearn' prog exs lims conf = do
                 False -> [
                     "Found the following counterexample:"]
 
-            bodyLines <- return $ ("   " ++) <$> [
+            bodyLines <- return $ ("   " ++) <$>
+                (guard (not . null $ arrays) >> [
+                "Arrays:   " ++ intercalate ", " [
+                    a ++"["++ show l ++"]" | (a,l) <- arrays]]) ++ [
                 "Input:    " ++ (intercalate ", "
                     $ [show v++"="++show c | (v,c) <- sort input ]),
                 "Expected: " ++ case expected of {
@@ -326,12 +337,13 @@ iterativeLearn' prog exs lims conf = do
 
             cfPutLines conf $ headLines ++ bodyLines
             when deficient exitFailure
-            conf <- interactivePause conf
+            _conf <- interactivePause conf
 
             let ex = PostConditionExample{
-                exID     = head $ map (("cx"++) . show) [1..] \\ map exID exs,
+                exArrays = arrays,
+                exID     = head $ map (("cx"++) . show) [1::Int ..] \\ map exID exs,
                 exInput  = Input input }
-            iterativeLearn (ex : exs) lims conf
+            iterativeLearn (ex : exs) lims _conf
         Nothing -> do
             cfPutLines conf [
                 "Success: the postcondition could not be falsified."]
@@ -348,12 +360,11 @@ findProgram exs lims conf = do
     case result of
         CRSatisfiable (answer:_) ->
             return $ Just (Program answer)
-        CRUnsatisfiable ->
-            return Nothing
+        _ -> return Nothing
 
 findProgramConcurrent :: [Example] -> [Limits] -> Conf -> IO (Maybe Program)
 findProgramConcurrent exs limss conf = do
-    outSem <- MSem.new 1
+    outSem <- MSem.new (1 :: Integer)
     let conf' = conf{ cfPutLines = MSem.with outSem . cfPutLines conf }
     tasks <- forM limss $ \lims -> do
         result <- newEmptyMVar
@@ -361,8 +372,8 @@ findProgramConcurrent exs limss conf = do
         return (thread, result)
     results <- forM (zip tasks [0..]) $ \((thread, resultMVar), i) -> do
         prior <- forM (take i tasks) $ \(_,r) -> do
-            empty <- isEmptyMVar r
-            if empty then return Nothing else readMVar r
+            isEmpty <- isEmptyMVar r
+            if isEmpty then return Nothing else readMVar r
         case any isJust prior of
           True  -> killThread thread >> return Nothing
           False -> readMVar resultMVar
@@ -384,37 +395,44 @@ findProgramASP exs lims conf
 
     biasLines =
         (guard (not $ null constants) >>
-            ["con(" ++ intercalate "; " (map show constants) ++ ")."]) ++
-        (guard (not . null $ varTerm <$> allVars \\ logicVars) >>
-            ["var(" ++ intercalate "; " (varTerm <$> allVars \\ logicVars) ++ ")."]) ++
+            ["con(" ++ intercalate "; "
+                (map show constants) ++ ")."]) ++
+        (guard (not . null $ allVars \\ logicVars) >>
+            ["var(" ++ intercalate "; "
+                (varTerm <$> allVars \\ logicVars) ++ ")."]) ++
         (guard (not . null $ allVars \\ readOnly) >>
-            ["write_var(" ++ intercalate "; " (varTerm <$> allVars \\ readOnly) ++  ")."]) ++
+            ["write_var(" ++ intercalate "; "
+                (varTerm <$> allVars \\ readOnly) ++  ")."]) ++
         (guard (not . null $ allArrays \\ roArrays) >>
-            ["write_array("++ intercalate ";" (allArrays \\ roArrays) ++")."]) ++
+            ["write_array("++ intercalate ";"
+                (allArrays \\ roArrays) ++")."]) ++
         (guard (not $ null disallow) >>
             ["disallow(" ++ intercalate "; " disallow ++ ")."])
 
     exampleLines = do
         example <- exs
-        let (id, Input inps, arrays) = (exID example, exInput example, exArrays example)
+        let xID = exID example
         arrs <- return $ do
-            (name, size) <- arrays
-            return $ "array("++ id ++","++ name ++","++ show size ++")."
+            (name, size) <- exArrays example
+            return $ "array("++ xID ++","++ name ++","++ show size ++")."
         ins <- return $ do
-            (var, val) <- inps
-            return $ "in(" ++ id ++ "," ++ varTerm var ++ "," ++ show val ++ ")."
+            (var, val) <- let Input is = exInput example in is
+            return $ "in(" ++ xID ++ "," ++ varTerm var ++ "," ++ show val ++ ")."
         outs <- return $ do
             UserExample{ exOutput=Output outps } <- return example
             (var, val) <- outps
-            return $ "out(" ++ id ++ "," ++ varTerm var ++ "," ++ show val ++ ")."
+            return $ "out(" ++ xID ++ "," ++ varTerm var ++ "," ++ show val ++ ")."
         return $ unwords $ arrs ++ ins ++ outs
        
     postCondLines =
-        let ids = [xid | PostConditionExample{ exID=xid } <- exs ] in
-        let iVars = [v | v <- inputVars, ("In_"++ varVar v) `isFreeIn` postCond] in
-        let oVars = [v | v <- outputVars, ("Out_"++ varVar v) `isFreeIn` postCond] in
-        let plVars = [v | v <- logicVars \\ outputVars,
-                          varVar v `isFreeIn` postCond] in
+        let ids = [xid
+                  | PostConditionExample{ exID=xid } <- exs ] in
+        let iVars = [v
+                    | v <- inputVars, ("In_"++ varVar v) `isFreeIn` postCond] in
+        let oVars = [v
+                    | v <- outputVars, ("Out_"++ varVar v) `isFreeIn` postCond] in
+        let plVars = [v
+                     | v <- logicVars \\ outputVars, varVar v `isFreeIn` postCond] in
         if (null ids) then [] else [
         "postcon_run(" ++ intercalate ";" ids ++ ").",
         "postcon("++ intercalate "," ("R" : map (("Out_"++) . varVar) oVars) ++") :- "
@@ -446,17 +464,22 @@ findCounterexample prog conf = do
     result <- runClingoConf [CICode code] Nothing conf
     case result of
         CRSatisfiable (answer : _) -> do
+            eArrays <- return $ do
+                Fact "counter_array" args <- answer
+                let [TFun (Name aName) [], TInt aLen] = args
+                guard (aName `elem` allArrays)
+                return (aName, aLen)
             inputs <- return $ do
                 Fact (Name "counter_in") args <- answer
                 let [tName, TInt value] = args
                 name <- maybeToList $ readVarTerm tName
-                guard $ name `elem` cfInputVars conf
+                guard $ name `elem` inputVars
                 return (name, value)
             outputs <- return $ do
                 Fact (Name "counter_out") args <- answer
                 [tName, TInt value] <- [args]
                 name <- maybeToList $ readVarTerm tName
-                guard $ name `elem` cfOutputVars conf
+                guard $ name `elem` outputVars
                 return (name, value)
             expected <- return $ do
                 Fact (Name "postcon") args <- answer
@@ -465,13 +488,15 @@ findCounterexample prog conf = do
                 let values = [c | TInt c <- args]
                 return $ Output (zip names values)
             return $ Just $ Counterexample{
+                ceArrays         = eArrays,
                 ceInput          = Input inputs,
                 ceActualOutput   = Output outputs,
                 ceExpectedOutput = expected }
-        CRUnsatisfiable ->
-            return Nothing
+        _ -> return Nothing
   where
-    Conf{ cfPostCondition=postCond, cfOutputVars=outputVars } = conf
+    allArrays = [aName | (aName,_) <- arrays]
+    Conf{ cfArrays=arrays, cfPostCondition=postCond,
+          cfInputVars=inputVars, cfOutputVars=outputVars } = conf
 
 findCounterexampleASP :: Program -> Conf -> String
 findCounterexampleASP prog conf
@@ -485,7 +510,9 @@ findCounterexampleASP prog conf
         "#const line_max=0.",
         "#include \"counterexample.lp\".",      
         "input_var("  ++ intercalate "; " (map varTerm inputVars)  ++ ").",
-        "output_var(" ++ intercalate "; " (map varTerm outputVars) ++ ")."]
+        "output_var(" ++ intercalate "; " (map varTerm outputVars) ++ ").",
+        "input_array("  ++ intercalate ";" inputArrays ++ ").",
+        "output_array(" ++ intercalate ";" outputArrays ++ ")."]
 
     programLines =
         let Program instrs = prog in Clingo.showFactLines instrs
@@ -520,6 +547,7 @@ findCounterexampleASP prog conf
 
     Conf{ cfIntRange=(intMin, intMax), cfTimeMax=timeMax,
           cfInputVars=inputVars, cfOutputVars=outputVars,
+          cfInputArrays=inputArrays, cfOutputArrays=outputArrays,
           cfPreCondition=preCond, cfPostCondition=postCond,
           cfLogicVars=logicVars } = conf
 
@@ -565,9 +593,9 @@ programLength (Program facts)
 
 readVarTerm :: Term -> Maybe WhileVar
 readVarTerm term = case term of
-    TFun (Name v) []                      -> Just $ VScalar v
-    TFun "array" [TFun(Name a)[], TInt i] -> Just $ VArray  a i
-    _                                     -> Nothing
+    TFun (Name v) []                             -> Just $ VScalar v
+    TFun (Name "array") [TFun(Name a)[], TInt i] -> Just $ VArray  a i
+    _                                            -> Nothing
 
 varTerm :: WhileVar -> String
 varTerm (VScalar v)  = v

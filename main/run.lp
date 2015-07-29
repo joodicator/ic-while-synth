@@ -59,7 +59,6 @@ in(never,never,never)   :- line_instr(never,never).
 
 int(int_min..int_max).
 line(L) :- line_instr(L, _).
-line_instr(L, I) :- preset_line_instr(L, I).
 
 scalar_var(V) :- line_expr_occurs(_, var(V)).
 scalar_var(V) :- line_instr(_, set(V, _)), not array_expr(V).
@@ -67,8 +66,9 @@ scalar_var(V) :- line_instr(_, set(V, _)), not array_expr(V).
 array_expr(array(A,E)) :- line_instr(_, set(array(A,E), _)).
 array_expr(array(A,E)) :- line_expr_occurs(_, array(A,E)).
 
-var(V)          :- scalar_var(V).
-var(array(A,I)) :- array(A,L), I=0..L-1, int(I).
+% These are probably made redundant by the existence of run_var/2:
+%var(V)          :- scalar_var(V).
+%var(array(A,I)) :- array(A,L), I=0..L-1, int(I).
 
 % Which arithmetic and boolean expressions occur in the program
 % at given times and in given runs?
