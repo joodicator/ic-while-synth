@@ -1,6 +1,14 @@
+# Wednesday 29 July 2015
+
+Partially implemented support for Haskell-syntax preconditions and postconditions in `IterativeLearn.hs`.
+
+A (manually written) example of the counterexample-generating ASP that it is planned to automatically generate can be seen in [`examples/misc/array_sum_counterexample.lp`](https://github.com/JosephCrowe/ic-while-synth/blob/74948faeeac1342420248ec95624576afb369bda/examples/misc/array_sum_counterexample.lp).
+
+Relevant commits: [87b349b](https://github.com/JosephCrowe/ic-while-synth/commit/87b349b2b17ec7fd45d49d09e645d7fc9ff7b93b) [f95254a](https://github.com/JosephCrowe/ic-while-synth/commit/f95254aeff1b0cb1a480bc46e1f076b3a8a2f730)
+
 # Tuesday 28 July 2015
 
-Partially implement integration of the existing Haskell-to-ASP infrastructure into the program learner and counterexample finder. In particular, implemented:
+Partially implemented integration of the existing Haskell-to-ASP infrastructure into the program learner and counterexample finder. In particular, implemented:
 * Synthesis of ASP rules, complete with arbitrary rule heads and variable domains, from classical propositions such as those generated from Haskell.
 * A meta-Haskell interpreter that produces Abstract.Bool values (based on the [hint](https://hackage.haskell.org/package/hint) package, which is itself based on GHC's API).
 * Support for Arrays in `IterativeLearn.hs`. 
