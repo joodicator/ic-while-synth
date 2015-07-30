@@ -1,3 +1,11 @@
+# Thursday 30 July 2015
+
+Completed implementation of Haskell-syntax preconditions and postconditions in `IterativeLearn.hs`.
+
+This allows, for example, the `array_sum` program to be learned without any user-provided examples. Only 3 examples are needed to generate the program, compared to the 8 examples used in the manual case. See the [specification file](https://github.com/JosephCrowe/ic-while-synth/blob/a36979bad5056bca70428f5b8c510f1ab18bb118/examples/iterative/array_sum_con.lp) and [output](https://github.com/JosephCrowe/ic-while-synth/blob/4b325520261f0c57e9fdad5becbdda1be6478192/examples_output/iterative/array_sum_con.output.txt). More examples will be shown as soon as I have a chance to run them.
+
+Relevant commits: [3d06139](https://github.com/JosephCrowe/ic-while-synth/commit/3d061396df55673b760d7c493acc62b2bb71c0af) [4b32552](https://github.com/JosephCrowe/ic-while-synth/commit/4b325520261f0c57e9fdad5becbdda1be6478192)
+
 # Wednesday 29 July 2015
 
 Partially implemented support for Haskell-syntax preconditions and postconditions in `IterativeLearn.hs`.
