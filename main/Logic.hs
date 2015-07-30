@@ -46,8 +46,8 @@ pToDNF = pToDNF' LAtom
 -- As pToDNF, but allows a custom type for literals, rather than Logic.Lit.
 pToDNF' :: (Eq l, Ord l, Negation l) => (a -> l) -> Prop a -> Disj (Conj l)
 pToDNF' mkLit prop = case prop of
-    PTrue    -> Disj S.empty
-    PFalse   -> Disj (S.singleton $ Conj S.empty)
+    PTrue    -> Disj (S.singleton $ Conj S.empty)
+    PFalse   -> Disj S.empty
     PAtom a  -> Disj (S.singleton $ Conj (S.singleton $ mkLit a))
     POr p q  -> Disj $ unDisj (pToDNF' mkLit p) `S.union`
                        unDisj (pToDNF' mkLit q)

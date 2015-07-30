@@ -11,6 +11,8 @@ import Data.List
 import Data.Char
 import Data.String
 
+import qualified ASP
+
 type Parse a = String -> Maybe (a, String)
 
 newtype Name = Name String deriving (Eq, Show, IsString)
@@ -64,6 +66,15 @@ runClingoOptions = RunClingoOptions{
     rcEchoPrefix = True,
     rcEchoColour = True,
     rcIdentifier = Nothing }
+
+--------------------------------------------------------------------------------
+-- Interoperation with ASP module.
+
+termToASP :: Term -> ASP.Term
+termToASP term = case term of
+    TInt i           -> ASP.TInt i
+    TStr s           -> ASP.TStr s
+    TFun (Name f) ts -> ASP.TFun (ASP.Function f) (map (ASP.ETerm . termToASP) ts)
 
 --------------------------------------------------------------------------------
 -- ANSI terminal control sequences.

@@ -63,7 +63,7 @@ instance MonoTraversableD mono => MonoFoldable mono where
       where mf Nothing  r = Just r
             mf (Just l) r = l' `seq` Just l' where l' = f l r
 
-instance (MonoTraversableD mono, Eq (Element mono)) => MonoFoldableEq mono where
+instance (MonoTraversable mono, Eq (Element mono)) => MonoFoldableEq mono where
     oelem    = oany . (==)
     onotElem = oall . (/=)
 

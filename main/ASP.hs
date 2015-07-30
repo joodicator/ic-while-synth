@@ -5,7 +5,7 @@ module ASP(
     Predicate(..), Variable(..), Function(..), Constant(..), LuaFunc(..),
     Rule(..), Head(..), Body(..), Conjunct(..), Literal(..),
     Atom(..), Comparison(..), Expr(..), Term(..), CBiOp(..), EBiOp(..), EUnOp(..),
-    FreeVars(..),
+    FreeVars(..), freeVars, isFreeIn,
     propToRules
 ) where
 
@@ -33,7 +33,8 @@ newtype LuaFunc   = LuaFunc   String deriving (IsString, Eq, Ord)
 --------------------------------------------------------------------------------
 -- The top-level types in an Answer Set Program.
 
-data Rule = Rule Head Body
+infix 1 :-
+data Rule = Head :- Body
 
 newtype Head = Head [Atom] deriving Monoid
 
@@ -92,6 +93,7 @@ data Term
   = TVar Variable
   | TCon Constant
   | TInt Integer
+  | TStr String
   | TFun Function [Expr]
   | TLua LuaFunc [Expr]
   deriving (Eq, Ord)
@@ -108,6 +110,14 @@ instance IsString ([a] -> Atom) => IsString ([a] -> Literal) where
     fromString = (LAtom .) . fromString
 instance IsString ([a] -> Literal) => IsString ([a] -> Conjunct) where
     fromString = (CLiteral .) . fromString
+
+-- Construction of nullary predicate applications from string literals.
+instance IsString Atom where
+    fromString = flip Atom [] . fromString
+instance IsString Literal where
+    fromString = LAtom . fromString
+instance IsString Conjunct where
+    fromString = CLiteral . fromString
 
 -- Construction of function symbol applications from string literals.
 instance IsString ([Expr] -> Term) where
@@ -151,7 +161,7 @@ propToRules dom rHead
   where
     bodyToRule :: Body -> Rule    
     bodyToRule rBody
-      = Rule rHead $ rBody <> ofoldMap dom (headVars `S.union` bodyVars)
+      = rHead :- rBody <> ofoldMap dom (headVars `S.union` bodyVars)
       where bodyVars = closeFreeVars $ freeVars rBody
     headVars = closeFreeVars $ freeVars rHead
 
@@ -182,6 +192,9 @@ type instance Element (FreeVars a) = Variable
 
 freeVars :: MonoTraversable (FreeVars a) => a -> S.Set Variable
 freeVars = S.fromList . otoList . FreeVars
+
+isFreeIn :: MonoTraversable (FreeVars a) => Variable -> a -> Bool
+isFreeIn var = oelem var . FreeVars
 
 traverseFV
   :: (Applicative f, MonoTraversable (FreeVars a))
@@ -298,7 +311,8 @@ instance Show Predicate where
 
 instance Show Variable where
     show (Variable v)
-      | any isUpper (take 1 v) = v
+      | any isUpper (take 1 v)  = v
+      | any (== '_') (take 1 v) = v
       | otherwise = error $ "\""++ v ++"\" is not a valid ASP variable."
 
 instance Show Constant where
@@ -317,9 +331,9 @@ instance Show LuaFunc where
       | otherwise = error $ "\""++ f ++ "\" is not a valid Lua function name."
 
 instance Show Rule where
-    show (Rule (Head []) rBody) = ":- " ++ show rBody ++ "."
-    show (Rule rHead (Body [])) = show rHead ++ "."
-    show (Rule rHead rBody)     = show rHead ++ " :- " ++ show rBody ++ "."
+    show (Head [] :- rBody)   = ":- " ++ show rBody ++ "."
+    show (rHead   :- Body []) = show rHead ++ "."
+    show (rHead   :- rBody)   = show rHead ++ " :- " ++ show rBody ++ "."
 
 instance Show Head where
     show (Head ds) = intercalate " | " $ map show ds
@@ -400,5 +414,6 @@ instance Show Term where
         TVar v    -> show v
         TCon c    -> show c
         TInt n    -> show n
+        TStr s    -> show s
         TFun f xs -> show f ++ showArgs xs
         TLua f xs -> show f ++ showArgs xs

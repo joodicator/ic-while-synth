@@ -286,12 +286,6 @@ type HsExpr  = String
 type HsVar   = String
 data HsInput = HsScalar A.Int | HsArray [A.Int]
 
-haskellToBool' :: HsExpr -> [(HsVar, HsInput)] -> IO A.Bool
-haskellToBool' expr vars
-  = haskellToBool expr vars >>= \result -> case result of
-        Left err   -> putStrLn err >> fail "haskellToBool' failed."
-        Right bool -> return bool
-
 haskellToBool :: HsExpr -> [(HsVar, HsInput)] -> IO (Either String A.Bool)
 haskellToBool expr vars = do
     result <- runInterpreter $ do

@@ -30,7 +30,8 @@ out(never,never,never)          :- preset_line_instr(never,never).
 preset_line_instr(never,never)  :- con(never).
 con(never)                      :- write_array(never).
 write_array(never)              :- array(never,never,never,never).
-array(never,never,never,never)  :- con(never,never).
+array(never,never,never,never)  :- array(never,never,never).
+array(never,never,never)        :- con(never,never).
 con(never,never)                :- var(never,never).
 var(never,never)                :- in(never,never,never).
 
@@ -43,11 +44,11 @@ feature(F) :- subfeature(F,_).
 feature(G) :- subfeature(_,G).
 
 disallow(G) :- subfeature(F,G), disallow(F).
-allow(G)    :- subfeature(F,G), allow(F).
+%allow(G)    :- subfeature(F,G), allow(F).
 allow(F)    :- feature(F), not disallow(F).
 
 disallow(G,T) :- subfeature(F,G), disallow(F,T).
-allow(G,T)    :- subfeature(F,G), allow(F,T).
+%allow(G,T)    :- subfeature(F,G), allow(F,T).
 allow(F,T)    :- feature(F), type(T), not disallow(F,T).
 
 % Inheritance of features from global context.

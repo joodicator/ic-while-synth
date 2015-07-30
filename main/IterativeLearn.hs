@@ -15,6 +15,7 @@ import Data.Maybe
 import Data.Char
 import Data.MonoTraversable
 import Data.String
+import Data.Monoid
 
 import System.IO
 import System.Environment
@@ -58,7 +59,7 @@ data WhileVar
 
 data Condition
   = CondASPString ASPString.Condition
-  | CondASPProp   [(M.Map ArrayName ArraySize, Logic.Prop ASP.Literal)]
+  | CondASPProp   [(ArraySizes, ASPProp)]
   | CondEmpty
 
 data Limits = Limits{
@@ -348,7 +349,8 @@ iterativeLearn' prog exs lims conf = do
                     ++ " solution the postcondition. Possible causes:",
                     "- The postcondition is unsatisfiable for some valid input.",
                     "- The precondition is satisfiable for some invalid input.",
-                    "- The given int_range is too small."]
+                    "- The given int_range is too small.",
+                    "The counterexample in question is:"]
                 False -> [
                     "Found the following counterexample:"]
 
@@ -357,18 +359,18 @@ iterativeLearn' prog exs lims conf = do
                 "Arrays:   " ++ intercalate ", " [
                     a ++"["++ show l ++"]" | (a,l) <- M.toList arrays]]) ++ [
                 "Input:    " ++ (intercalate ", "
-                    $ [show v++"="++show c | (v,c) <- sort input ]),
+                    $ [show v++" = "++show c | (v,c) <- sort input ]),
                 "Expected: " ++ case expected of {
                     [] -> "(none)";
                     _  -> intercalate " | " $ [
-                        intercalate ", " [show v ++ "=" ++ show c | (v,c) <- os]
+                        intercalate ", " [show v ++ " = " ++ show c | (v,c) <- os]
                         | Output os <- take 5 $ sort [
                             Output (sort os) | Output os <- expected]]
                         ++ if (length expected > 5) then ["..."] else [] },
                 "Output:   " ++ case actual of {
                     [] -> "(none)";
                     _  -> intercalate ", "
-                        $ [show v++"="++show c | (v,c) <- sort actual ] } ]
+                        $ [show v++" = "++show c | (v,c) <- sort actual ] } ]
 
             cfPutLines conf $ headLines ++ bodyLines
             when deficient exitFailure
@@ -483,16 +485,16 @@ findProgramASP exs lims conf
 
       CondASPProp props -> do
           PostConditionExample{ exID=runID, exArrays=arraySizes } <- exs
-          prop <- maybeToList $ lookup arraySizes props
-          map show $ ASP.propToRules (domain runID) (ASP.Head []) (negation prop)
-        where
-          domain runID var = ASP.Body $ case lookup var bindings of
-              Just (In,  vTerm) ->
-                ["in" [fromString runID, vTerm, ASP.TVar var]]
-              Just (Out, vTerm) ->
-                ["run_var_out" [fromString runID, vTerm, ASP.TVar var]]
-              Nothing -> [] 
-          bindings = aspBindings conf
+          let bindings = aspBindings conf (M.fromList $ cfArrays conf)
+          let domain var = ASP.Body $ case lookup var bindings of {
+              Just (In,  _, vTerm) ->
+                ["in" [fromString runID, vTerm, ASP.TVar var]];
+              Just (Out, _, vTerm) ->
+                ["run_var_out" [fromString runID, vTerm, ASP.TVar var]];
+              Nothing -> [] }
+          let prop = fromMaybe (error $ show arraySizes ++" not in "++ show props) $
+                     lookup arraySizes props
+          map show $ ASP.propToRules domain (ASP.Head []) (negation prop)
 
       CondEmpty -> [":-."]
 
@@ -518,24 +520,27 @@ findCounterexample prog conf = do
             eArrays <- return $ do
                 Fact "counter_array" args <- answer
                 let [TFun (Name aName) [], TInt aLen] = args
-                guard (aName `elem` allArrays)
+                guard $ or [True | (compare aName -> EQ, _) <- arrays]
                 return (aName, aLen)
             inputs <- return $ do
                 Fact (Name "counter_in") args <- answer
                 let [tName, TInt value] = args
-                name <- maybeToList $ readVarTerm tName
-                guard $ name `elem` inputVars
+                let atName = termToASP tName
+                let name = fromJust $ readVarTerm tName
+                guard $ or [True | (_, (In, _, compare atName -> EQ)) <- bindings]
                 return (name, value)
             outputs <- return $ do
                 Fact (Name "counter_out") args <- answer
                 [tName, TInt value] <- [args]
-                name <- maybeToList $ readVarTerm tName
-                guard $ name `elem` outputVars
+                let atName = termToASP tName
+                let name = fromJust $ readVarTerm tName
+                guard $ or [True | (_, (Out, _, compare atName -> EQ)) <- bindings]
                 return (name, value)
             expected <- return $ do
                 Fact (Name "postcon") args <- answer
-                let names = [v | v <- outputVars,
-                             ("Out_"++ varVar v) `isFreeIn` postCond]
+                let names = [progVar
+                            | (ASP.Variable aspVar, (Out,progVar,_)) <- bindings,
+                              aspVar `isFreeIn` postCond]
                 let values = [c | TInt c <- args]
                 return $ Output (zip names values)
             return $ Just $ Counterexample{
@@ -545,9 +550,8 @@ findCounterexample prog conf = do
                 ceExpectedOutput = expected }
         _ -> return Nothing
   where
-    allArrays = [aName | (aName,_) <- arrays]
-    Conf{ cfArrays=arrays, cfPostCondition=postCond,
-          cfInputVars=inputVars, cfOutputVars=outputVars } = conf
+    bindings = aspBindings conf (M.fromList arrays)
+    Conf{ cfArrays=arrays, cfPostCondition=postCond } = conf
 
 findCounterexampleASP :: Program -> Conf -> String
 findCounterexampleASP prog conf
@@ -559,11 +563,15 @@ findCounterexampleASP prog conf
         "#const int_min=" ++ show intMin ++ ".",
         "#const int_max=" ++ show intMax ++ ".",
         "#const line_max=0.",
-        "#include \"counterexample.lp\".",      
-        "input_var("  ++ intercalate "; " (map varTerm inputVars)  ++ ").",
-        "output_var(" ++ intercalate "; " (map varTerm outputVars) ++ ").",
-        "input_array("  ++ intercalate ";" inputArrays ++ ").",
-        "output_array(" ++ intercalate ";" outputArrays ++ ")."]
+        "#include \"counterexample.lp\"."] ++
+        (guard (not . null $ inputVars) >>
+         ["input_var("  ++ intercalate "; " (map varTerm inputVars)  ++ ")."]) ++
+        (guard (not . null $ outputVars) >>
+         ["output_var(" ++ intercalate "; " (map varTerm outputVars) ++ ")."]) ++
+        (guard (not . null $ inputArrays) >>
+         ["input_array("  ++ intercalate ";" inputArrays ++ ")."]) ++
+        (guard (not . null $ outputArrays) >>
+         ["output_array(" ++ intercalate ";" outputArrays ++ ")."])
 
     programLines =
         let Program instrs = prog in Clingo.showFactLines instrs
@@ -575,6 +583,19 @@ findCounterexampleASP prog conf
         let preConds = filter (not . null) [preCondStr] in
         "precon :- "++ intercalate ", " (preConds ++ inDom) ++".",
         ":- not precon."]
+      CondASPProp props -> do
+          (arraySizes, prop) <- props
+          let bindings = aspBindings conf (M.fromList $ cfArrays conf)
+          let domain var = ASP.Body $ case lookup var bindings of {
+            Just (In, _, vTerm) -> ["counter_in" [vTerm, ASP.TVar var]];
+            _                   -> [] }
+          let arraySizeLits =
+               ["counter_array" [fromString a, ASP.TInt s] | (a,s) <- M.toList arraySizes]
+          let definedLits =
+               ["counter_in_any" [vTerm] | (_,(In,_,vTerm)) <- aspBindings conf arraySizes]
+          let prop'  = foldr (Logic.PAnd . Logic.PAtom) prop definedLits
+          let prop'' = foldr (Logic.PAnd . Logic.PAtom) (negation prop') arraySizeLits
+          map show $ ASP.propToRules domain (ASP.Head []) prop''
       CondEmpty -> []
     
     postCondLines = case postCond of
@@ -598,6 +619,30 @@ findCounterexampleASP prog conf
         ":- " ++ intercalate ", " (consHead : actOutDom) ++ ".",
         "any_postcon :- postcon(" ++ intercalate "," ("_" <$ outVars) ++ ").",
         "#show postcon/" ++ show (length outVars) ++ "."]
+      CondASPProp props -> extraLines ++ do
+          (arraySizes, prop) <- props
+          let pDomain var = ASP.Body $ case lookup var bindings of {
+            Just (In,  _, vTerm) -> ["counter_in" [vTerm, ASP.TVar var]];
+            Just (Out, _, _)     -> ["int" [ASP.TVar var]];
+            Nothing              -> [] }
+          let oDomain var = ASP.Body $ case lookup var bindings of {
+            Just (In,  _, vTerm) -> ["counter_in"  [vTerm, ASP.TVar var]];
+            Just (Out, _, vTerm) -> ["counter_out" [vTerm, ASP.TVar var]];
+            Nothing              -> [] }
+          let arraySizeLits = 
+               ["counter_array" [fromString a, ASP.TInt s]
+               | (a,s) <- M.toList arraySizes]
+          let prop' = foldr (Logic.PAnd . Logic.PAtom) prop $ arraySizeLits
+          map show $
+            ASP.propToRules pDomain (ASP.Head ["postcon" headArgs]) prop' ++
+            ASP.propToRules oDomain mempty (Logic.PAtom $ "postcon" headArgs)
+        where
+          extraLines = [
+            "#show postcon/" ++ show (length headArgs) ++ ".",
+            show $ ASP.Head["any_postcon"] ASP.:-
+                   ASP.Body["postcon" [ASP.TVar "_" | _ <- headArgs]]]
+          bindings = aspBindings conf (M.fromList $ cfArrays conf)
+          headArgs = [ASP.TVar var | (var,(Out,_,_)) <- bindings]
       CondEmpty -> [":-."]
 
     Conf{ cfIntRange=(intMin, intMax), cfTimeMax=timeMax,
@@ -734,14 +779,15 @@ hsBindings conf arraySizes
           cfLogicVars   = logicVars} = conf
 
 -- The correspondence between ASP variables and terms representing program variables.
-aspBindings :: Conf -> [(ASP.Variable, (Direction, ASP.Term))]
-aspBindings conf
-  = [(fromString $ "In_"  ++ varVar v, (In,  varTerm' v)) | v <- allInVars] 
-  ++[(fromString $ "Out_" ++ varVar v, (Out, varTerm' v)) | v <- allOutVars]
-  ++[(fromString $ varVar v, (In, varTerm' v)) | v <- logicVars \\ outVars]
+aspBindings :: Conf -> ArraySizes -> [(ASP.Variable, (Direction, WhileVar, ASP.Term))]
+aspBindings conf arraySizes
+  = [(fromString $ "In_"  ++ varVar v, (In,  v, varTerm' v)) | v <- allInVars] 
+  ++[(fromString $ "Out_" ++ varVar v, (Out, v, varTerm' v)) | v <- allOutVars]
+  ++[(fromString $ varVar v, (In, v, varTerm' v)) | v <- logicVars \\ outVars]
   where
     allInVars  = (inVars \\ logicVars) ++ concatMap arrVars inArrs
     allOutVars = outVars ++ concatMap arrVars outArrs
-    arrVars a  = [VArray a i | (compare a -> EQ, len) <- arrays, i <- [0..len-1]]
+    arrVars a  = [VArray a i | (compare a -> EQ, len) <- M.toList arraySizes,
+                               i <- [0..len-1]]
     Conf{ cfInputVars=inVars, cfOutputVars=outVars, cfLogicVars=logicVars,
-          cfInputArrays=inArrs, cfOutputArrays=outArrs, cfArrays=arrays } = conf
+          cfInputArrays=inArrs, cfOutputArrays=outArrs } = conf

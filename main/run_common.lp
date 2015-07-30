@@ -28,8 +28,8 @@ run_does_halt(R) :- run_halt(R,_).
 run_does_not_halt(R) :- run(R), not run_does_halt(R).
 
 % run_var_out(R,X,C) if the final value of X in run R is C.
-run_var_out(R,X,C)     :- run_var(R,T,X,C), not run(R,T).
-run_var_out(R,X,unset) :- run_var(R,X), not run_var_out_set(R,X).
+run_var_out(R,X,C)     :- run_does_halt(R), run_var(R,T,X,C), not run(R,T).
+run_var_out(R,X,unset) :- run_does_halt(R), run_var(R,X), not run_var_out_set(R,X).
 run_var_out_set(R,X)   :- run_var_out(R,X,C), C != unset.
 
 % Initialise variables to their input value, if any.
