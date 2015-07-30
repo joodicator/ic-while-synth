@@ -18,8 +18,8 @@ var(x; s, elem).
 con(0; 1, index).
 con(0, elem).
 
-preset_line_instr(1,set(s,con(0))).
-preset_line_instr(2,set(i,con(0))).
+%preset_line_instr(1,set(s,con(0))).
+%preset_line_instr(2,set(i,con(0))).
 %preset_line_instr(3,while(lt(var(i),var(len_xs)),3)).
 %preset_line_instr(4,set(x,array(xs,var(i)))).
 %preset_line_instr(5,set(s,add(var(s),var(x)))).

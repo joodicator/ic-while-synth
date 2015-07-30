@@ -496,7 +496,7 @@ findProgramASP exs lims conf
                      lookup arraySizes props
           map show $ ASP.propToRules domain (ASP.Head []) (negation prop)
 
-      CondEmpty -> [":-."]
+      CondEmpty -> []
 
     allVars   = nub . sort $ inputVars ++ outputVars ++ extraVars
     allArrays = map fst arrays
