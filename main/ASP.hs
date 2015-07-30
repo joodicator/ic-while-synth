@@ -1,5 +1,5 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies,
-             FlexibleInstances, FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, MultiParamTypeClasses,
+             FlexibleInstances, FlexibleContexts, UndecidableInstances #-}
 
 module ASP(
     Predicate(..), Variable(..), Function(..), Constant(..), LuaFunc(..),
@@ -55,16 +55,10 @@ data Literal
   | LNot     Atom
   deriving (Eq, Ord)
 
-instance IsString ([Expr] -> Literal) where
-    fromString = (LAtom .) . fromString
-
 -- The application of a predicate to some arguments.
 data Atom
   = Atom Predicate [Expr]
   deriving (Eq, Ord)
-
-instance IsString ([Expr] -> Atom) where
-    fromString = Atom . fromString
 
 -- Comparison of term-expressions.
 data Comparison
@@ -82,18 +76,6 @@ data Expr
   | EUnOp EUnOp Expr
   | EBiOp EBiOp Expr Expr
   deriving (Eq, Ord)
-
-instance IsString Expr where
-    fromString = ETerm . fromString
-
-instance Num Expr where
-    (+)    = EBiOp EAdd
-    (-)    = EBiOp ESub
-    (*)    = EBiOp EMul
-    negate = EUnOp ENeg
-    abs    = EUnOp EAbs
-    signum = error "signum not supported for ASP.Expr."
-    fromInteger = ETerm . TInt
 
 -- Binary arithmetic operators.
 data EBiOp
@@ -114,11 +96,46 @@ data Term
   | TLua LuaFunc [Expr]
   deriving (Eq, Ord)
 
+--------------------------------------------------------------------------------
+-- Syntactic sugar for construction of ASP values.
+
+-- Construction of predicate applications from string literals.
+instance IsString ([Expr] -> Atom) where
+    fromString = Atom . fromString
+instance IsString ([Term] -> Atom) where
+    fromString = (. map ETerm) . Atom . fromString
+instance IsString ([a] -> Atom) => IsString ([a] -> Literal) where
+    fromString = (LAtom .) . fromString
+instance IsString ([a] -> Literal) => IsString ([a] -> Conjunct) where
+    fromString = (CLiteral .) . fromString
+
+-- Construction of function symbol applications from string literals.
 instance IsString ([Expr] -> Term) where
     fromString = TFun . fromString
+instance IsString ([Term] -> Term) where
+    fromString = (. map ETerm) . TFun . fromString
+instance IsString ([a] -> Term) => IsString ([a] -> Expr) where
+    fromString = (ETerm .) . fromString
 
+-- Construction of nullary function symbol applications from string literals.
 instance IsString Term where
     fromString = flip TFun [] . fromString
+instance IsString Expr where
+    fromString = ETerm . fromString
+
+-- Construction of assignment statements using the =: operator.
+instance EqualsColon Variable Expr Conjunct where
+    (=:) = CAssign
+
+-- Construction of arithmetic expressions using standard operators.
+instance Num Expr where
+    (+)    = EBiOp EAdd
+    (-)    = EBiOp ESub
+    (*)    = EBiOp EMul
+    negate = EUnOp ENeg
+    abs    = EUnOp EAbs
+    signum = error "signum not supported for ASP.Expr."
+    fromInteger = ETerm . TInt
 
 --------------------------------------------------------------------------------
 -- Conversion from classical propositions.
@@ -128,14 +145,24 @@ instance IsString Term where
 -- this is necessary, gives a set of rules equivalent to H :- P, under the
 -- assumption that negation in P is equivalent to negation-as-failure and not
 -- classical negation in ASP's sense.
-propToRules :: Head -> (Variable -> Body) -> Logic.Prop Literal -> [Rule]
-propToRules rHead dom
+propToRules :: (Variable -> Body) -> Head -> Logic.Prop Literal -> [Rule]
+propToRules dom rHead
   = map bodyToRule . propToBodies
   where
+    bodyToRule :: Body -> Rule    
     bodyToRule rBody
       = Rule rHead $ rBody <> ofoldMap dom (headVars `S.union` bodyVars)
-      where bodyVars = freeVars rBody
-    headVars = freeVars rHead
+      where bodyVars = closeFreeVars $ freeVars rBody
+    headVars = closeFreeVars $ freeVars rHead
+
+    -- Given a set S of variables, computes the smallest set T for which:
+    -- 1. S `isSubsetOf` T
+    -- 2. forall v in T. freeVars (dom v) `isSubsetOf` T
+    closeFreeVars :: S.Set Variable -> S.Set Variable
+    closeFreeVars vars
+      | subVars `S.isSubsetOf` vars = vars
+      | otherwise                   = closeFreeVars (vars `S.union` subVars)
+      where subVars = ofoldMap (freeVars . dom) vars
   
 -- Given a classical proposition in ASP literals, gives a disjunctive list of
 -- rule bodies equivalent to the proposition in the same sense as propToRules.
@@ -346,7 +373,9 @@ showExpr pPrec expr = case expr of
     showR = showExpr $ if ascR then prec-1 else prec
 
 showArgs :: [Expr] -> String
-showArgs xs = "("++ intercalate "," (map show xs) ++")"
+showArgs xs
+  | null xs   = ""
+  | otherwise = "("++ intercalate "," (map show xs) ++")"
 
 instance Show EBiOp where
     show op = case op of

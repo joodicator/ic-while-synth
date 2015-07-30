@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE FlexibleInstances, UndecidableInstances, OverlappingInstances,
-             TypeFamilies #-}
+             TypeFamilies, MultiParamTypeClasses, FunctionalDependencies #-}
 
 module Util where
 
@@ -28,10 +28,14 @@ class Operator a where
     opInfo :: OpContext a -> a -> OpInfo
 
 --------------------------------------------------------------------------------
--- Class of types that allow logical negation.
+-- Type classes for overloading of various generic operators.
 
 class Negation a where
     negation :: a -> a
+
+class EqualsColon a b c | c -> a, c -> b where
+    infixr 1 =:
+    (=:) :: a -> b -> c
 
 --------------------------------------------------------------------------------
 -- Default implementation of Mono{Traversable,Foldable,FoldableEq,Functor}.
