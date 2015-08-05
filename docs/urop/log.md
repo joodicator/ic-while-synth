@@ -1,3 +1,19 @@
+# Wednesday 05 August 2015
+
+Implemented in the program simulator parameterless subroutines sharing the global variable scope, but with a fixed-size call stack to allow bounded recursion or for subroutines to depend on other subroutines. Wrote the example program `bubble_sort` to test it: [specification](https://github.com/JosephCrowe/ic-while-synth/blob/subroutines/examples/run/bubble_sort.lp), [output](https://github.com/JosephCrowe/ic-while-synth/blob/subroutines/examples_output/run/bubble_sort.output.txt).
+
+It is notable that it requires a large `int_max` to simulate this program, which would make simulation difficult; however, if the subroutines were accompanied by a pre/postcondition giving their functional specification, computation of subroutine calls might be done in only 1 time step.
+
+The `arrays` branch has been merged back into `master` for now, with work on subroutines taking place on the new `subroutines` branch.
+
+Relevant commits: [dcd3fc3](https://github.com/JosephCrowe/ic-while-synth/commit/dcd3fc371119b14277c5f3208eac247a837fa9b9)
+
+# Friday 31 July - Tuesday 04 August 2015
+
+Fixed a number of issues with the the program synthesiser while trying out various examples. Added `array_max` and `array_find` example programs (example output: coming soon). The latter is notably slow to synthesise, and I am still looking into ways to improve it.
+
+Relevant commits: [a36979b](https://github.com/JosephCrowe/ic-while-synth/commit/a36979bad5056bca70428f5b8c510f1ab18bb118) [c7cf6b5](https://github.com/JosephCrowe/ic-while-synth/commit/c7cf6b5a5dc02cf3f785cf2d3036dfdf8e6aa9c9).
+
 # Thursday 30 July 2015
 
 Completed implementation of Haskell-syntax preconditions and postconditions in `IterativeLearn.hs`.
