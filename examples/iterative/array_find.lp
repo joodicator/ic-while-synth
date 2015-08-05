@@ -22,5 +22,7 @@ preset_line_instr(1, set(j, con(0))).
 preset_line_instr(2, while(lt(var(j), var(len_xs)), line_max-3)).
 preset_line_instr(line_max, end_while).
 
+line_limit_min(3).
+
 precondition(haskell("in_x `elem` in_xs && in_len_xs == length in_xs")).
 postcondition(haskell("in_x == in_xs !! out_i")).
