@@ -1,0 +1,51 @@
+[jjc311@corona19:~/ws/main]$ time ./IterativeLearnMain -j4 ../examples/iterative/array_sum_con.lp 
+Searching for a program with 0-3 lines satisfying 0 example(s)...
+Found the following program:
+   (empty program)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Arrays:   xs[2]
+   Input:    len_xs = 2, xs[0] = 0, xs[1] = 1
+   Expected: s = 1
+   Output:   (none)
+Searching for a program with 0-3 lines satisfying 1 example(s)...
+Found the following program:
+   1. s = xs[1]
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Arrays:   xs[0]
+   Input:    len_xs = 0
+   Expected: s = 0
+   Output:   (none)
+Searching for a program with 1-4 lines satisfying 2 example(s)...
+No such program found.
+Searching for a program with 5-8 lines satisfying 2 example(s)...
+Found the following program:
+   1. i = len_xs
+   2. s = 0
+   3. while (1 < i):
+   4.     s = xs[1]
+   5.     i = 1
+   6. end_while
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+   Arrays:   xs[2]
+   Input:    len_xs = 2, xs[0] = 1, xs[1] = 0
+   Expected: s = 1
+   Output:   s = 0
+Searching for a program with 6-9 lines satisfying 3 example(s)...
+Found the following program:
+   1. s = 0
+   2. i = 0
+   3. while (i < len_xs):
+   4.     x = xs[i]
+   5.     i = i + 1
+   6.     s = s + x
+   7. end_while
+Searching for a counterexample to falsify the postcondition...
+Success: the postcondition could not be falsified.
+
+real    0m27.899s
+user    0m39.594s
+sys     0m0.256s
+

@@ -1,0 +1,28 @@
+[jjc311@texel35:~/ws-alt/main]$ time ./learn ../examples/learn/array_max.lp
+=== line_max=1 ===
+UNSATISFIABLE
+=== line_max=2 ===
+UNSATISFIABLE
+=== line_max=3 ===
+UNSATISFIABLE
+=== line_max=4 ===
+UNSATISFIABLE
+=== line_max=5 ===
+UNSATISFIABLE
+=== line_max=6 ===
+UNSATISFIABLE
+=== line_max=7 ===
+Answer: 1
+   1. i = 0
+   2. m = 0
+   3. while (i < len_xs):
+   4.     if (m <= i):
+   5.         m = xs[i]
+   6.     i = i + 1
+   7. end_while
+SATISFIABLE
+
+real    1m6.188s
+user    1m6.331s
+sys     0m0.279s
+

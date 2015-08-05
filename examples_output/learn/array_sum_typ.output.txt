@@ -1,0 +1,28 @@
+[jjc311@texel36:~/ws-alt/main]$ time ./learn ../examples/learn/array_sum_typ.lp
+=== line_max=1 ===
+UNSATISFIABLE
+=== line_max=2 ===
+UNSATISFIABLE
+=== line_max=3 ===
+UNSATISFIABLE
+=== line_max=4 ===
+UNSATISFIABLE
+=== line_max=5 ===
+UNSATISFIABLE
+=== line_max=6 ===
+UNSATISFIABLE
+=== line_max=7 ===
+Answer: 1
+   1. s = 0
+   2. i = 0
+   3. while (i < len_xs):
+   4.     x = xs[i]
+   5.     s = s + x
+   6.     i = i + 1
+   7. end_while
+SATISFIABLE
+
+real    0m59.075s
+user    0m59.264s
+sys     0m0.269s
+

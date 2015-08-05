@@ -11,6 +11,8 @@ import Data.List
 import Data.Char
 import Data.String
 
+import qualified ASP
+
 type Parse a = String -> Maybe (a, String)
 
 newtype Name = Name String deriving (Eq, Show, IsString)
@@ -44,6 +46,9 @@ data RunClingoOptions = RunClingoOptions{
 
     -- The function to use to write blocks of console lines.
     rcEcho :: [String] -> IO (),
+
+    -- If True, a textual prefix is included to distinguish input from output.
+    rcEchoPrefix :: Bool,
     
     -- If True, ANSI colour codes are included to distinguish input from output.
     rcEchoColour :: Bool,
@@ -52,16 +57,28 @@ data RunClingoOptions = RunClingoOptions{
     rcIdentifier :: Maybe String }
 
 -- RunClingoOptions with default values.
+runClingoOptions :: RunClingoOptions
 runClingoOptions = RunClingoOptions{
     rcClingoArgs = [],
     rcEchoStdout = True,
     rcEchoInput  = False,
     rcEcho       = mapM_ putStrLn,
+    rcEchoPrefix = True,
     rcEchoColour = True,
     rcIdentifier = Nothing }
 
 --------------------------------------------------------------------------------
+-- Interoperation with ASP module.
+
+termToASP :: Term -> ASP.Term
+termToASP term = case term of
+    TInt i           -> ASP.TInt i
+    TStr s           -> ASP.TStr s
+    TFun (Name f) ts -> ASP.TFun (ASP.Function f) (map (ASP.ETerm . termToASP) ts)
+
+--------------------------------------------------------------------------------
 -- ANSI terminal control sequences.
+ansiDarkRed, ansiDarkGreen, ansiClear :: String
 ansiDarkRed   = "\27[31m"
 ansiDarkGreen = "\27[32m"
 ansiClear     = "\27[0m"
@@ -78,39 +95,39 @@ runClingo options inputs = do
     let spec = (proc "clingo" args) { std_in=CreatePipe, std_out=CreatePipe }
     (Just clingoIn, Just clingoOut, _, clingoProc) <- createProcess spec
 
-    lines <- return . concat $ do
+    codeLines <- return . concat $ do
         input <- inputs
         return $ case input of
             CICode code -> lines code
             CIFile path -> ["#include \"" ++ path ++ "\"."]
-    hPutStr clingoIn (unlines lines)
+    hPutStr clingoIn (unlines codeLines)
     hClose clingoIn
     
     when echoInput . echo $ "" : do
-        line <- lines
-        let prefix = maybe "<-- " (++ "<- ") identifier
+        line <- codeLines
+        prefix <- return $ case echoPrefix of
+            True  -> maybe "<-- " (++ "<- ") identifier
+            False -> ""
         return $ case echoColour of
             True  -> ansiDarkGreen ++ prefix ++ line ++ ansiClear
             False -> prefix ++ line    
 
     result <- readClingo [] clingoOut
-    waitForProcess clingoProc
+    _ <- waitForProcess clingoProc
     return result
   where
     RunClingoOptions{
         rcClingoArgs = extraArgs,
-        rcEchoStdout = echoStdout,
-        rcEchoInput  = echoInput,
-        rcEchoColour = echoColour,
-        rcEcho       = echo,
-        rcIdentifier = identifier } = options
+        rcEchoStdout = echoStdout, rcEchoInput  = echoInput,
+        rcEchoColour = echoColour, rcEchoPrefix = echoPrefix,
+        rcEcho       = echo,       rcIdentifier = identifier } = options
     readClingo :: [[Fact]] -> Handle -> IO ClingoResult
     readClingo answers clingoOut = do
         line <- ehGetLine clingoOut
         case line of
             _ | "Answer: " `isPrefixOf` line -> do
-                line <- ehGetLine clingoOut
-                let Just (answer, "") = readFacts line
+                oLine <- ehGetLine clingoOut
+                let Just (answer, "") = readFacts oLine
                 readClingo (answer : answers) clingoOut
             "SATISFIABLE" ->
                 return (CRSatisfiable answers)
@@ -123,7 +140,9 @@ runClingo options inputs = do
     ehGetLine :: Handle -> IO String
     ehGetLine handle = do
         line <- hGetLine handle
-        let prefix = maybe "--> " (++ "-> ") (rcIdentifier options)
+        prefix <- return $ case rcEchoPrefix options of
+            True  -> maybe "--> " (++ "-> ") (rcIdentifier options)
+            False -> ""
         line' <- return $ case rcEchoColour options of
             True  -> ansiDarkRed ++ prefix ++ line ++ ansiClear
             False -> prefix ++ line
@@ -136,10 +155,10 @@ readFacts :: Parse [Fact]
 readFacts "" = do
     return ([], "")
 readFacts str = do
-    (fact, str) <- readFact str
-    (_,str) <- return (span isSpace str)
-    (facts, str) <- readFacts str <|> return ([], str)
-    return (fact:facts, str)
+    (fact, _str) <- readFact str
+    (_,_str) <- return (span isSpace _str)
+    (facts, _str) <- readFacts _str <|> return ([], _str)
+    return (fact:facts, _str)
 
 showFacts :: [Fact] -> String
 showFacts facts = concat (intersperse " " (map showFact facts))
@@ -161,6 +180,7 @@ readTerm :: Parse Term
 readTerm str
   = readValue TInt str <|> readValue TStr str <|> readSymbol TFun str
 
+showTerm :: Term -> String
 showTerm term = case term of
     TInt int       -> show int
     TStr str       -> show str
@@ -169,9 +189,9 @@ showTerm term = case term of
 --------------------------------------------------------------------------------
 readSymbol :: (Name -> [Term] -> a) -> Parse a
 readSymbol con str = do
-    (name, str) <- readName str
-    (args, str) <- readArgs str <|> return ([], str)
-    return (con name args, str)
+    (name, _str) <- readName str
+    (args, _str) <- readArgs _str <|> return ([], _str)
+    return (con name args, _str)
 
 showSymbol :: Name -> [Term] -> String
 showSymbol (Name name) args = name ++ showArgs args
@@ -179,8 +199,8 @@ showSymbol (Name name) args = name ++ showArgs args
 --------------------------------------------------------------------------------
 readValue :: Read a => (a -> b) -> Parse b
 readValue con str = do
-    (value, str) <- listToMaybe (reads str)
-    return (con value, str)
+    (value, _str) <- listToMaybe (reads str)
+    return (con value, _str)
 
 --------------------------------------------------------------------------------
 readName :: Parse Name
@@ -192,22 +212,22 @@ readName str = do
 --------------------------------------------------------------------------------
 readArgs :: Parse [Term]
 readArgs str = do
-    '(':str <- return str
-    (_,str) <- return (span isSpace str)
-    (arg, str) <- readTerm str
-    (args, str) <- readArgs' str <|> return ([], str)
-    (_,str) <- return (span isSpace str)
-    ')':str <- return str
-    return (arg:args, str)
+    '(':_str <- return str
+    (_,_str) <- return (span isSpace _str)
+    (arg, _str) <- readTerm _str
+    (args, _str) <- readArgs' _str <|> return ([], _str)
+    (_,_str) <- return (span isSpace _str)
+    ')':_str <- return _str
+    return (arg:args, _str)
 
 readArgs' :: Parse [Term]
 readArgs' str = do
-    (_,str) <- return (span isSpace str)
-    ',':str <- return str
-    (_,str) <- return (span isSpace str)
-    (arg, str) <- readTerm str
-    (args, str) <- readArgs' str <|> return ([], str)
-    return (arg:args, str)
+    (_,_str) <- return (span isSpace str)
+    ',':_str <- return _str
+    (_,_str) <- return (span isSpace _str)
+    (arg, _str) <- readTerm _str
+    (args, _str) <- readArgs' _str <|> return ([], _str)
+    return (arg:args, _str)
 
 showArgs :: [Term] -> String
 showArgs []   = ""
