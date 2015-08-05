@@ -13,7 +13,7 @@ module Abstract.Base(
     IIBi(..), IIUn(..), BBBi(..), BBUn(..), BIBi(..),
     Int(..), (^), even, odd,
     Eq(..), Ord(..), ifThenElse,
-    length, and, or, any, all,
+    length, and, or, any, all, (!!), elem,
     module Prelude,
     module Data.List,
     module Data.String
@@ -23,10 +23,10 @@ import Prelude hiding (
     Bool(..), (&&), (||), not,
     Int, (^), even, odd,
     Eq(..), Ord(..),
-    length, and, or, any, all)
+    length, and, or, any, all, elem, (!!))
 import qualified Prelude
 
-import Data.List hiding (length, and, or, any, all)
+import Data.List hiding (length, and, or, any, all, elem, (!!))
 
 import Data.Char (isDigit)
 import Data.String (IsString(..))
@@ -59,6 +59,7 @@ data Int
   | IIBi IIBi Int Int   -- Integer-valued binary operation on integers
   | IIUn IIUn Int       -- Integer-valued unary operation on integers
   | IIf Bool Int Int    -- Conditional integer value
+  | IError String       -- Computational error result
   deriving Typeable
 
 data IIBi = IAdd | ISub | IMul | IDiv | IMod | IPow
@@ -255,6 +256,13 @@ all p = foldr ((&&) . p) true
 
 any :: Boolean b => (a -> b) -> [a] -> b
 any p = foldr ((||) . p) false
+
+(!!) :: [Int] -> Int -> Int
+(x:xs) !! i = if i == 0 then x else xs !! (i-1)
+[]     !! _ = IError "Abstract.(!!): index out of bounds"
+
+elem :: Int -> [Int] -> Bool
+elem x = any (== x)
 
 --------------------------------------------------------------------------------
 -- Generalised Eq class.

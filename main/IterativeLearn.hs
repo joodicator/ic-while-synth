@@ -1,6 +1,7 @@
 #!/usr/bin/env runghc
 
-{-# LANGUAGE OverloadedStrings, ViewPatterns #-}
+{-# LANGUAGE OverloadedStrings, ViewPatterns,
+             TypeSynonymInstances, FlexibleInstances #-}
 
 module IterativeLearn where
 
@@ -486,15 +487,21 @@ findProgramASP exs lims conf
       CondASPProp props -> do
           PostConditionExample{ exID=runID, exArrays=arraySizes } <- exs
           let bindings = aspBindings conf (M.fromList $ cfArrays conf)
+          let definedLits = [
+               "run_var_out_set" [fromString runID, vTerm]
+               | (var,(Out,_,vTerm)) <- bindings, var `isFreeIn` postCond]
           let domain var = ASP.Body $ case lookup var bindings of {
               Just (In,  _, vTerm) ->
                 ["in" [fromString runID, vTerm, ASP.TVar var]];
               Just (Out, _, vTerm) ->
-                ["run_var_out" [fromString runID, vTerm, ASP.TVar var]];
+                ["run_var_out" [fromString runID, vTerm, ASP.TVar var],
+                 ASP.CLiteral . ASP.LCompare $
+                    ASP.CBiOp ASP.CNE (ASP.ETerm $ ASP.TVar var) "unset"];
               Nothing -> [] }
           let prop = fromMaybe (error $ show arraySizes ++" not in "++ show props) $
                      lookup arraySizes props
-          map show $ ASP.propToRules domain (ASP.Head []) (negation prop)
+          let prop' = foldr (Logic.PAnd . Logic.PAtom) prop definedLits
+          map show $ ASP.propToRules domain (ASP.Head []) (negation prop')
 
       CondEmpty -> []
 
@@ -621,21 +628,36 @@ findCounterexampleASP prog conf
         "#show postcon/" ++ show (length outVars) ++ "."]
       CondASPProp props -> extraLines ++ do
           (arraySizes, prop) <- props
+          let localBindings = aspBindings conf arraySizes
           let pDomain var = ASP.Body $ case lookup var bindings of {
             Just (In,  _, vTerm) -> ["counter_in" [vTerm, ASP.TVar var]];
             Just (Out, _, _)     -> ["int" [ASP.TVar var]];
-            Nothing              -> [] }
+            _                    -> [] }
           let oDomain var = ASP.Body $ case lookup var bindings of {
             Just (In,  _, vTerm) -> ["counter_in"  [vTerm, ASP.TVar var]];
-            Just (Out, _, vTerm) -> ["counter_out" [vTerm, ASP.TVar var]];
+            Just (Out, _, vTerm) -> [
+                "counter_out" [vTerm, ASP.TVar var],
+                ASP.CLiteral . ASP.LCompare $
+                    ASP.CBiOp ASP.CNE (ASP.ETerm $ ASP.TVar var) "unset"];
             Nothing              -> [] }
           let arraySizeLits = 
                ["counter_array" [fromString a, ASP.TInt s]
                | (a,s) <- M.toList arraySizes]
           let prop' = foldr (Logic.PAnd . Logic.PAtom) prop $ arraySizeLits
+
+          let inDefinedLits =
+               ["counter_in_any" [vTerm]
+               | (_,(In,_,vTerm)) <- localBindings]
+          let outDefinedLits =
+               ["any_actual_var" [vTerm]
+               | (var,(Out,_,vTerm)) <- localBindings, var `isFreeIn` postCond]
+          let outProp  = Logic.PAtom $ "postcon" headArgs
+          let outProp' = foldr (Logic.PAnd . Logic.PAtom) outProp $
+                         outDefinedLits ++ inDefinedLits ++ arraySizeLits
+
           map show $
-            ASP.propToRules pDomain (ASP.Head ["postcon" headArgs]) prop' ++
-            ASP.propToRules oDomain mempty (Logic.PAtom $ "postcon" headArgs)
+              ASP.propToRules pDomain (ASP.Head ["postcon" headArgs]) prop' ++
+              ASP.propToRules oDomain mempty outProp'
         where
           extraLines = [
             "#show postcon/" ++ show (length headArgs) ++ ".",
@@ -717,12 +739,22 @@ instance Show WhileVar where
     show (VArray a i) = a ++"["++ show i ++"]"
 
 --------------------------------------------------------------------------------
-isFreeIn :: Variable -> Condition -> Bool
-isFreeIn var cond = case cond of
-    CondASPString cond' -> var `ASPString.isFreeIn` cond'
-    CondASPProp   props -> ASP.Variable var `oelem` ASP.FreeVars props
-    CondEmpty           -> False
+class IsFreeIn var where
+    isFreeIn :: var -> Condition -> Bool
 
+instance IsFreeIn Variable where
+    isFreeIn var cond = case cond of
+        CondASPString cond' -> var `ASPString.isFreeIn` cond'
+        CondASPProp   props -> ASP.Variable var `oelem` ASP.FreeVars props
+        CondEmpty           -> False
+
+instance IsFreeIn ASP.Variable where
+    isFreeIn var cond = case cond of
+        CondASPString cond' -> show var `ASPString.isFreeIn` cond'
+        CondASPProp   props -> var `oelem` ASP.FreeVars props
+        CondEmpty           -> False
+
+--------------------------------------------------------------------------------
 readCondTerm :: Term -> Conf -> IO (Maybe Condition)
 readCondTerm term conf = case term of
     TStr aspCond ->

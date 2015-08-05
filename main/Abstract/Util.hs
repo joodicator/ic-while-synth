@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies, OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Abstract.Util(
@@ -35,11 +35,12 @@ instance Operator Expr where
 instance Operator A.Int where
     type OpContext A.Int = ExprContext
     opInfo Haskell int = case int of
-        A.ICon _      -> OpInfo{ oPrec=10, oAscL=False, oAscR=False }
-        A.IVar _      -> OpInfo{ oPrec=10, oAscL=False, oAscR=False }
-        A.IIf _ _ _   -> OpInfo{ oPrec=1, oAscL=False, oAscR=True }
-        A.IIBi op _ _ -> opInfo Haskell op
-        A.IIUn op _   -> opInfo Haskell op
+        A.ICon _       -> OpInfo{ oPrec=10, oAscL=False, oAscR=False }
+        A.IVar _       -> OpInfo{ oPrec=10, oAscL=False, oAscR=False }
+        A.IIf _ _ _    -> OpInfo{ oPrec=1, oAscL=False, oAscR=True }
+        A.IError _     -> OpInfo{ oPrec=10, oAscL=False, oAscR=False }
+        A.IIBi op _ _  -> opInfo Haskell op
+        A.IIUn op _    -> opInfo Haskell op
 
 instance Operator A.IIBi where
     type OpContext A.IIBi = ExprContext
@@ -137,6 +138,7 @@ showExpr pPrec expr = case expr of
     I int -> case int of
         A.ICon c      -> show c
         A.IVar v      -> v
+        A.IError s    -> "error " ++ show s
         A.IIBi op x y -> showL(I x) ++ show op ++ showR(I y)
         A.IIUn op x   -> show op ++ showR(I x)
         A.IIf b x y   -> "if "++ showL(B b) ++
@@ -190,6 +192,7 @@ instance Functor Cond where
 data DefInt
   = DICon Integer
   | DIVar String
+  | DIError String
   | DIIBi A.IIBi DefInt DefInt
   | DIIUn A.IIUn DefInt
 
@@ -210,6 +213,7 @@ intToCond :: A.Int -> Cond DefInt
 intToCond int = case int of
     A.ICon c      -> DICon <$> pure c
     A.IVar v      -> DIVar <$> pure v
+    A.IError e    -> DIError <$> pure e
     A.IIBi op x y -> DIIBi op <$> intToCond x <*> intToCond y
     A.IIUn op x   -> DIIUn op <$> intToCond x
     A.IIf b x y   -> Cond b `flip` intToCond y =<< intToCond x
@@ -255,23 +259,28 @@ defBoolToProp bool = case bool of
 --------------------------------------------------------------------------------
 -- Conversion to ASP syntax.
 
+-- Any comparison involving an error value is encoded as PFalse.
 boolToPropASP :: A.Bool -> Logic.Prop ASP.Literal
-boolToPropASP = fmap boolIntToASP . boolToProp
+boolToPropASP = (>>= (maybe Logic.PFalse return . boolIntToASP)) . boolToProp
 
-boolIntToASP :: DefBoolInt -> ASP.Literal
+-- Gives Nothing if bool contains an error value, or otherwise Just lit.
+boolIntToASP :: DefBoolInt -> Maybe ASP.Literal
 boolIntToASP bool = case bool of
-    DBIBi op x y -> ASP.LCompare $ ASP.CBiOp (bi op) (intToASP x) (intToASP y)
+    DBIBi op x y ->
+        (ASP.LCompare .) . ASP.CBiOp (bi op) <$> intToASP x <*> intToASP y
   where
     bi op = case op of {
         A.BLT->ASP.CLT; A.BLE->ASP.CLT; A.BEq->ASP.CEq;
         A.BGT->ASP.CGT; A.BGE->ASP.CGE; A.BNE->ASP.CNE }
 
-intToASP :: DefInt -> ASP.Expr
+-- Gives Nothing if int contains an error value, or otherwise Just expr.
+intToASP :: DefInt -> Maybe ASP.Expr
 intToASP int = case int of
-    DICon c         -> ASP.ETerm $ ASP.TInt c
-    DIVar v         -> ASP.ETerm $ ASP.TVar (ASP.Variable v)
-    DIIBi op x y    -> ASP.EBiOp (bi op) (intToASP x) (intToASP y)
-    DIIUn op x      -> ASP.EUnOp (un op) (intToASP x)
+    DIIBi op x y -> ASP.EBiOp (bi op) <$> intToASP x <*> intToASP y
+    DIIUn op x   -> ASP.EUnOp (un op) <$> intToASP x
+    DICon c      -> Just . ASP.ETerm $ ASP.TInt c
+    DIVar v      -> Just . ASP.ETerm $ ASP.TVar (ASP.Variable v)
+    DIError _    -> Nothing
   where
     bi op = case op of {
         A.IAdd->ASP.EAdd; A.IMul->ASP.EMul; A.IMod->ASP.EMod;

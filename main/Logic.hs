@@ -23,6 +23,15 @@ data Prop a
   | PNot (Prop a)
   deriving (Show, Functor, Foldable, Traversable)
 
+instance Monad Prop where
+    return          = PAtom
+    PTrue     >>= _ = PTrue
+    PFalse    >>= _ = PFalse
+    PAtom a   >>= f = f a
+    PAnd  p q >>= f = PAnd (p >>= f) (q >>= f)
+    POr   p q >>= f = POr  (p >>= f) (q >>= f)
+    PNot  p   >>= f = PNot (p >>= f)
+
 data Lit a
   = LAtom a | LNot a
   deriving (Eq, Ord, Show)

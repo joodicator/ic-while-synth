@@ -161,7 +161,7 @@ propToRules dom rHead
   where
     bodyToRule :: Body -> Rule    
     bodyToRule rBody
-      = rHead :- rBody <> ofoldMap dom (headVars `S.union` bodyVars)
+      = rHead :- ofoldMap dom (headVars `S.union` bodyVars) <> rBody
       where bodyVars = closeFreeVars $ freeVars rBody
     headVars = closeFreeVars $ freeVars rHead
 
