@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings #-}
 
 module Clingo where
 
@@ -178,7 +178,8 @@ showFact (Fact name args) = showSymbol name args
 -- Read a term: an integer, string, name, or function symbol with arguments.
 readTerm :: Parse Term
 readTerm str
-  = readValue TInt str <|> readValue TStr str <|> readSymbol TFun str
+  = readValue TInt str  <|> readValue TStr str <|>
+    readSymbol TFun str <|> readTuple str 
 
 showTerm :: Term -> String
 showTerm term = case term of
@@ -208,6 +209,12 @@ readName str = do
     guard (any isLower $ take 1 str)
     let (name, rest) = span (\c -> isAlphaNum c || c == '_') str
     return (Name name, rest)
+
+--------------------------------------------------------------------------------
+readTuple :: Parse Term
+readTuple str = do
+    (args, _str) <- readArgs str
+    return $ (TFun "" args, _str)
 
 --------------------------------------------------------------------------------
 readArgs :: Parse [Term]

@@ -1,6 +1,7 @@
 #!/usr/bin/env runhaskell
 
 import Control.Applicative
+import Control.Monad
 import Data.Maybe
 import Data.List
 
@@ -15,6 +16,7 @@ main = do
 convertLine :: String -> [String]
 convertLine line = fromMaybe [line] $ do
     (facts, "") <- readFacts line
+    guard (not . null $ facts)
     let eLineInstrs = [maybe (Left f) Right (readLineInstr f) | f <- facts]
     let (ignoredFacts, lineInstrs) = partitionEithers eLineInstrs
     let suffix = if null ignoredFacts then [] else [showFacts ignoredFacts]

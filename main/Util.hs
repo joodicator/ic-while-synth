@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -fno-warn-orphans -fno-warn-deprecated-flags #-}
 {-# LANGUAGE FlexibleInstances, UndecidableInstances, OverlappingInstances,
              TypeFamilies, MultiParamTypeClasses, FunctionalDependencies #-}
 

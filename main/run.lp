@@ -3,7 +3,7 @@
 %   #const int_min=IMN.  % Least integer allowed to exist.
 %   #const int_max=IMX.  % Greatest integer allowed to exist.
 
-% The following constants MAY be defined in a file before this one.
+% The following constants MAY be defined in a file before this one:
 %   #const stack_max=SM. % Maximum number of entries in the call stack;
 %                        % if not given, defaults to 0.
 

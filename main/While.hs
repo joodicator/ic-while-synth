@@ -9,8 +9,10 @@ import Data.List
 import Clingo
 import Util
 
-type LineNumber = Integer
-type LineInstr = (LineNumber, Instr)
+type LineNumber   = Integer
+type SubName      = Name
+type LineInstr    = (LineNumber, Instr)
+type SubLineInstr = ((SubName, LineNumber), Instr)
 type Len = Integer
 type Var = Name
 type Arr = Name
@@ -20,6 +22,7 @@ data Instr
   | IIf Guard Len
   | IWhile Guard Len
   | IEndWhile
+  | ICall SubName
   deriving Show
 
 data Target
@@ -49,10 +52,14 @@ data Guard
   deriving Show
 
 --------------------------------------------------------------------------------
-showProgram :: [LineInstr] -> [String]
-showProgram pLines
-  = showProgram' "" (sortBy (compare `on` fst) pLines)
-  where on f g x y = f (g x) (g y)
+showProgram :: [SubLineInstr] -> [String]
+showProgram pLines = do
+    sub <- ["main"] `union` [sub | ((sub,_),_) <- pLines]
+    let sLines = [(l,i) | ((s,l),i) <- pLines, s == sub]
+    ["sub " ++ (let Name s = sub in s) ++ "():"]
+        ++ showProgram' "" (sortBy (compare `on` fst) sLines)
+  where
+    on f g x y = f (g x) (g y)
 
 showProgram' :: String -> [LineInstr] -> [String]
 showProgram' indent ((lineNum,instr):pLines)
@@ -71,17 +78,22 @@ showProgram' indent ((lineNum,instr):pLines)
             ("while (" ++ showGuard wGuard ++ "):", len)
         IEndWhile ->
             ("end_while", 0)
+        ICall (Name subName) ->
+            (subName ++ "()", 0)
     lineNumStr
       = reverse $ take 6 $ (reverse (show lineNum ++ ". ")) ++ repeat ' '
 
 showProgram' _ _ = []
 
 --------------------------------------------------------------------------------
-readLineInstr :: Fact -> Maybe LineInstr
+readLineInstr :: Fact -> Maybe SubLineInstr
 readLineInstr fact = case fact of
     Fact (Name "line_instr") [TInt line, tInstr] -> do
         instr <- readInstr tInstr
-        return (line, instr)
+        return (("main", line), instr)
+    Fact (Name "sub_line_instr") [TFun "" [TFun sub [], TInt line], tInstr] -> do
+        instr <- readInstr tInstr
+        return ((sub, line), instr)
     _ -> do
         Nothing
 
@@ -103,6 +115,8 @@ readInstr term = case term of
         return (IWhile bool len)
     TFun (Name "end_while") [] -> do
         return IEndWhile
+    TFun (Name "call") [TFun sub []] -> do
+        return (ICall sub)
     _ -> do
         Nothing
 

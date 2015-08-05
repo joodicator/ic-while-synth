@@ -4,8 +4,15 @@
 % #const int_min=IMN.   % Minimum integer allowed to exist.
 % #const int_max=IMX.   % Maximum integer allowed to exist.
 
+% The following constants MAY be defined in a file before this one:
+%   #const stack_max=SM. % Maximum number of entries in the call stack;
+%                        % if not given, defaults to 0.
+
 % In specifying a program to be learned, the following facts MAY be given:
-% preset_line_instr(L,I) % At line L, the instruction I is forced to occur.
+% preset_line_instr(N,I)
+%   At line N in subroutine 'main', the instruction I is forced to occur.
+% preset_sub_line_instr((P,N),I)
+%   In subroutine P, the instruction at line N is I.
 
 % con(N).         % N is a constant that may occur as a literal in the code.
 % var(V).         % V is a variable that may be used in the program.
@@ -21,7 +28,7 @@
 % out(R,V,C).     % In run R, the variable V must finish with the value C.
 
 #hide.
-#show line_instr/2.
+#show sub_line_instr/2.
 
 %-------------------------------------------------------------------------------
 % Silence certain warnings for undefined predicates:
@@ -44,11 +51,9 @@ feature(F) :- subfeature(F,_).
 feature(G) :- subfeature(_,G).
 
 disallow(G) :- subfeature(F,G), disallow(F).
-%allow(G)    :- subfeature(F,G), allow(F).
 allow(F)    :- feature(F), not disallow(F).
 
 disallow(G,T) :- subfeature(F,G), disallow(F,T).
-%allow(G,T)    :- subfeature(F,G), allow(F,T).
 allow(F,T)    :- feature(F), type(T), not disallow(F,T).
 
 % Inheritance of features from global context.
@@ -118,9 +123,11 @@ expr_type(mod(E1,E2),T) :- expr(mod(E1,E2)), leaf_type(E1,T), leaf_type(E2,T).
 
 %-------------------------------------------------------------------------------
 % Exactly one instruction per line.
-1{ line_instr(L, I) : valid_line_instr(L, I) }1 :- line(L), not line_preset(L).
-line(1..line_max).
-line_preset(L) :- preset_line_instr(L,_).
+1{ sub_line_instr((main,N), I) : valid_line_instr(N, I) }1 :-
+    line((main,N)), not line_preset((main,N)).
+line((main, 1..line_max)).
+line_preset(L) :- preset_sub_line_instr(L,_).
+line(L)        :- line_preset(L).
 
 % Every test example must halt:
 :- run_does_not_halt(R).
@@ -130,42 +137,46 @@ line_preset(L) :- preset_line_instr(L,_).
 
 %-------------------------------------------------------------------------------
 % Instructions.
-valid_line_instr(L, set(V, E)) :-
-    line(L), write_var(V), E!=var(V),
+valid_line_instr(N, set(V, E)) :-
+    line((main,N)), write_var(V), E!=var(V),
     leaf_type(var(V),T), expr_type(E,T).
 
-valid_line_instr(L, set(array(A,con(I)), E)) :-
-    line(L), write_var(array(A,I)), E!=array(A,I),
+valid_line_instr(N, set(array(A,con(I)), E)) :-
+    line((main,N)), write_var(array(A,I)), E!=array(A,I),
     leaf_type(index(A),IT), leaf_type(con(I),IT),
     leaf_type(elem(A),ET), expr_type(E,ET).
 
-valid_line_instr(L, set(array(A,var(V)), E)) :-
-    line(L), write_array(A),
+valid_line_instr(N, set(array(A,var(V)), E)) :-
+    line((main,N)), write_array(A),
     leaf_type(index(A),IT), leaf_type(var(V),IT),
     leaf_type(elem(A),ET), expr_type(E,ET).   
 
-valid_line_instr(L, if(B, 1..M)) :-
-    line(L), allow(if), bool(B), M=line_max-L.
+valid_line_instr(N, if(B, 1..M)) :-
+    line((main,N)), allow(if), bool(B), M=line_max-N.
 
-valid_line_instr(L, while(B, 1..M)) :-
-    line(L), allow(while), bool(B), M=line_max-L-1.
+valid_line_instr(N, while(B, 1..M)) :-
+    line((main,N)), allow(while), bool(B), M=line_max-N-1.
 
-valid_line_instr(L, end_while) :-
-    line(L), L >= 3, allow(while).
+valid_line_instr(N, end_while) :-
+    line((main,N)), N >= 3, allow(while).
 
-valid_line_instr(L,I) :- preset_line_instr(L,I).
-line_instr(L,I)       :- preset_line_instr(L,I).
+valid_line_instr(N, call(P)) :-
+    line((main,N)), subroutine(P), P != main.
+
+preset_sub_line_instr((main,N),I) :- preset_line_instr(N,I).
+sub_line_instr(L,I)   :- preset_sub_line_instr(L,I).
+subroutine(P)         :- preset_sub_line_instr((P,_),_).
 
 % Which arithmetic and boolean expressions occur in the program
 % at given times and in given runs?
-line_expr_occurs(L, E) :- preset_line_instr(L, set(_, E)).
-line_expr_occurs(L, E) :- preset_line_instr(L, set(array(_, E), _)).
+line_expr_occurs(L, E) :- preset_sub_line_instr(L, set(_, E)).
+line_expr_occurs(L, E) :- preset_sub_line_instr(L, set(array(_, E), _)).
 line_expr_occurs(L, E) :- line_expr_occurs(L, array(_, E)).
 line_expr_occurs(L, E) :- line_binop_occurs(L, E, _).
 line_expr_occurs(L, E) :- line_binop_occurs(L, _, E).
 
-line_bool_occurs(L, B) :- preset_line_instr(L, if(B, _)).
-line_bool_occurs(L, B) :- preset_line_instr(L, while(B, _)).
+line_bool_occurs(L, B) :- preset_sub_line_instr(L, if(B, _)).
+line_bool_occurs(L, B) :- preset_sub_line_instr(L, while(B, _)).
 
 line_binop_occurs(L, A, B) :- line_expr_occurs(L, add(A,B)).
 line_binop_occurs(L, A, B) :- line_expr_occurs(L, sub(A,B)).
@@ -176,23 +187,25 @@ line_binop_occurs(L, A, B) :- line_bool_occurs(L, lt(A,B)).
 line_binop_occurs(L, A, B) :- line_bool_occurs(L, le(A,B)).
 
 % Require end_while statements to occur at exactly the correct positions.
-:- line_instr(L,end_while), not end_while_block(L).
-:- end_while_block(L), not line_instr(L,end_while).
-end_while_block(L) :- line_instr_while_length(LH,B), L=LH+B+1.
+:- sub_line_instr(L,end_while), not end_while_block(L).
+:- end_while_block(L), not sub_line_instr(L,end_while).
+end_while_block((P,N)) :- line_instr_while_length((P,NH),B), N=NH+B+1.
 
 % Forbid if/while blocks that end outside of a block they start within.
-:- line_instr_if_length(L,M), block(PL,PM), PL<L, L<=PL+PM, L+M>PL+PM.
-:- line_instr_while_length(L,M), block(PL,PM), PL<L, L<=PL+PM, L+M+1>PL+PM.
+:- line_instr_if_length((P,N),M),
+   block((P,PL),PM), PL<N, N<=PL+PM, N+M>PL+PM.
+:- line_instr_while_length((P,N),M),
+   block((P,PL),PM), PL<N, N<=PL+PM, N+M+1>PL+PM.
 
 % block(L, M) if a code block starts after line L, and ends after line L+M.
-block(L, M) :- line_instr(L,    if(_, M)).
-block(L, M) :- line_instr(L, while(_, M)).
+block(L, M) :- sub_line_instr(L,    if(_, M)).
+block(L, M) :- sub_line_instr(L, while(_, M)).
 
 % Projection of if/while parameters.
-line_instr_if_guard(L, G)     :- line_instr(L, if(G, _)).
-line_instr_if_length(L, B)    :- line_instr(L, if(_, B)).
-line_instr_while_guard(L, G)  :- line_instr(L, while(G, _)).
-line_instr_while_length(L, B) :- line_instr(L, while(_, B)).
+line_instr_if_guard(L, G)     :- sub_line_instr(L, if(G, _)).
+line_instr_if_length(L, B)    :- sub_line_instr(L, if(_, B)).
+line_instr_while_guard(L, G)  :- sub_line_instr(L, while(G, _)).
+line_instr_while_length(L, B) :- sub_line_instr(L, while(_, B)).
 
 %-------------------------------------------------------------------------------
 % Arithmetic expressions.
