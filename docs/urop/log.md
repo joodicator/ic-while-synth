@@ -1,3 +1,9 @@
+# Friday 07 August 2015
+
+Starting making some further adaptations to the system to allow subroutine programs to be successfully learned with Haskell pre- and postconditions. The system is currently left in a partially working state due to an unidentified bug.
+
+Relevant commits: [894d18b](https://github.com/JosephCrowe/ic-while-synth/commit/894d18b8cb2c316ffb3ac46724eb229f5ea0dd30) [85f8690](https://github.com/JosephCrowe/ic-while-synth/commit/85f8690bde091f4a4380a9f392e8b155cdd9e1cd)
+
 # Thursday 06 August 2015
 
 Implemented in `learn.lp` the ability to learn programs using subroutines (when the body of each subroutine is given), and in `Format.hs` the ability to print out such programs. This is not very thoroughly tested as yet, but works for the following trivial example, `swap_sub`: [specification](https://github.com/JosephCrowe/ic-while-synth/blob/086a38cbc7a87c864e0a75d1fad85c430ead7669/examples/learn/swap_sub.lp), [output](https://github.com/JosephCrowe/ic-while-synth/blob/1c4406e7cc75190c0d51810e9fddd396ddd1b973/examples_output/learn/swap_sub.output.txt).
