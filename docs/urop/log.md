@@ -1,4 +1,4 @@
-# Thursday 05 August 2015
+# Thursday 06 August 2015
 
 Implemented in `learn.lp` the ability to learn programs using subroutines (when the body of each subroutine is given), and in `Format.hs` the ability to print out such programs. This is not very thoroughly tested as yet, but works for the following trivial example, `swap_sub`: [specification](https://github.com/JosephCrowe/ic-while-synth/blob/086a38cbc7a87c864e0a75d1fad85c430ead7669/examples/learn/swap_sub.lp), [output](https://github.com/JosephCrowe/ic-while-synth/blob/1c4406e7cc75190c0d51810e9fddd396ddd1b973/examples_output/learn/swap_sub.output.txt).
 
