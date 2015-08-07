@@ -6,6 +6,7 @@ import qualified Data.Set as S
 import Data.Maybe
 
 import Control.Monad
+import Control.Applicative
 import Data.Foldable (Foldable)
 import Data.Traversable
 

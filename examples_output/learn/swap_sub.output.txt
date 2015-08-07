@@ -1,0 +1,13 @@
+[jjc311@corona28:~/wsp/main]$ ./learn ../examples/learn/swap_sub.lp 
+=== line_max=0 ===
+UNSATISFIABLE
+
+=== line_max=1 ===
+Answer: 1
+sub main():
+   1. swap()
+sub swap():
+   1. swap = x
+   2. x = y
+   3. y = swap
+SATISFIABLE
