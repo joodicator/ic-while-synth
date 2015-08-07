@@ -23,12 +23,12 @@ UNSATISFIABLE
 === line_max=7 ===
 Answer: 1
 sub main():
-   1. j = len_xs - 1
-   2. i = 0
+   1. i = 0
+   2. j = len_xs - 1
    3. while (i < j):
-   4.     swap()
-   5.     i = 1
-   6.     j = j - 1
+   4.     j = j - i
+   5.     swap()
+   6.     i = 1
    7. end_while
 sub swap():
    1. swap = xs[i]
@@ -37,7 +37,6 @@ sub swap():
 SATISFIABLE
 
 
-real    1m46.311s
-user    1m46.866s
-sys     0m2.064s
-
+real    1m48.604s
+user    1m49.467s
+sys     0m1.348s

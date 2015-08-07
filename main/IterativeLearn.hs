@@ -89,6 +89,7 @@ data Counterexample = Counterexample {
 data Conf = Conf{
     cfIntRange        :: (Integer, Integer),
     cfTimeMax         :: Integer, 
+    cfStackMax        :: Integer,
     cfLineLimitMin    :: Integer,
     cfLineLimitStep   :: Integer,
     cfLineLimitMax    :: Maybe Integer,
@@ -125,6 +126,7 @@ defaultConf = Conf{
     cfTimeMax         = error "time_max undefined",
     cfLineLimitMin    = 0,
     cfLineLimitStep   = 1,
+    cfStackMax        = 0,
     cfLineLimitMax    = Nothing,
     cfIfStatementsMax = Nothing,
     cfWhileLoopsMax   = Nothing,
@@ -177,6 +179,8 @@ readConfFacts inFacts inConf
             readConfFacts' (conf{ cfIntRange=(imin, imax) }) facts
         Fact (Name "time_limit") [TInt tmax] ->
             readConfFacts' (conf{ cfTimeMax=tmax }) facts
+        Fact (Name "stack_limit") [TInt smax] ->
+            readConfFacts' (conf{ cfStackMax=smax }) facts
         Fact (Name "line_limit_min") [TInt lmin] ->
             readConfFacts' (conf{ cfLineLimitMin=lmin }) facts
         Fact (Name "line_limit_step") [TInt lstep] ->
@@ -308,7 +312,9 @@ iterativeLearn exs lims conf = do
     cfPutLines conf ["Searching for a program with " ++ linesString ++ " lines"
                  ++ " satisfying " ++ show (length exs) ++ " example(s)..."]
 
-    mProg <- findProgramConcurrent exs limss conf
+    mProg <- case null exs of
+        True  -> return . Just $ Program []
+        False -> findProgramConcurrent exs limss conf
 
     case mProg of
       Just prog -> do
@@ -424,12 +430,12 @@ findProgramASP exs lims conf
     headerLines = [
         "#const line_max=" ++ show lineMax ++ ".",
         "#const time_max=" ++ show timeMax ++ ".",
+        "#const stack_max=" ++ show stackMax ++ ".",
         "#const int_min=" ++ show intMin ++ ".",
         "#const int_max=" ++ show intMax ++ ".",
         "#const if_max=" ++ maybe "any" show ifMax ++ ".",
         "#const while_max=" ++ maybe "any" show whileMax ++ ".",
-        "#include \"learn.lp\".",
-        "#hide. #show line_instr/2."]
+        "#include \"learn.lp\"."]
 
     biasLines =
         (guard (not $ null constants) >>
@@ -486,7 +492,7 @@ findProgramASP exs lims conf
 
       CondASPProp props -> do
           PostConditionExample{ exID=runID, exArrays=arraySizes } <- exs
-          let bindings = aspBindings conf (M.fromList $ cfArrays conf)
+          let bindings = aspBindings conf arraySizes
           let definedLits = [
                "run_var_out_set" [fromString runID, vTerm]
                | (var,(Out,_,vTerm)) <- bindings, var `isFreeIn` postCond]
@@ -514,7 +520,8 @@ findProgramASP exs lims conf
           cfDisallow       =disallow,  cfReadOnly      =readOnly,
           cfIfStatementsMax=ifMax,     cfWhileLoopsMax =whileMax,
           cfLogicVars      =logicVars, cfPostCondition =postCond,
-          cfArrays         =arrays,    cfReadOnlyArrays=roArrays } = conf
+          cfArrays         =arrays,    cfReadOnlyArrays=roArrays,
+          cfStackMax       =stackMax } = conf
     Limits{ lmLineMax=lineMax } = lims
 
 --------------------------------------------------------------------------------
@@ -569,6 +576,7 @@ findCounterexampleASP prog conf
         "#const time_max=" ++ show timeMax ++ ".",
         "#const int_min=" ++ show intMin ++ ".",
         "#const int_max=" ++ show intMax ++ ".",
+        "#const stack_max=" ++ show stackMax ++ ".",
         "#const line_max=0.",
         "#include \"counterexample.lp\"."] ++
         (guard (not . null $ inputVars) >>
@@ -626,14 +634,21 @@ findCounterexampleASP prog conf
         ":- " ++ intercalate ", " (consHead : actOutDom) ++ ".",
         "any_postcon :- postcon(" ++ intercalate "," ("_" <$ outVars) ++ ").",
         "#show postcon/" ++ show (length outVars) ++ "."]
-      CondASPProp props -> extraLines ++ do
+      CondASPProp props -> do
           (arraySizes, prop) <- props
           let localBindings = aspBindings conf arraySizes
-          let pDomain var = ASP.Body $ case lookup var bindings of {
+
+          let headArgs = [ASP.TVar var | (var,(Out,_,_)) <- localBindings]
+          extraLines <- return [
+            "#show postcon/" ++ show (length headArgs) ++ ".",
+            show $ ASP.Head["any_postcon"] ASP.:-
+                   ASP.Body["postcon" [ASP.TVar "_" | _ <- headArgs]]]
+
+          let pDomain var = ASP.Body $ case lookup var localBindings of {
             Just (In,  _, vTerm) -> ["counter_in" [vTerm, ASP.TVar var]];
             Just (Out, _, _)     -> ["int" [ASP.TVar var]];
             _                    -> [] }
-          let oDomain var = ASP.Body $ case lookup var bindings of {
+          let oDomain var = ASP.Body $ case lookup var localBindings of {
             Just (In,  _, vTerm) -> ["counter_in"  [vTerm, ASP.TVar var]];
             Just (Out, _, vTerm) -> [
                 "counter_out" [vTerm, ASP.TVar var],
@@ -655,23 +670,16 @@ findCounterexampleASP prog conf
           let outProp' = foldr (Logic.PAnd . Logic.PAtom) outProp $
                          outDefinedLits ++ inDefinedLits ++ arraySizeLits
 
-          map show $
+          extraLines ++ (map show $
               ASP.propToRules pDomain (ASP.Head ["postcon" headArgs]) prop' ++
-              ASP.propToRules oDomain mempty outProp'
-        where
-          extraLines = [
-            "#show postcon/" ++ show (length headArgs) ++ ".",
-            show $ ASP.Head["any_postcon"] ASP.:-
-                   ASP.Body["postcon" [ASP.TVar "_" | _ <- headArgs]]]
-          bindings = aspBindings conf (M.fromList $ cfArrays conf)
-          headArgs = [ASP.TVar var | (var,(Out,_,_)) <- bindings]
+              ASP.propToRules oDomain mempty outProp')
       CondEmpty -> [":-."]
 
     Conf{ cfIntRange=(intMin, intMax), cfTimeMax=timeMax,
           cfInputVars=inputVars, cfOutputVars=outputVars,
           cfInputArrays=inputArrays, cfOutputArrays=outputArrays,
           cfPreCondition=preCond, cfPostCondition=postCond,
-          cfLogicVars=logicVars } = conf
+          cfLogicVars=logicVars, cfStackMax=stackMax } = conf
 
 --------------------------------------------------------------------------------
 interactivePause :: Conf -> IO Conf
@@ -714,7 +722,7 @@ showProgram (Program facts)
 
 programLength :: Program -> Integer
 programLength (Program facts)
-  = genericLength . catMaybes . map While.readLineInstr $ facts
+  = genericLength [() | Just (("main",_),_) <- map While.readLineInstr facts]
 
 --------------------------------------------------------------------------------
 readVarTerm :: Term -> Maybe WhileVar

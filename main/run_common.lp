@@ -6,7 +6,7 @@
 run_any :- in(_,_,_).
 
 % run(R) if there is a test case called R.
-run(0) :- not run_any.
+%run(0) :- not run_any.
 run(R) :- in(R,_,_).
 
 % run_var(R,V) if the variable V exists in run R.
@@ -24,7 +24,9 @@ run(R,T) :- run_line(R,T,L), T<time_max, line(L).
 % run_halt(R,T) if test case R halts normally at time T: i.e. if execution
 % runs past the last instruction while the call stack is empty.
 run_halt(R,T) :-
-    run_line(R,T,L), T<time_max, not line(L), run_stack(R,T,(0,_)).
+    run_line(R,T,L), T<time_max, not line(L), run_stack(R,T,(0,_)),
+    not run_fail(R).
+run_fail(R) :- run_fail(R,_).
 
 run_does_halt(R) :- run_halt(R,_).
 run_does_not_halt(R) :- run(R), not run_does_halt(R).
@@ -63,7 +65,7 @@ run_expr_not_fail(R,T,E) :- run_expr(R,T,E,_).
 
 % Identify the time at which a run fails due to illegal arithmetic.
 run_fail(R,T,expr) :-
-    run_line(R,T,L), line_set(L,X), sub_line_instr(L,set(X,E)),
+    run_line(R,T,L), sub_line_instr(L,set(_,E)),
     not run_expr_not_fail(R,T,E).
 
 % Identify lines where execution may jump to a remote instruction.

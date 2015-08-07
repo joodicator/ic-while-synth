@@ -56,8 +56,10 @@ showProgram :: [SubLineInstr] -> [String]
 showProgram pLines = do
     sub <- ["main"] `union` [sub | ((sub,_),_) <- pLines]
     let sLines = [(l,i) | ((s,l),i) <- pLines, s == sub]
-    ["sub " ++ (let Name s = sub in s) ++ "():"]
-        ++ showProgram' "" (sortBy (compare `on` fst) sLines)
+    let head = ["sub " ++ (let Name s = sub in s) ++ "():"]
+    case sLines of
+        [] -> head ++ ["    (empty subroutine)"]
+        _  -> head ++ showProgram' "" (sortBy (compare `on` fst) sLines)
   where
     on f g x y = f (g x) (g y)
 
