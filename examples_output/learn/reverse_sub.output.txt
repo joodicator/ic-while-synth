@@ -1,0 +1,43 @@
+[jjc311@potoo01:~/wsp/main]$ time ./learn ../examples/learn/reverse_sub.lp
+=== line_max=0 ===
+UNSATISFIABLE
+
+=== line_max=1 ===
+UNSATISFIABLE
+
+=== line_max=2 ===
+UNSATISFIABLE
+
+=== line_max=3 ===
+UNSATISFIABLE
+
+=== line_max=4 ===
+UNSATISFIABLE
+
+=== line_max=5 ===
+UNSATISFIABLE
+
+=== line_max=6 ===
+UNSATISFIABLE
+
+=== line_max=7 ===
+Answer: 1
+sub main():
+   1. j = len_xs - 1
+   2. i = 0
+   3. while (i < j):
+   4.     swap()
+   5.     i = 1
+   6.     j = j - 1
+   7. end_while
+sub swap():
+   1. swap = xs[i]
+   2. xs[i] = xs[j]
+   3. xs[j] = swap
+SATISFIABLE
+
+
+real    1m46.311s
+user    1m46.866s
+sys     0m2.064s
+

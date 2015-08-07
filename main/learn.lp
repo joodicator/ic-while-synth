@@ -125,9 +125,18 @@ expr_type(mod(E1,E2),T) :- expr(mod(E1,E2)), leaf_type(E1,T), leaf_type(E2,T).
 % Exactly one instruction per line.
 1{ sub_line_instr((main,N), I) : valid_line_instr(N, I) }1 :-
     line((main,N)), not line_preset((main,N)).
+
 line((main, 1..line_max)).
 line_preset(L) :- preset_sub_line_instr(L,_).
 line(L)        :- line_preset(L).
+
+preset_sub_line_instr((main,N),I) :- preset_line_instr(N,I).
+sub_line_instr(L,I)   :- preset_sub_line_instr(L,I).
+subroutine(P)         :- preset_sub_line_instr((P,_),_).
+
+% There must be enough lines to contain at least the preset lines:
+:- line_preset((main,N)), N > line_max.
+:- preset_sub_line_instr((P,N),I), preset_sub_line_instr((P,N),J), I != J.
 
 % Every test example must halt:
 :- run_does_not_halt(R).
@@ -162,10 +171,6 @@ valid_line_instr(N, end_while) :-
 
 valid_line_instr(N, call(P)) :-
     line((main,N)), subroutine(P), P != main.
-
-preset_sub_line_instr((main,N),I) :- preset_line_instr(N,I).
-sub_line_instr(L,I)   :- preset_sub_line_instr(L,I).
-subroutine(P)         :- preset_sub_line_instr((P,_),_).
 
 % Which arithmetic and boolean expressions occur in the program
 % at given times and in given runs?
