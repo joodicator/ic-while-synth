@@ -1,3 +1,9 @@
+# Thursday 05 August 2015
+
+Implemented in `learn.lp` the ability to learn programs using subroutines (when the body of each subroutine is given), and in `Format.hs` the ability to print out such programs. This is not very thoroughly tested as yet, but works for the following trivial example, `swap_sub`: [specification](https://github.com/JosephCrowe/ic-while-synth/blob/6abff841f196dfa9f14b04d7c7a009e99e04a4f0/examples/learn/swap_sub.lp), [output](https://github.com/JosephCrowe/ic-while-synth/blob/1c4406e7cc75190c0d51810e9fddd396ddd1b973/examples_output/learn/swap_sub.output.txt).
+
+Relevant commits: [6abff84](https://github.com/JosephCrowe/ic-while-synth/commit/6abff841f196dfa9f14b04d7c7a009e99e04a4f0).
+
 # Wednesday 05 August 2015
 
 Implemented in the program simulator parameterless subroutines sharing the global variable scope, but with a fixed-size call stack to allow bounded recursion or for subroutines to depend on other subroutines. Wrote the example program `bubble_sort` to test it: [specification](https://github.com/JosephCrowe/ic-while-synth/blob/subroutines/examples/run/bubble_sort.lp), [output](https://github.com/JosephCrowe/ic-while-synth/blob/subroutines/examples_output/run/bubble_sort.output.txt).
