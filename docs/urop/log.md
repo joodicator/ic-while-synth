@@ -1,6 +1,8 @@
 # Monday 10 August 2015
 
-Resolved the previous issue with learning array programs using `IterativeLearn`. The `reverse` program can be seen successfully learned here: [specification](https://github.com/JosephCrowe/ic-while-synth/blob/6150d166eaaa54aab29e9f49f44fa6f4c86763dd/examples/iterative/reverse_sub.lp) [output](https://github.com/JosephCrowe/ic-while-synth/blob/6150d166eaaa54aab29e9f49f44fa6f4c86763dd/examples_output/iterative/reverse_sub.lp). Perhaps surprisingly, most of the synthesis time is taken at the beginning (when the precondition and postcondition are instantiated) and for the final counterexample-generation step. I believe that both of these delays can be addressed, but I will give further information if I'm unsuccessful.
+Resolved the previous issue with learning array programs using `IterativeLearn`. The `reverse` program can be seen successfully learned here: [specification](https://github.com/JosephCrowe/ic-while-synth/blob/6150d166eaaa54aab29e9f49f44fa6f4c86763dd/examples/iterative/reverse_sub.lp), [output](https://github.com/JosephCrowe/ic-while-synth/blob/6150d166eaaa54aab29e9f49f44fa6f4c86763dd/examples_output/iterative/reverse_sub.lp).
+
+Perhaps surprisingly, most of the synthesis time is taken at the beginning (when the precondition and postcondition are instantiated) and for the final counterexample-generation step. I believe that both of these delays can be addressed, but I will give further information if I'm unsuccessful.
 
 Also implemented a more general parser for ASP syntax and made some other miscellaneous improvements.
 
