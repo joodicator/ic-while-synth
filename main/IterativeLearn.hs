@@ -46,9 +46,17 @@ type ArraySizes = M.Map ArrayName ArraySize
 type HsBindings = [(HsVar, HsInput)]
 type ASPProp    = Logic.Prop ASP.Literal
 
-newtype Program = Program [LineInstr] deriving Show
-newtype Input   = Input   [(WhileVar, Value)] deriving (Show, Eq, Ord)
-newtype Output  = Output  [(WhileVar, Value)] deriving (Show, Eq, Ord)
+newtype Program
+  = Program [LineInstr]
+  deriving Show
+
+newtype Input
+  = Input{ unInput :: [(WhileVar, Value)] }
+  deriving (Show, Eq, Ord)
+
+newtype Output
+  = Output{ unOutput :: [(WhileVar, Value)] }
+  deriving (Show, Eq, Ord)
 
 data Direction
   = In | Out
@@ -84,6 +92,11 @@ data Counterexample = Counterexample {
     ceActualOutput   :: Output,
     ceExpectedOutput :: [Output] }
   deriving Show
+
+--------------------------------------------------------------------------------
+iPre, oPre :: String
+iPre = "In_"
+oPre = "Out_"
 
 --------------------------------------------------------------------------------
 data Conf = Conf{
@@ -361,24 +374,7 @@ iterativeLearn' prog exs lims conf = do
                 False -> [
                     "Found the following counterexample:"]
 
-            bodyLines <- return $ ("   " ++) <$>
-                (guard (not . M.null $ arrays) >> [
-                "Arrays:   " ++ intercalate ", " [
-                    a ++"["++ show l ++"]" | (a,l) <- M.toList arrays]]) ++ [
-                "Input:    " ++ (intercalate ", "
-                    $ [show v++" = "++show c | (v,c) <- sort input ]),
-                "Expected: " ++ case expected of {
-                    [] -> "(none)";
-                    _  -> intercalate " | " $ [
-                        intercalate ", " [show v ++ " = " ++ show c | (v,c) <- os]
-                        | Output os <- take 5 $ sort [
-                            Output (sort os) | Output os <- expected]]
-                        ++ if (length expected > 5) then ["..."] else [] },
-                "Output:   " ++ case actual of {
-                    [] -> "(none)";
-                    _  -> intercalate ", "
-                        $ [show v++" = "++show c | (v,c) <- sort actual ] } ]
-
+            let bodyLines = showCounterexample cex
             cfPutLines conf $ headLines ++ bodyLines
             when deficient exitFailure
             _conf <- interactivePause conf
@@ -390,7 +386,7 @@ iterativeLearn' prog exs lims conf = do
             iterativeLearn (ex : exs) lims _conf
         Nothing -> do
             cfPutLines conf [
-                "Success: the postcondition could not be falsified."]
+                "The postcondition could not be falsified."]
             return prog
 
 --------------------------------------------------------------------------------
@@ -473,22 +469,22 @@ findProgramASP exs lims conf
         let ids = [xid
                   | PostConditionExample{ exID=xid } <- exs ] in
         let iVars = [v
-                    | v <- inputVars, ("In_"++ varVar v) `isFreeIn` postCond] in
+                    | v <- inputVars, (varVar' iPre v) `isFreeIn` postCond] in
         let oVars = [v
-                    | v <- outputVars, ("Out_"++ varVar v) `isFreeIn` postCond] in
+                    | v <- outputVars, (varVar' oPre v) `isFreeIn` postCond] in
         let plVars = [v
                      | v <- logicVars \\ outputVars, varVar v `isFreeIn` postCond] in
         if (null ids) then [] else [
         "postcon_run(" ++ intercalate ";" ids ++ ").",
-        "postcon("++ intercalate "," ("R" : map (("Out_"++) . varVar) oVars) ++") :- "
+        "postcon("++ intercalate "," ("R" : map (varVar' oPre) oVars) ++") :- "
         ++ "postcon_run(R), "
-        ++ concat ["int(Out_"++ varVar v ++"), " | v <- oVars]
+        ++ concat ["int("++ varVar' oPre v ++"), " | v <- oVars]
         ++ concat ["int("++ varVar v ++"), " | v <- plVars]
-        ++ concat ["in(R,"++ varTerm v ++",In_"++ varVar v ++"), " | v <- iVars]
+        ++ concat ["in(R,"++ varTerm v ++","++ varVar' iPre v ++"), " | v <- iVars]
         ++ postCondString ++".",
         ":- postcon_run(R), "
-        ++ concat ["run_var_out(R,"++ varTerm v ++",Out_"++ varVar v ++"), " | v <- oVars]
-        ++ "not postcon("++ intercalate "," ("R" : map (("Out_"++) . varVar) oVars) ++")."]
+        ++ concat ["run_var_out(R,"++ varTerm v ++","++ varVar' oPre v ++"), " | v <- oVars]
+        ++ "not postcon("++ intercalate "," ("R" : map (varVar' oPre) oVars) ++")."]
 
       CondASPProp props -> do
           PostConditionExample{ exID=runID, exArrays=arraySizes } <- exs
@@ -593,8 +589,8 @@ findCounterexampleASP prog conf
 
     preCondLines = case preCond of
       CondASPString preCondStr ->
-        let preVars = filter ((`isFreeIn` preCond) . ("In_"++) . varVar) inputVars in
-        let inDom   = ["counter_in("++ varTerm v ++", In_"++ varVar v ++")" | v<-preVars] in [
+        let preVars = filter ((`isFreeIn` preCond) . varVar' iPre) inputVars in
+        let inDom   = ["counter_in("++ varTerm v ++", "++ varVar' iPre v ++")" | v<-preVars] in [
         let preConds = filter (not . null) [preCondStr] in
         "precon :- "++ intercalate ", " (preConds ++ inDom) ++".",
         ":- not precon."]
@@ -615,19 +611,19 @@ findCounterexampleASP prog conf
     
     postCondLines = case postCond of
       CondASPString postCondStr ->
-        let inVars = filter ((`isFreeIn` postCond) . ("In_"++) . varVar) inputVars in
-        let inDom = ["counter_in("++ varTerm v ++", In_"++ varVar v ++")" | v<-inVars] in
+        let inVars = filter ((`isFreeIn` postCond) . varVar' iPre) inputVars in
+        let inDom = ["counter_in("++ varTerm v ++", "++ varVar' iPre v ++")" | v<-inVars] in
         let plVars = [v | v <- (logicVars \\ outputVars),
                           varVar v `isFreeIn` postCond] in
-        let expOutDom = ["int(Out_"++ varVar v ++")" | v <- outputVars]
+        let expOutDom = ["int("++ varVar' iPre v ++")" | v <- outputVars]
                      ++ ["int("++ varTerm v ++")" | v <- plVars] in
         let postConds = filter (not . null) [postCondStr] in
         let ruleBody = intercalate ", " (postConds ++ inDom ++ expOutDom) in
-        let outVars = filter ((`isFreeIn` postCond) . ("Out_"++) . varVar) outputVars in
+        let outVars = filter ((`isFreeIn` postCond) . varVar' oPre) outputVars in
         let args = case outVars of {
             [] -> "";
-            _  -> "(" ++ intercalate ", " (map (("Out_"++) . varVar) outVars) ++ ")" } in
-        let actOutDom = ["counter_out("++ varTerm v ++", Out_"++ varVar v ++")" | v<-outVars]
+            _  -> "(" ++ intercalate ", " (map (varVar' oPre) outVars) ++ ")" } in
+        let actOutDom = ["counter_out("++ varTerm v ++", "++ varVar' oPre v ++")" | v<-outVars]
                      ++ ["int("++ varTerm v ++")" | v <- plVars] in
         let consHead = "postcon" ++ args in [
         "postcon"++ args ++" :- "++ ruleBody ++".",
@@ -724,6 +720,51 @@ programLength :: Program -> Integer
 programLength (Program facts)
   = genericLength [() | Just (("main",_),_) <- map While.readLineInstr facts]
 
+showCounterexample :: Counterexample -> [String]
+showCounterexample cex
+  = showInput ++ showExpected ++ showOutput
+  where
+{-
+    showArrays
+      = (guard . not $ M.null arrays) >>
+        ["    Arrays:   " ++ intercalate ", " [
+            a ++"["++ show l ++"]" | (a,l) <- M.toList arrays]]
+-}
+    showInput
+      = ["    Input:    " ++ showVars (unInput input)]
+    showExpected
+      = ["    Expected: " ++ showVarss (map unOutput expected)]
+    showOutput
+      = ["    Output:   " ++ showVars (unOutput actual)]
+
+    showVarss :: [[(WhileVar, Value)]] -> String
+    showVarss varss@(_:_) = intercalate " | " $
+        (map showVars . take 5 . sort . map sort $ varss) ++
+        if length varss > 5 then ["..."] else []
+    showVarss [] = "(none)"
+
+    showVars :: [(WhileVar, Value)] -> String
+    showVars vars@(_:_) = intercalate ", " $
+        [a ++" = "++ s | (a,s) <- arrayStrings] ++
+        [show v ++" = "++ show c | (v,c) <- sort vars, showVar v]
+      where
+        arrayStrings = do
+            (aName, aSize) <- M.toList arrays
+            cs <- maybeToList $ sequence [
+                lookup (VArray aName i) vars | i <- [0..aSize-1]]
+            return (aName, "["++ intercalate ", " (map show cs) ++"]")
+
+        showVar (VArray a _) = not $ a `elem` map fst arrayStrings
+        showVar _            = True
+        
+    showVars [] = "(none)"
+
+    Counterexample{
+        ceArrays         = arrays,
+        ceInput          = input,
+        ceActualOutput   = actual,
+        ceExpectedOutput = expected } = cex
+
 --------------------------------------------------------------------------------
 readVarTerm :: Term -> Maybe WhileVar
 readVarTerm term = case term of
@@ -739,8 +780,11 @@ varTerm' (VScalar v)  = fromString (headLow v)
 varTerm' (VArray a i) = "array" [fromString (headLow a), ASP.TInt i]
 
 varVar :: WhileVar -> String
-varVar (VScalar v)  = headUp v
-varVar (VArray a i) = headUp a ++ show i
+varVar = varVar' ""
+
+varVar' :: String -> WhileVar -> String
+varVar' p (VScalar v)  = headUp $ p ++ v
+varVar' p (VArray a i) = headUp $ p ++ a ++"_"++ show i
 
 instance Show WhileVar where
     show (VScalar v)  = v
@@ -806,12 +850,12 @@ hsBindings conf arraySizes
     varBind :: String -> WhileVar -> (HsVar, HsInput)
     varBind prefix var = (
         headLow $ prefix ++ varTerm var,
-        HsScalar . Abstract.IVar . headUp $ prefix ++ varVar var)
+        HsScalar . Abstract.IVar $ varVar' prefix var)
 
     arrayBind :: String -> ArrayName -> (HsVar, HsInput)
     arrayBind prefix name = (
         headLow $ prefix ++ name,
-        HsArray [Abstract.IVar . headUp $ prefix ++ varVar (VArray name i)
+        HsArray [Abstract.IVar . headUp $ varVar' prefix (VArray name i)
             | s <- maybeToList $ M.lookup name arraySizes, i <- [0..s-1]])
 
     Conf{ cfInputVars   = inVars,    cfOutputVars   = outVars,
@@ -821,8 +865,8 @@ hsBindings conf arraySizes
 -- The correspondence between ASP variables and terms representing program variables.
 aspBindings :: Conf -> ArraySizes -> [(ASP.Variable, (Direction, WhileVar, ASP.Term))]
 aspBindings conf arraySizes
-  = [(fromString $ "In_"  ++ varVar v, (In,  v, varTerm' v)) | v <- allInVars] 
-  ++[(fromString $ "Out_" ++ varVar v, (Out, v, varTerm' v)) | v <- allOutVars]
+  = [(fromString $ varVar' iPre v, (In,  v, varTerm' v)) | v <- allInVars] 
+  ++[(fromString $ varVar' oPre v, (Out, v, varTerm' v)) | v <- allOutVars]
   ++[(fromString $ varVar v, (In, v, varTerm' v)) | v <- logicVars \\ outVars]
   where
     allInVars  = (inVars \\ logicVars) ++ concatMap arrVars inArrs

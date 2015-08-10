@@ -56,10 +56,11 @@ showProgram :: [SubLineInstr] -> [String]
 showProgram pLines = do
     sub <- ["main"] `union` [sub | ((sub,_),_) <- pLines]
     let sLines = [(l,i) | ((s,l),i) <- pLines, s == sub]
-    let head = ["sub " ++ (let Name s = sub in s) ++ "():"]
+    let head = ["    sub " ++ (let Name s = sub in s) ++ "():"]
     case sLines of
         [] -> head ++ ["    (empty subroutine)"]
-        _  -> head ++ showProgram' "" (sortBy (compare `on` fst) sLines)
+        _  -> head ++ fmap ("    " ++)
+                      (showProgram' "" (sortBy (compare `on` fst) sLines))
   where
     on f g x y = f (g x) (g y)
 
@@ -67,7 +68,7 @@ showProgram' :: String -> [LineInstr] -> [String]
 showProgram' indent ((lineNum,instr):pLines)
   = [lineNumStr ++ indent ++ pHead] ++
     showProgram' ("    " ++ indent) (genericTake bodyLength pLines) ++
-    showProgram'            indent  (genericDrop bodyLength pLines)
+    showProgram'           indent  (genericDrop bodyLength pLines)
   where
     (pHead, bodyLength) = case instr of
         ISet (TVar (Name x)) expr ->

@@ -1,8 +1,8 @@
-int_range(0, 3).
+int_range(0, 6).
 time_limit(50).
 stack_limit(1).
 
-array(xs, 4).
+array(xs, 6).
 input_array(xs).
 output_array(xs).
 input_variable(len_xs).
@@ -13,7 +13,7 @@ read_only_variable(len_xs; swap).
 read_only_array(xs).
 disallow_feature(mul; div; mod; if; while).
 
-array(xs, 4, elem, index).
+array(xs, 6, elem, index).
 var(i; j; len_xs, index).
 var(swap, elem).
 con(0; 1, index).
