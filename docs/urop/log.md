@@ -1,3 +1,11 @@
+# Monday 10 August 2015
+
+Resolved the previous issue with learning array programs using `IterativeLearn`. The `reverse` program can be seen successfully learned here: [specification](https://github.com/JosephCrowe/ic-while-synth/blob/6150d166eaaa54aab29e9f49f44fa6f4c86763dd/examples/iterative/reverse_sub.lp) [output](https://github.com/JosephCrowe/ic-while-synth/blob/6150d166eaaa54aab29e9f49f44fa6f4c86763dd/examples_output/iterative/reverse_sub.lp). Perhaps surprisingly, most of the synthesis time is taken at the beginning (when the precondition and postcondition are instantiated) and for the final counterexample-generation step. I believe that both of these delays can be addressed, but I will give further information if I'm unsuccessful.
+
+Also implemented a more general parser for ASP syntax and made some other miscellaneous improvements.
+
+Relevant commits: [6150d16](https://github.com/JosephCrowe/ic-while-synth/commit/6150d166eaaa54aab29e9f49f44fa6f4c86763dd)
+
 # Friday 07 August 2015
 
 Starting making some further adaptations to the system to allow subroutine programs to be successfully learned with Haskell pre- and postconditions. The system is currently left in a partially working state due to an unidentified bug.
