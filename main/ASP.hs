@@ -4,14 +4,11 @@ module ASP(
     Atom(..), Comparison(..), Expr(..), Term(..), CBiOp(..), EBiOp(..), EUnOp(..),
     FreeVars(..), freeVars, isFreeIn,
 
-    Parse.rule,
-
     propToRules
 ) where
 
 import ASP.Base
 import ASP.Show()
-import qualified ASP.Parse as Parse
 
 import qualified Logic
 
