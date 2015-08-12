@@ -1,4 +1,5 @@
-{-# LANGUAGE Rank2Types, TypeFamilies, FlexibleContexts, TransformListComp #-}
+{-# LANGUAGE Rank2Types, TypeFamilies, FlexibleContexts, TransformListComp,
+             OverloadedStrings #-}
 
 module ASP.Parse where
 
@@ -65,7 +66,7 @@ expr = expr' oss where
 
     expr' :: [[Either EUnOp EBiOp]] -> Parse s u m Expr
     expr' [] = choice
-       [between (pre "(") (suf ")") expr,
+       [try $ between (pre "(") (suf ")") expr,
         EUnOp EAbs <$> between (pre "|") (suf "|") expr,
         ETerm <$> term]
     expr' oss'@(os@(_:_) : _) = choice
@@ -122,7 +123,7 @@ term :: Parse s u m Term
 term = TVar <$> variable
    <|> TInt <$> intTerm
    <|> TStr <$> strTerm
-   <|> lName (TFun . Function) <*> args expr
+   <|> option (TFun "") (lName $ TFun . Function) <*> args expr
    <|> char '@' *> lName (TLua . LuaFunc) <*> args expr
 
 intTerm :: Parse s u m Integer

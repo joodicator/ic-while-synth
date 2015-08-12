@@ -31,7 +31,7 @@ instance Show Constant where
 
 instance Show Function where
     show (Function f)
-      | any isLower (take 1 f) = f
+      | all isLower (take 1 f) = f
       | otherwise = error $ "\""++ f ++ "\" is not a valid ASP function symbol."
 
 instance Show LuaFunc where

@@ -12,6 +12,7 @@ import Data.Char
 import Data.String
 
 import qualified ASP
+import Util
 
 type Parse a = String -> Maybe (a, String)
 
@@ -75,13 +76,6 @@ termToASP term = case term of
     TInt i           -> ASP.TInt i
     TStr s           -> ASP.TStr s
     TFun (Name f) ts -> ASP.TFun (ASP.Function f) (map (ASP.ETerm . termToASP) ts)
-
---------------------------------------------------------------------------------
--- ANSI terminal control sequences.
-ansiDarkRed, ansiDarkGreen, ansiClear :: String
-ansiDarkRed   = "\27[31m"
-ansiDarkGreen = "\27[32m"
-ansiClear     = "\27[0m"
 
 --------------------------------------------------------------------------------
 -- Run Clingo 3, which is assumed to be present on the search path as 'clingo',

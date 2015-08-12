@@ -1,0 +1,78 @@
+[jjc311@line02:~/wsp/main]$ time ./IterativeLearn.hs -t -j4 ../examples/iterative/reverse_sub.lp 
+Reading configuration file...
+(1.108255s)
+Searching for a program with 4-7 lines satisfying 0 example(s)...
+Found the following program:
+   (empty program)
+(0.000118s)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+    Input:    xs = [5, 6], len_xs = 2
+    Expected: xs = [6, 5] | ...
+    Output:   xs = [5, 6]
+(5.225293s)
+Searching for a program with 0-3 lines satisfying 1 example(s)...
+No such program found.
+(0.896573s)
+Searching for a program with 4-7 lines satisfying 1 example(s)...
+Found the following program:
+    sub main():
+       1. j = 1
+       2. i = j - 1
+       3. while (i < j):
+       4.     swap()
+       5.     j = j - 1
+       6. end_while
+    sub swap():
+       1. swap = xs[i]
+       2. xs[i] = xs[j]
+       3. xs[j] = swap
+(1.647451s)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+    Input:    xs = [0], len_xs = 1
+    Expected: xs = [0] | ...
+    Output:   (does not halt)
+(3.15154s)
+Searching for a program with 6-9 lines satisfying 2 example(s)...
+Found the following program:
+    sub main():
+       1. i = 0
+       2. j = len_xs - 1
+       3. while (i < j):
+       4.     swap()
+       5.     i = j - i
+       6. end_while
+    sub swap():
+       1. swap = xs[i]
+       2. xs[i] = xs[j]
+       3. xs[j] = swap
+(3.921397s)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+    Input:    xs = [0, 2, 3, 0, 0, 6], len_xs = 6
+    Expected: xs = [6, 0, 0, 3, 2, 0] | ...
+    Output:   xs = [6, 2, 3, 0, 0, 0]
+(7.901141s)
+Searching for a program with 6-9 lines satisfying 3 example(s)...
+Found the following program:
+    sub main():
+       1. j = len_xs - 1
+       2. i = 0
+       3. while (i < j):
+       4.     swap()
+       5.     j = j - 1
+       6.     i = i + 1
+       7. end_while
+    sub swap():
+       1. swap = xs[i]
+       2. xs[i] = xs[j]
+       3. xs[j] = swap
+(23.750964s)
+Searching for a counterexample to falsify the postcondition...
+The postcondition could not be falsified.
+(95.547023s)
+
+real    2m25.724s
+user    3m6.031s
+sys     0m0.820s

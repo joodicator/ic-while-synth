@@ -1,0 +1,118 @@
+[jjc311@line02:~/wsp/main]$ time ./IterativeLearn.hs -t -j4 ../examples/iterative/array_find.lp 
+Reading configuration file...
+(1.02015s)
+Searching for a program with 3-6 lines satisfying 0 example(s)...
+Found the following program:
+   (empty program)
+(0.000026s)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+    Input:    xs = [0], len_xs = 1, x = 0
+    Expected: i = 0 | ...
+    Output:   (empty)
+(0.028598s)
+Searching for a program with 0-3 lines satisfying 1 example(s)...
+No such program found.
+(0.038006s)
+Searching for a program with 4-7 lines satisfying 1 example(s)...
+Found the following program:
+    sub main():
+       1. j = len_xs
+       2. while (0 < j):
+       3.     j = len_xs - j
+       4.     i = j
+       5. end_while
+(0.096913s)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+    Input:    xs = [2, 3], len_xs = 2, x = 3
+    Expected: i = 1 | ...
+    Output:   i = 0
+(0.040031s)
+Searching for a program with 5-8 lines satisfying 2 example(s)...
+Found the following program:
+    sub main():
+       1. j = len_xs
+       2. while (0 < j):
+       3.     j = len_xs - 1
+       4.     i = j
+       5.     j = j - i
+       6. end_while
+(0.864072s)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+    Input:    xs = [2, 3, 0], len_xs = 3, x = 3
+    Expected: i = 1 | ...
+    Output:   i = 2
+(0.052076s)
+Searching for a program with 6-9 lines satisfying 3 example(s)...
+Found the following program:
+    sub main():
+       1. j = 1
+       2. while (0 < j):
+       3.     i = j
+       4.     j = i - j
+       5.     if (len_xs <= 1):
+       6.         i = j
+       7. end_while
+(1.534839s)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+    Input:    xs = [0, 0, 3], len_xs = 3, x = 3
+    Expected: i = 2 | ...
+    Output:   i = 1
+(0.032395s)
+Searching for a program with 7-10 lines satisfying 4 example(s)...
+Found the following program:
+    sub main():
+       1. j = len_xs
+       2. while (0 < j):
+       3.     j = j - 1
+       4.     y = xs[j]
+       5.     if (x <= y):
+       6.         i = j
+       7. end_while
+(10.232599s)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+    Input:    xs = [3, 1, 0], len_xs = 3, x = 1
+    Expected: i = 1 | ...
+    Output:   i = 0
+(0.106101s)
+Searching for a program with 7-10 lines satisfying 5 example(s)...
+Found the following program:
+    sub main():
+       1. j = 1
+       2. while (0 < j):
+       3.     j = len_xs - j
+       4.     i = j
+       5.     y = xs[j]
+       6.     if (x <= y):
+       7.         j = i - j
+       8. end_while
+(56.399053s)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+    Input:    xs = [1, 0, 1], len_xs = 3, x = 1
+    Expected: i = 0 | ...
+    Output:   i = 2
+(0.20577s)
+Searching for a program with 8-11 lines satisfying 6 example(s)...
+Found the following program:
+    sub main():
+       1. j = len_xs
+       2. while (0 < j):
+       3.     j = j - 1
+       4.     y = xs[j]
+       5.     if (x <= y):
+       6.         if (y <= x):
+       7.             i = j
+       8. end_while
+(95.778245s)
+Searching for a counterexample to falsify the postcondition...
+The postcondition could not be falsified.
+(0.176651s)
+
+real    2m48.796s
+user    3m21.408s
+sys     0m0.583s

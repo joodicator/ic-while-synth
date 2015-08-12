@@ -9,6 +9,8 @@ import Data.Maybe
 import Data.Char
 import Data.Monoid
 import Data.Functor.Identity
+import Data.Time.Clock
+
 import Data.MonoTraversable
 
 --------------------------------------------------------------------------------
@@ -78,8 +80,23 @@ headMap f (x : xs) = f x : xs
 headMap _ []       = []
 
 --------------------------------------------------------------------------------
+-- ANSI terminal control sequences.
+ansiDarkRed, ansiDarkGreen, ansiDarkYellow, ansiClear :: String
+ansiDarkRed    = "\27[31m"
+ansiDarkGreen  = "\27[32m"
+ansiDarkYellow = "\27[33m"
+ansiClear      = "\27[0m"
+
+--------------------------------------------------------------------------------
 -- Miscellaneous utilities.
 
 headUp, headLow :: String -> String
 headUp  = headMap toUpper
 headLow = headMap toLower
+
+time :: IO a -> IO (a, NominalDiffTime)
+time mx = do
+    start <- getCurrentTime
+    x <- mx
+    end <- getCurrentTime
+    return (x, end `diffUTCTime` start)
