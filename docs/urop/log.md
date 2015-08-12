@@ -1,3 +1,21 @@
+# Wednesday 12 August 2015
+
+Implemented an optimisation to the ASP generated for the counterexample finder, affording a large performance increase at the cost of reducing the number of "expected output" sets shown to at most 1. Effects include:
+* The previous `reverse` program can now be synthesised 3 times faster than previously, with fewer parts of the program given: [specification](https://github.com/JosephCrowe/ic-while-synth/blob/79967231d5ff061adbe35f09e88069172f5c06f7/examples/iterative/reverse_sub.lp), [output](https://github.com/JosephCrowe/ic-while-synth/blob/79967231d5ff061adbe35f09e88069172f5c06f7/examples_output/iterative/reverse_sub.output.txt).
+* The `array_find` program, which gives the index of the first occurrence of an element in an array, can be synthesised in comparable time to `reverse`: [specification](https://github.com/JosephCrowe/ic-while-synth/blob/79967231d5ff061adbe35f09e88069172f5c06f7/examples/iterative/array_find.lp), [output](https://github.com/JosephCrowe/ic-while-synth/blob/79967231d5ff061adbe35f09e88069172f5c06f7/examples_output/iterative/array_find.output.txt).
+
+Also made various cosmetic changes, including adding the `-t` flag to show the time taken by each subcomputation in the synthesiser (which can be seen in the above output examples).
+
+Relevant commits: [7996723](https://github.com/JosephCrowe/ic-while-synth/commit/79967231d5ff061adbe35f09e88069172f5c06f7)
+
+# Tuesday 11 August 2015
+
+Implemented an optimisation to the stage of the program synthesiser where Haskell-syntax preconditions and postconditions are evaluated, reducing the time taken at this stage by a factor of up to 12 in some observed cases. Partially implement a further improvement to the counterexample finder.
+
+Also wrote a small utility, `Profile.hs`, to help with attributing the grounding size of an answer set program to specific predicates.
+
+Relevant commits: [7996723](https://github.com/JosephCrowe/ic-while-synth/commit/79967231d5ff061adbe35f09e88069172f5c06f7)
+
 # Monday 10 August 2015
 
 Resolved the previous issue with learning array programs using `IterativeLearn`. The `reverse` program can be seen successfully learned here: [specification](https://github.com/JosephCrowe/ic-while-synth/blob/6150d166eaaa54aab29e9f49f44fa6f4c86763dd/examples/iterative/reverse_sub.lp), [output](https://github.com/JosephCrowe/ic-while-synth/blob/6150d166eaaa54aab29e9f49f44fa6f4c86763dd/examples_output/iterative/reverse_sub.lp).
