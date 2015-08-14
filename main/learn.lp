@@ -1,18 +1,27 @@
 % The following constants MUST be defined in file before this one:
-% #const line_max=LM.   % The maximum number of lines in the program.
 % #const time_max=TM.   % Maximum time steps to simulate before failure.
 % #const int_min=IMN.   % Minimum integer allowed to exist.
 % #const int_max=IMX.   % Maximum integer allowed to exist.
 
 % The following constants MAY be defined in a file before this one:
-%   #const stack_max=SM. % Maximum number of entries in the call stack;
-%                        % if not given, defaults to 0.
+% #const line_max=LM.  % Equivalent to the fact sub_line_max(main,LM)
+%                      % (included for backward compatibility).
+% #const stack_max=SM. % Maximum number of entries in the call stack;
+%                      % if not given, defaults to 0.
 
 % In specifying a program to be learned, the following facts MAY be given:
-% preset_line_instr(N,I)
-%   At line N in subroutine 'main', the instruction I is forced to occur.
-% preset_sub_line_instr((P,N),I)
-%   In subroutine P, the instruction at line N is I.
+%   sub_line_max(P, M)
+%     Attempt to learn for the subroutine P a body consisting of exactly M lines,
+%     such that all input/output examples are satisfied.
+%   preset_line_instr(N,I)
+%     Equivalent to preset_sub_line_instr((main,N),I).
+%   preset_sub_line_instr((P,N),I)
+%     In subroutine P, the instruction at line N is fixed as I (see run.lp).
+
+% Answer sets will contain facts of the following form:
+%   sub_line_instr((P,N),I).
+% Giving the preset or learned lines of each appropriate subroutine. See
+% run.lp for the definition of sub_line_instr/2.
 
 % con(N).         % N is a constant that may occur as a literal in the code.
 % var(V).         % V is a variable that may be used in the program.
@@ -30,17 +39,19 @@
 #hide.
 #show sub_line_instr/2.
 
+#include "utility.lp".
+
 %-------------------------------------------------------------------------------
 % Silence certain warnings for undefined predicates:
-in(never,never,never)           :- out(never,never,never).
-out(never,never,never)          :- preset_line_instr(never,never).
-preset_line_instr(never,never)  :- con(never).
-con(never)                      :- write_array(never).
-write_array(never)              :- array(never,never,never,never).
-array(never,never,never,never)  :- array(never,never,never).
-array(never,never,never)        :- con(never,never).
-con(never,never)                :- var(never,never).
-var(never,never)                :- in(never,never,never).
+in(never,never,never)          :- out(never,never,never).
+out(never,never,never)         :- preset_line_instr(never,never).
+preset_line_instr(never,never) :- con(never).
+con(never)                     :- write_array(never).
+write_array(never)             :- array(never,never,never,never).
+array(never,never,never,never) :- array(never,never,never).
+array(never,never,never)       :- con(never,never).
+con(never,never)               :- var(never,never).
+var(never,never)               :- in(never,never,never).
 
 %-------------------------------------------------------------------------------
 % Features allowed in the program.
@@ -123,16 +134,21 @@ expr_type(mod(E1,E2),T) :- expr(mod(E1,E2)), leaf_type(E1,T), leaf_type(E2,T).
 
 %-------------------------------------------------------------------------------
 % Exactly one instruction per line.
-1{ sub_line_instr((main,N), I) : valid_line_instr(N, I) }1 :-
-    line((main,N)), not line_preset((main,N)).
 
-line((main, 1..line_max)).
-line_preset(L) :- preset_sub_line_instr(L,_).
+1{ sub_line_instr(L,I) : valid_line_instr(L,I) }1 :- line_learn(L).
+%#minimize[ sub_line_instr((_,N),_) = N ].
+
+sub_line_max(main, M) :- M = @maybe_num(line_max, undefined), M != undefined.
+
+line((P,1..M)) :- sub_line_max(P, M).
 line(L)        :- line_preset(L).
+line_learn(L)  :- line(L), not line_preset(L).
+line_preset(L) :- preset_sub_line_instr(L,_).
 
 preset_sub_line_instr((main,N),I) :- preset_line_instr(N,I).
 sub_line_instr(L,I)   :- preset_sub_line_instr(L,I).
 subroutine(P)         :- preset_sub_line_instr((P,_),_).
+subroutine(P)         :- sub_line_max(P, _).
 
 % There must be enough lines to contain at least the preset lines:
 :- line_preset((main,N)), N > line_max.
@@ -146,31 +162,31 @@ subroutine(P)         :- preset_sub_line_instr((P,_),_).
 
 %-------------------------------------------------------------------------------
 % Instructions.
-valid_line_instr(N, set(V, E)) :-
-    line((main,N)), write_var(V), E!=var(V),
+valid_line_instr(L, set(V, E)) :-
+    line_learn(L), write_var(V), E!=var(V),
     leaf_type(var(V),T), expr_type(E,T).
 
-valid_line_instr(N, set(array(A,con(I)), E)) :-
-    line((main,N)), write_var(array(A,I)), E!=array(A,I),
+valid_line_instr(L, set(array(A,con(I)), E)) :-
+    line_learn(L), write_var(array(A,I)), E!=array(A,I),
     leaf_type(index(A),IT), leaf_type(con(I),IT),
     leaf_type(elem(A),ET), expr_type(E,ET).
 
-valid_line_instr(N, set(array(A,var(V)), E)) :-
-    line((main,N)), write_array(A),
+valid_line_instr(L, set(array(A,var(V)), E)) :-
+    line_learn(L), write_array(A),
     leaf_type(index(A),IT), leaf_type(var(V),IT),
     leaf_type(elem(A),ET), expr_type(E,ET).   
 
-valid_line_instr(N, if(B, 1..M)) :-
-    line((main,N)), allow(if), bool(B), M=line_max-N.
+valid_line_instr((P,N), if(B, 1..M)) :-
+    line_learn((P,N)), allow(if), bool(B), sub_line_max(P,LM), M=LM-N.
 
-valid_line_instr(N, while(B, 1..M)) :-
-    line((main,N)), allow(while), bool(B), M=line_max-N-1.
+valid_line_instr((P,N), while(B, 1..M)) :-
+    line_learn((P,N)), allow(while), bool(B), sub_line_max(P,LM), M=LM-N-1.
 
-valid_line_instr(N, end_while) :-
-    line((main,N)), N >= 3, allow(while).
+valid_line_instr((P,N), end_while) :-
+    line_learn((P,N)), N >= 3, allow(while).
 
-valid_line_instr(N, call(P)) :-
-    line((main,N)), subroutine(P), P != main.
+valid_line_instr(L, call(P)) :-
+    line_learn(L), subroutine(P), P != main.
 
 % Which arithmetic and boolean expressions occur in the program
 % at given times and in given runs?
