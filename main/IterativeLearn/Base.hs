@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, ViewPatterns,
+{-# LANGUAGE OverloadedStrings, ViewPatterns, TransformListComp,
              TypeSynonymInstances, FlexibleInstances #-}
 
 module IterativeLearn.Base where
@@ -15,9 +15,12 @@ import Data.Char
 import Data.MonoTraversable
 import Data.String
 import Data.Monoid
+import Data.Ratio
 
 import System.IO
 import System.Exit
+
+import GHC.Exts
 
 import Control.Monad.Catch
 import Control.Monad.IO.Class
@@ -35,9 +38,10 @@ import Clingo hiding (readArgs)
 type Value   = Integer
 type Feature = String
 
-type ArrayName = String
-type ArraySize = Integer
-type Variable  = String
+type ArrayName  = String
+type ArraySize  = Integer
+type Variable   = String
+type Subroutine = String
 
 type LineInstr   = Clingo.Fact
 type Instruction = Clingo.Term
@@ -72,9 +76,6 @@ data Condition
   | CondEmpty
   deriving Show
 
-data Limits = Limits{
-    lmLineMax :: Integer }
-
 data Example
   = UserExample{
         exID     :: String,
@@ -104,13 +105,15 @@ data Conf = Conf{
     cfIntRange        :: (Integer, Integer),
     cfTimeMax         :: Integer, 
     cfStackMax        :: Integer,
-    cfLineLimitMin    :: Integer,
-    cfLineLimitStep   :: Integer,
-    cfLineLimitMax    :: Maybe Integer,
     cfIfStatementsMax :: Maybe Integer,
     cfWhileLoopsMax   :: Maybe Integer,
     cfConstants       :: [Value],   
     cfDisallow        :: [Feature],
+
+    cfLineLimitMin    :: [(Subroutine, Integer)],
+    cfLineLimitStep   :: [(Subroutine, Integer)],
+    cfLineLimitMax    :: [(Subroutine, Integer)],
+    cfPresetLines     :: [LineInstr],
 
     cfInputVars       :: [WhileVar],
     cfOutputVars      :: [WhileVar],
@@ -139,14 +142,16 @@ defaultConf :: Conf
 defaultConf = Conf{
     cfIntRange        = error "int_range undefined",
     cfTimeMax         = error "time_max undefined",
-    cfLineLimitMin    = 0,
-    cfLineLimitStep   = 1,
     cfStackMax        = 0,
-    cfLineLimitMax    = Nothing,
     cfIfStatementsMax = Nothing,
     cfWhileLoopsMax   = Nothing,
     cfConstants       = [],
     cfDisallow        = [],
+
+    cfLineLimitMin    = [],
+    cfLineLimitStep   = [],
+    cfLineLimitMax    = [],
+    cfPresetLines     = [],
 
     cfInputVars       = [],
     cfOutputVars      = [],
@@ -197,12 +202,30 @@ readConfFacts inFacts inConf
             readConfFacts' (conf{ cfTimeMax=tmax }) facts
         Fact (Name "stack_limit") [TInt smax] ->
             readConfFacts' (conf{ cfStackMax=smax }) facts
-        Fact (Name "line_limit_min") [TInt lmin] ->
-            readConfFacts' (conf{ cfLineLimitMin=lmin }) facts
-        Fact (Name "line_limit_step") [TInt lstep] ->
-            readConfFacts' (conf{ cfLineLimitStep=lstep }) facts
-        Fact (Name "line_limit_max") [TInt lmax] ->
-            readConfFacts' (conf{ cfLineLimitMax=Just lmax }) facts
+        Fact (Name "line_limit_min") args -> readConfFacts' `flip` facts $ case args of
+            [TFun (Name sub) [], TInt lmin] ->
+                conf{ cfLineLimitMin=(sub,lmin):cfLineLimitMin conf }
+            [TInt lmin] ->
+                conf{ cfLineLimitMin=("main",lmin):cfLineLimitMin conf }
+            _  -> error $ "Invalid argument format: " ++ show fact
+        Fact (Name "line_limit_step") args -> readConfFacts' `flip` facts $ case args of
+            [TFun (Name sub) [], TInt lstep] ->
+                conf{ cfLineLimitStep=(sub,lstep):cfLineLimitStep conf }
+            [TInt lstep] ->
+                conf{ cfLineLimitStep=("main",lstep):cfLineLimitStep conf }
+            _ -> error $ "Invalid argument format: " ++ show fact
+        Fact (Name "line_limit_max") args -> readConfFacts' `flip` facts $ case args of
+            [TFun (Name sub) [], TInt lmax] ->
+                conf{ cfLineLimitMax=(sub,lmax):cfLineLimitMax conf }
+            [TInt lmax] ->
+                conf{ cfLineLimitMax=("main",lmax):cfLineLimitMax conf }
+            _ -> error $ "Invalid argument format: " ++ show fact
+        Fact (Name "preset_line_instr") [lineNum, instr] ->
+            let line = TFun "" [TFun "main" [], lineNum] in readConfFacts' (conf{
+                cfPresetLines = Fact "preset_sub_line_instr" [line, instr]
+                              : cfPresetLines conf }) facts
+        Fact (Name "preset_sub_line_instr") [line, instr] ->
+            readConfFacts' (conf { cfPresetLines=fact : cfPresetLines conf }) facts
         Fact (Name "if_statements_max") [TInt fmax] ->
             readConfFacts' (conf{ cfIfStatementsMax=Just fmax }) facts
         Fact (Name "while_loops_max") [TInt wmax] ->
@@ -274,52 +297,97 @@ readConfFacts inFacts inConf
 --------------------------------------------------------------------------------
 iterativeLearnConf :: Conf -> IO Program
 iterativeLearnConf conf = do
-    let examples = cfExamples conf
-    let limits = Limits{ lmLineMax = cfLineLimitMin conf }
-    iterativeLearn examples limits conf
+    path <- case iterSubs of
+      _ | not . null $ allSubs \\ (iterSubs1 ++ constSubs1) -> do
+        cfPutLines conf ["Error: it is required that at most one"
+          ++ "subroutine lacks a line_limit_max/2 declaration; however, the"
+          ++ "following subroutines lack one: "
+          ++ intercalate "," (allSubs \\ constSubs1) ++"."]
+        exitFailure
+      (sub, lMin, lStep, Nothing) : _ -> return
+        [(sub, max 0 (l-lStep), l) : constSubs | l <- [lMin,lMin+lStep..]]
+      (sub, lMin, lStep, Just lMax) : _ -> return
+        [(sub, max 0 (l-lStep), l) : constSubs | l <- [lMin,lMin+lStep..lMax]]
+      [] -> return
+        [constSubs]
 
-iterativeLearn :: [Example] -> Limits -> Conf -> IO Program
-iterativeLearn exs lims conf = do
-    let limss = [lims{ lmLineMax=l } | i <- [0..cfThreads conf-1],
-                 let l = lmLineMax lims + i * cfLineLimitStep conf,
-                 maybe True (l <=) (cfLineLimitMax conf)]
+    iterativeLearn (cfExamples conf) path conf
+  where
+    iterSubs1 = [s | (s,_,_,_) <- iterSubs]
+    iterSubs
+      = [(sub, lMin, lStep, mlMax)
+      | sub <- allSubs
+      , let lMin  = fromMaybe 0 $ lookup sub lMins
+      , let lStep = fromMaybe 1 $ lookup sub lSteps
+      , let mlMax = lookup sub lMaxs
+      , maybe True (> lMin) mlMax
+      , then sortWith by case mlMax of
+            Nothing   -> Left  (lStep, lMin)
+            Just lMax -> Right ((lMax-lMin)%lStep)
+      , then take 1]        
 
-    let linesString = case limss of {
-        [_] -> show(lmLineMax $ head limss);
-        _   -> show(lmLineMax $ head limss)++"-"++show(lmLineMax $ last limss) }
-    cfPutLines conf ["Searching for a program with " ++ linesString ++ " lines"
-                 ++ " satisfying " ++ show (length exs) ++ " example(s)..."]
+    constSubs1 = [s | (s,_,_) <- constSubs]
+    constSubs
+      = [(sub, lMin, lMax)
+      | sub <- allSubs
+      , lMax <- maybeToList $ lookup sub lMaxs
+      , let lMin = fromMaybe lMax $ lookup sub lMins
+      , not $ elem sub iterSubs1]
 
+    allSubs = map fst lMins ++ map fst lSteps ++ map fst lMaxs ++ [
+        s | Fact _ [_, TFun "call" (TFun (Name s) [] : _)] <- cfPresetLines conf]
+
+    Conf{ cfLineLimitMin=lMins, cfLineLimitStep=lSteps,
+          cfLineLimitMax=lMaxs } = conf
+
+type LineMin = Integer
+type LineMax = Integer
+type SearchNode = [(Subroutine, LineMin, LineMax)]
+type SearchPath = [SearchNode]
+
+iterativeLearn :: [Example] -> SearchPath -> Conf -> IO Program
+iterativeLearn exs path conf = do
+    let (nodes, path') = genericSplitAt (cfThreads conf) path
+
+    case nodes of
+        [] -> do
+            cfPutLines conf [
+                "Failure: no program exists satisfying the given constraints."]
+            exitFailure
+        _ | all null nodes -> do
+            cfPutLines conf ["Searching for a program satisfying "
+                          ++ show (length exs) ++ " example(s)..."]
+        _ -> do
+            cfPutLines conf ["Searching for a program with "++ noOxfordComma "and" [
+                  rg ++ " '"++ sub ++"'"
+                | sub <- nub . sort $ [s | n <- nodes, (s,_,_) <- n]
+                , let ls = [l | n <- nodes, (s,_,l) <- n, s == sub]
+                , let (mn,mx) = (minimum ls, maximum ls)
+                , let rg = show mn ++ if mn==mx then "" else "-" ++ show mx
+                ] ++ " line(s), satisfying "++ show (length exs) ++" example(s)..."]
+    
     cont <- maybePrintTime conf $ do
         mProg <- case null exs of
-            True  -> return . Just $ Program []
-            False -> findProgramConcurrent exs limss conf
+            True  -> return . Just $ (head nodes, Program [])
+            False -> findProgramConcurrent exs nodes conf
     
         case mProg of
-          Just prog -> do
+          Just (node, prog) -> do
             cfPutLines conf $ ["Found the following program:"]
                            ++ showProgram prog
             return $ do
                 _conf <- interactivePause conf
-                let lineMax = programLength prog
+                let path'' = dropWhile (/= node) nodes ++ path'
                 case cfPostCondition _conf of
                     CondEmpty -> return prog
-                    _ -> iterativeLearn' prog exs lims{lmLineMax = lineMax} _conf
+                    _         -> iterativeLearn' prog exs path'' _conf
           Nothing -> do
-            let lims' = last limss
-            let lineMax = lmLineMax lims' + cfLineLimitStep conf
-            case cfLineLimitMax conf of
-                Just limit | lineMax > limit -> do
-                    cfPutLines conf ["Failure: no such program can be found"
-                                   ++" within the configured line limits."]
-                    return $ exitFailure
-                _ -> do
-                    cfPutLines conf ["No such program found."]
-                    return $ iterativeLearn exs (lims'{lmLineMax=lineMax}) conf
+            cfPutLines conf ["No such program found."]
+            return $ iterativeLearn exs path' conf
     cont
 
-iterativeLearn' :: Program -> [Example] -> Limits -> Conf -> IO Program
-iterativeLearn' prog exs lims conf = do
+iterativeLearn' :: Program -> [Example] -> SearchPath -> Conf -> IO Program
+iterativeLearn' prog exs path conf = do
     cfPutLines conf [
         "Searching for a counterexample to falsify the postcondition..."]
 
@@ -356,7 +424,7 @@ iterativeLearn' prog exs lims conf = do
                         exArrays = arrays,
                         exID     = head $ map (("cx"++) . show) [1::Int ..] \\ map exID exs,
                         exInput  = Input input }
-                    iterativeLearn (ex : exs) lims _conf
+                    iterativeLearn (ex : exs) path _conf
             Nothing -> do
                 cfPutLines conf [
                     "The postcondition could not be falsified."]
@@ -364,25 +432,27 @@ iterativeLearn' prog exs lims conf = do
     cont
     
 --------------------------------------------------------------------------------
-findProgram :: [Example] -> Limits -> Conf -> IO (Maybe Program)
-findProgram exs lims conf = do
-    let code = findProgramASP exs lims conf
+findProgram :: [Example] -> SearchNode -> Conf -> IO (Maybe Program)
+findProgram exs node conf = do
+    let code = findProgramASP exs node conf
     let maybeRunID = case cfThreads conf of {
         1 -> Nothing;
-        _ -> Just (show $ lmLineMax lims) }
+        _ -> Just $ intercalate "," [show l | (_,_,l) <- node] }
     result <- runClingoConf [CICode code] maybeRunID conf
-    case result of
-        CRSatisfiable (answer:_) ->
-            return $ Just (Program answer)
-        _ -> return Nothing
+    return $ case result of
+        CRSatisfiable (answer:_) -> Just $ Program answer
+        _                        -> Nothing
 
-findProgramConcurrent :: [Example] -> [Limits] -> Conf -> IO (Maybe Program)
-findProgramConcurrent exs limss conf = do
+findProgramConcurrent
+  :: [Example] -> [SearchNode] -> Conf -> IO (Maybe (SearchNode, Program))
+findProgramConcurrent exs nodes conf = do
     outSem <- MSem.new (1 :: Integer)
     let conf' = conf{ cfPutLines = MSem.with outSem . cfPutLines conf }
-    tasks <- forM limss $ \lims -> do
+    tasks <- forM nodes $ \node -> do
         result <- newEmptyMVar
-        thread <- forkIO $ putMVar result =<< findProgram exs lims conf'
+        thread <- forkIO $ do
+            prog <- findProgram exs node conf'
+            putMVar result $ (,) node <$> prog
         return (thread, result)
     results <- forM (zip tasks [0..]) $ \((thread, resultMVar), i) -> do
         prior <- forM (take i tasks) $ \(_,r) -> do
@@ -393,12 +463,11 @@ findProgramConcurrent exs limss conf = do
           False -> readMVar resultMVar
     return (listToMaybe . catMaybes $ results)
 
-findProgramASP :: [Example] -> Limits -> Conf -> String
-findProgramASP exs lims conf
-  = unlines $ concat [headerLines, biasLines, exampleLines, postCondLines]
+findProgramASP :: [Example] -> SearchNode -> Conf -> String
+findProgramASP exs node conf
+  = unlines $ concat [headerLines, lineLines, biasLines, exampleLines, postCondLines]
   where
     headerLines = [
-        "#const line_max=" ++ show lineMax ++ ".",
         "#const time_max=" ++ show timeMax ++ ".",
         "#const stack_max=" ++ show stackMax ++ ".",
         "#const int_min=" ++ show intMin ++ ".",
@@ -406,6 +475,12 @@ findProgramASP exs lims conf
         "#const if_max=" ++ maybe "any" show ifMax ++ ".",
         "#const while_max=" ++ maybe "any" show whileMax ++ ".",
         "#include \"learn.lp\"."]
+
+    lineLines = [
+        "sub_line_max("++ sub ++", "++ show lineMax ++")."
+        | (sub, _, lineMax) <- node] ++ [
+        "#const line_max="++ show lineMax ++ "."
+        | ("main", _, lineMax) <- node]
 
     biasLines =
         (guard (not $ null constants) >>
@@ -493,7 +568,6 @@ findProgramASP exs lims conf
           cfLogicVars      =logicVars, cfPostCondition =postCond,
           cfArrays         =arrays,    cfReadOnlyArrays=roArrays,
           cfStackMax       =stackMax } = conf
-    Limits{ lmLineMax=lineMax } = lims
 
 --------------------------------------------------------------------------------
 findCounterexample :: Program -> Conf -> IO (Maybe Counterexample)

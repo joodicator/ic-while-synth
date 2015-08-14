@@ -8,6 +8,7 @@ import Control.Applicative
 import Data.Maybe
 import Data.Char
 import Data.Monoid
+import Data.List
 import Data.Functor.Identity
 import Data.Time.Clock
 
@@ -93,6 +94,17 @@ ansiClear      = "\27[0m"
 headUp, headLow :: String -> String
 headUp  = headMap toUpper
 headLow = headMap toLower
+
+oxfordComma :: String -> [String] -> String
+oxfordComma sep ws = case reverse ws of
+    t : hs@(_:_:_) -> intercalate ", " (reverse hs) ++", "++ sep ++" "++ t
+    [b, a]         -> a ++" "++ sep ++" "++ b
+    _              -> concat ws
+
+noOxfordComma :: String -> [String] -> String
+noOxfordComma sep ws = case reverse ws of
+    t : hs@(_:_) -> intercalate ", " (reverse hs) ++" "++ sep ++" "++ t
+    _            -> concat ws
 
 time :: IO a -> IO (a, NominalDiffTime)
 time mx = do
