@@ -300,9 +300,9 @@ iterativeLearnConf conf = do
     path <- case iterSubs of
       _ | not . null $ allSubs \\ (iterSubs1 ++ constSubs1) -> do
         cfPutLines conf ["Error: it is required that at most one"
-          ++ "subroutine lacks a line_limit_max/2 declaration; however, the"
-          ++ "following subroutines lack one: "
-          ++ intercalate "," (allSubs \\ constSubs1) ++"."]
+          ++ " subroutine lacks a line_limit_max/2 declaration; however, the"
+          ++ " following subroutines lack one: "
+          ++ intercalate ", " (allSubs \\ constSubs1) ++"."]
         exitFailure
       (sub, lMin, lStep, Nothing) : _ -> return
         [(sub, max 0 (l-lStep), l) : constSubs | l <- [lMin,lMin+lStep..]]
@@ -334,8 +334,9 @@ iterativeLearnConf conf = do
       , let lMin = fromMaybe lMax $ lookup sub lMins
       , not $ elem sub iterSubs1]
 
-    allSubs = map fst lMins ++ map fst lSteps ++ map fst lMaxs ++ [
-        s | Fact _ [_, TFun "call" (TFun (Name s) [] : _)] <- cfPresetLines conf]
+    allSubs = if null aAllSubs then ["main"] else aAllSubs
+    aAllSubs = nub . sort $
+        map fst lMins ++ map fst lSteps ++ map fst lMaxs
 
     Conf{ cfLineLimitMin=lMins, cfLineLimitStep=lSteps,
           cfLineLimitMax=lMaxs } = conf

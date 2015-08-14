@@ -133,9 +133,9 @@ expr_type(div(E1,E2),T) :- expr(div(E1,E2)), leaf_type(E1,T), leaf_type(E2,T).
 expr_type(mod(E1,E2),T) :- expr(mod(E1,E2)), leaf_type(E1,T), leaf_type(E2,T).
 
 %-------------------------------------------------------------------------------
-% Exactly one instruction per line.
+% At most one instruction per line.
 
-1{ sub_line_instr(L,I) : valid_line_instr(L,I) }1 :- line_learn(L).
+0{ sub_line_instr(L,I) : valid_line_instr(L,I) }1 :- line_learn(L).
 %#minimize[ sub_line_instr((_,N),_) = N ].
 
 sub_line_max(main, M) :- M = @maybe_num(line_max, undefined), M != undefined.
