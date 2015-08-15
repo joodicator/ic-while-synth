@@ -1,0 +1,40 @@
+[jjc311@line02:~/wsp/main]$ time ./IterativeLearn.hs -t -j4 ../examples/iterative/code_swap.lp 
+Reading configuration file...
+(1.015243s)
+Searching for a program with 0-3 'decode' and 5 'encode' line(s), satisfying 0 example(s)...
+Found the following program:
+   (empty program)
+(0.000019s)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+    Input:    k = 23
+    Expected: k = 19 | ...
+    Output:   k = 23
+(0.012734s)
+Searching for a program with 0-3 'decode' and 5 'encode' line(s), satisfying 1 example(s)...
+Found the following program:
+    sub main():
+       1. decode()
+       2. swap()
+       3. encode()
+    sub encode():
+       1. k = x
+       2. y = y * 5
+       3. k = k + y
+       4. y = 5
+       5. y = 5
+    sub decode():
+       1. x = k % 5
+       2. y = k / 5
+    sub swap():
+       1. swap = x
+       2. x = y
+       3. y = swap
+(4.762303s)
+Searching for a counterexample to falsify the postcondition...
+The postcondition could not be falsified.
+(0.016719s)
+
+real	0m8.046s
+user	0m17.096s
+sys	0m0.217s

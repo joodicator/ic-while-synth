@@ -1,0 +1,21 @@
+[jjc311@line02:~/wsp/main]$ clingo ../examples/learn/swap_reverse.lp learn.lp | ./format 
+Answer: 1
+    sub main():
+       1. i = 0
+       2. j = len_xs - 1
+       3. while (i < j):
+       4.     swap()
+       5.     i = i + 1
+       6.     j = j - 1
+       7. end_while
+    sub swap():
+       1. swap = xs[j]
+       2. xs[j] = xs[i]
+       3. xs[i] = swap
+SATISFIABLE
+
+Models      : 1+    
+Time        : 2.230
+  Prepare   : 1.900
+  Prepro.   : 0.110
+  Solving   : 0.220
