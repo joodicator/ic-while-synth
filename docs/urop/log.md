@@ -1,3 +1,28 @@
+# Friday 14 August 2015
+
+Partially implemented the ability to learn an arbitrary set of subroutines, possibly including `main`, given a precondition and postcondition for `main` and `line_limit_max` declarations for all but one of them. This uses an algorithm suggested by Mark Law where:
+
+1. One subroutine (heuristically, the largest one) is learned iteratively starting from a small number of lines, while the rest start at the maximum number of lines, then:
+2. In serial, the remaining subroutines are brought down to the minimum number of lines using Clingo optimisation statements (or possibly iterating downwards outside of Clingo), generating new counterexamples if necessary, so that minimality is achieved while preserving whole-program correctness.
+
+Part 2 of the above remains to be fully implemented.
+
+The system can be seen efficiently learning two subroutines at once in the following example, `code_swap`, where two integers `x` and `y`, encoded as a single integer `k=x+5y` are swapped using three subroutines:
+
+* `decode` (not given), which obtains `x` and `y` from `k`;
+* `swap` (given), which swaps `x` and `y`, and can be imagined to be present in the user's library of subroutines from a previous session; and
+* `encode` (not given), which obtains the modified `k` from the modified `x` and `y`. 
+
+The `main` subroutine is also given and simply calls the three in sequence. See the [specification](https://github.com/JosephCrowe/ic-while-synth/blob/8616f14fa2dc107ee5076d3c0a2c22c31fce7a7a/examples/iterative/code_swap.lp) and [output](https://github.com/JosephCrowe/ic-while-synth/blob/8616f14fa2dc107ee5076d3c0a2c22c31fce7a7a/examples_output/iterative/code_swap.output.txt).
+
+Relevant commits: [f7e6dc9](https://github.com/JosephCrowe/ic-while-synth/commit/f7e6dc987d763fc836be43124965f535c68e5802) [2b0dfb4](https://github.com/JosephCrowe/ic-while-synth/commit/2b0dfb438248c8a3377ed9c26c8d344b73563741)
+
+# Thursday 13 August 2015
+
+Implemented the ability to learn a non-`main` subroutine given the implementation of `main` and a precondition and postcondition for `main`. For example, the `swap` subroutine can be learned with respect to a given `reverse` program here: [specification](https://github.com/JosephCrowe/ic-while-synth/blob/8616f14fa2dc107ee5076d3c0a2c22c31fce7a7a/examples/learn/swap_reverse.lp), [output](https://github.com/JosephCrowe/ic-while-synth/blob/8616f14fa2dc107ee5076d3c0a2c22c31fce7a7a/examples_output/learn/swap_reverse.output.txt).
+
+Relevant commits: [83098f5](https://github.com/JosephCrowe/ic-while-synth/commit/83098f577291be596eacdf7f51213826e1883c4e)
+
 # Wednesday 12 August 2015
 
 Implemented an optimisation to the ASP generated for the counterexample finder, affording a large performance increase at the cost of reducing the number of "expected output" sets shown to at most 1. Effects include:
