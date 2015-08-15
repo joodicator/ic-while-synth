@@ -16,13 +16,7 @@ preset_sub_line_instr((swap,1), set(swap,var(x))).
 preset_sub_line_instr((swap,2), set(x,var(y))).
 preset_sub_line_instr((swap,3), set(y,var(swap))).
 
-preset_sub_line_instr((decode,1), set(x, mod(var(k), con(5)))).
-preset_sub_line_instr((decode,2), set(y, div(var(k), con(5)))).
 line_limit_max(decode, 5).
-
-preset_sub_line_instr((encode,1), set(k, var(x))).
-preset_sub_line_instr((encode,2), set(y, mul(var(y), con(5)))).
-preset_sub_line_instr((encode,3), set(k, add(var(k), var(y)))).
 line_limit_max(encode, 5).
 
 precondition(haskell("let (y,x) = in_k `quotRem` 5 in x < 5 && y < 5")).

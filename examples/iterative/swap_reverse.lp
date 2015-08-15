@@ -25,9 +25,6 @@ preset_line_instr(5, set(i, add(var(i), con(1)))).
 preset_line_instr(6, set(j, sub(var(j), con(1)))).
 preset_line_instr(7, end_while).
 
-%preset_sub_line_instr((swap,1), set(swap, array(xs,var(i)))).
-%preset_sub_line_instr((swap,2), set(array(xs,var(i)), array(xs,var(j)))).
-%preset_sub_line_instr((swap,3), set(array(xs,var(j)), var(swap))).
 line_limit_max(swap, 5).
 
 precondition(haskell("in_len_xs == length in_xs")).

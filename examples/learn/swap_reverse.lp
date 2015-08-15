@@ -11,21 +11,6 @@ con(0; 1, index).
 write_var(i; j; swap).
 disallow(div; mod; mul; if; while).
 
-%*
-sub main:
-  1. i = 0
-  2. j = len_xs - 1
-  3. while (i < j):
-  4.    swap()
-  5.    i = i + 1
-  6.    j = j - 1
-  7. end_while
-sub swap:
-  1. swap = xs[i]
-  2. xs[i] = xs[j]
-  3. xs[j] = swap
-*%
-
 %== Preset Structure ==%
 preset_line_instr(1, set(i, con(0))).
 preset_line_instr(2, set(j, sub(var(len_xs), con(1)))).
@@ -35,9 +20,6 @@ preset_line_instr(5, set(i, add(var(i), con(1)))).
 preset_line_instr(6, set(j, sub(var(j), con(1)))).
 preset_line_instr(7, end_while).
 
-%preset_sub_line_instr((swap,1), set(swap, array(xs,var(i)))).
-%preset_sub_line_instr((swap,2), set(array(xs,var(i)), array(xs,var(j)))).
-%preset_sub_line_instr((swap,3), set(array(xs,var(j)), var(swap))).
 sub_line_max(swap, 3).
 
 %== Examples ==%
