@@ -7,7 +7,7 @@ Partially implemented the ability to learn an arbitrary set of subroutines, poss
 
 Part 2 of the above remains to be fully implemented.
 
-The system can be seen efficiently learning two subroutines at once in the following example, `code_swap`, where two integers `x` and `y`, encoded as a single integer `k=x+5y` are swapped using three subroutines:
+The system can be seen learning two subroutines at once in the following example, `code_swap`, where two integers `x` and `y`, encoded as a single integer `k=x+5y` are swapped using three subroutines:
 
 * `decode` (not given), which obtains `x` and `y` from `k`;
 * `swap` (given), which swaps `x` and `y`, and can be imagined to be present in the user's library of subroutines from a previous session; and
