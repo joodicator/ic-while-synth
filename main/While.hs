@@ -54,13 +54,11 @@ data Guard
 --------------------------------------------------------------------------------
 showProgram :: [SubLineInstr] -> [String]
 showProgram pLines = do
-    sub <- ["main"] `union` [sub | ((sub,_),_) <- pLines]
+    sub <- [] `union` [sub | ((sub,_),_) <- pLines]
     let sLines = [(l,i) | ((s,l),i) <- pLines, s == sub]
     let sHead = ["    sub " ++ (let Name s = sub in s) ++ "():"]
-    case sLines of
-        [] -> sHead ++ ["    (empty subroutine)"]
-        _  -> sHead ++ fmap ("    " ++)
-                       (showProgram' "" (sortBy (compare `on` fst) sLines))
+    sHead ++ fmap ("    " ++)
+             (showProgram' "" (sortBy (compare `on` fst) sLines))
   where
     on f g x y = f (g x) (g y)
 

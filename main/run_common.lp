@@ -27,11 +27,10 @@ run(R,T) :- run_line(R,T,L), T<time_max.
 % run_halt(R,T) if test case R halts normally at time T: i.e. if execution
 % reaches the last instruction while the call stack is empty.
 run_halt(R,T) :-
-    run_line(R,T,L), T<time_max, last_line(L), run_stack_depth(R,T,0),
+    run_line(R,T,L), T<time_max, not line(L), run_stack_depth(R,T,0),
     not run_fail(R).
 
 run_fail(R)      :- run_fail(R,_).
-last_line((P,N+1)) :- line((P,N)), not line((P,N+1)).
 
 % Identify failure due to timeout and stack overflow.
 run_fail(R,time_max,L,timeout) :-
@@ -60,7 +59,7 @@ line_set(L,array(A,I)) :-
 % On a set statement, update variables; otherwise, unless possibly
 % returning from a subroutine call, leave them constant.
 run_var(R,T+1,X,C) :-
-    run_line(R,T,L), not last_line(L), not line_set(L,X),
+    run_line(R,T,L), line(L), not line_set(L,X),
     run_var(R,T,X,C), int(C).
 run_var(R,T+1,X,C) :-
     run_line(R,T,L), sub_line_instr(L,set(X,E)), scalar_var(X),
@@ -105,15 +104,15 @@ any_main_sub  :- main_sub(_).
 run_fail(R,T) :- run_fail(R,T,_,_).
 
 run_line(R,T+1,(P,N+1)) :-
-    run_line(R,T,(P,N)), not last_line((P,N)),
+    run_line(R,T,(P,N)), line((P,N)),
     not line_jump((P,N)), not run_fail(R,T).
 
 run_stack_depth(R, T+1, D) :-
-    run_line(R,T,L), not last_line(L), not line_call(L), run_stack_depth(R,T,D).
+    run_line(R,T,L), line(L), not line_call(L), run_stack_depth(R,T,D).
 run_stack_line(R, T+1, I, IL) :-
-    run_line(R,T,L), not last_line(L), run_stack_line(R,T,I,IL).
+    run_line(R,T,L), line(L), run_stack_line(R,T,I,IL).
 run_stack_var(R, T+1, I, IV, IC) :-
-    run_line(R,T,L), not last_line(L), run_stack_var(R,T,I,IV,IC).
+    run_line(R,T,L), line(L), run_stack_var(R,T,I,IV,IC).
 
 % Run if statements.
 run_line(R,T+1,(P,N+1)) :-
@@ -141,7 +140,7 @@ run_line(R,T+1,(P,HeadLine)) :-
 % Run subroutine calls.
 
 run_line(R,T+1,(Q,1)) :-
-    run_line(R,T,L), sub_line_instr(L,call(Q)),
+    run(R,T), run_line(R,T,L), sub_line_instr(L,call(Q)),
     run_stack_depth(R,T,D), D < stack_max.
 
 % Increment the stack depth.
@@ -162,33 +161,33 @@ run_stack_var(R, T+1, D, V, C) :-
 
 % Decrement the stack depth.
 run_stack_depth(R, T+1, D-1) :-
-    run_line(R,T,L), last_line(L), run_stack_depth(R,T,D), D > 0.
+    run_line(R,T,L), not line(L), run_stack_depth(R,T,D), D > 0.
 
 % Restore and increment the caller's line index.
 run_line(R, T+1, (RetP,RetN+1)) :-
-    run(R,T), run_line(R,T,L), last_line(L), run_stack_depth(R,T,D), D > 0,
+    run(R,T), run_line(R,T,L), not line(L), run_stack_depth(R,T,D), D > 0,
     run_stack_line(R,T,D-1,(RetP,RetN)).
 
 % Restore values of variables saved on the stack.
 run_var(R, T+1, V, C) :-
-    run_line(R,T,L), last_line(L), run_stack_depth(R,T,D), D > 0,
+    run_line(R,T,L), not line(L), run_stack_depth(R,T,D), D > 0,
     run_stack_var(R,T,D-1,V,C).
 
 % Preserve values of variables not saved on the stack.
 run_var(R, T+1, V, C) :-
-    run_line(R,T,L), last_line(L), run_stack_depth(R,T,D), D > 0,
+    run_line(R,T,L), not line(L), run_stack_depth(R,T,D), D > 0,
     run_stack_line(R,T,D-1,(ReturnP,_)), not local(ReturnP,V),
     run_var(R,T,V,C).
 run_var(R, T+1, V, C) :-
-    run_line(R,T,L), last_line(L), run_stack_depth(R,T,0),
+    run_line(R,T,L), not line(L), run_stack_depth(R,T,0),
     run_var(R,T,V,C).
 
 % Preserve any other stack entries.
 run_stack_line(R, T+1, I, IL) :-
-    run_line(R,T,L), last_line(L), run_stack_depth(R,T,D), D > 1,
+    run_line(R,T,L), not line(L), run_stack_depth(R,T,D), D > 1,
     I=0..D-2, run_stack_line(R,T,I,IL).
 run_stack_var(R, T+1, I, IV, IC) :-
-    run_line(R,T,L), last_line(L), run_stack_depth(R,T,D), D > 1,
+    run_line(R,T,L), not line(L), run_stack_depth(R,T,D), D > 1,
     I=0..D-2, run_stack_var(R,T,I,IV,IC).
 
 %-------------------------------------------------------------------------------
