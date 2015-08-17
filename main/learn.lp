@@ -146,9 +146,9 @@ line_learn(L)  :- line(L), not line_preset(L).
 line_preset(L) :- preset_sub_line_instr(L,_).
 
 preset_sub_line_instr((main,N),I) :- preset_line_instr(N,I).
-sub_line_instr(L,I)   :- preset_sub_line_instr(L,I).
-subroutine(P)         :- preset_sub_line_instr((P,_),_).
-subroutine(P)         :- sub_line_max(P, _).
+sub_line_instr(L,I) :- preset_sub_line_instr(L,I).
+subroutine(P)       :- preset_sub_line_instr((P,_),_).
+subroutine(P)       :- sub_line_max(P, _).
 
 % There must be enough lines to contain at least the preset lines:
 :- line_preset((main,N)), N > line_max.

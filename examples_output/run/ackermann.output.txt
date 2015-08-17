@@ -1,0 +1,13 @@
+[jjc311@voxel22:~/wsp/main]$ clingo ../examples/run/ackermann.lp 
+Answer: 1
+    run_var_out(r00,a,1) run_var_out(r00,m,0) run_var_out(r00,n,0)
+    run_var_out(r11,a,3) run_var_out(r11,m,0) run_var_out(r11,n,2)
+    run_var_out(r22,a,7) run_var_out(r22,m,1) run_var_out(r22,n,5)
+    run_does_not_halt(r33) run_fail(r33,42,(ackermann,12),stack_overflow)
+SATISFIABLE
+
+Models      : 1     
+Time        : 48.490
+  Prepare   : 45.840
+  Prepro.   : 2.650
+  Solving   : 0.000
