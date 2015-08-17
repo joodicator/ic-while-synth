@@ -1,3 +1,20 @@
+# Monday 17 August 2015
+
+Implemented the ability to designate variables as *local* to a subroutine, meaning that they are saved to the stack whenever that subroutine calls another subroutine.
+
+Looked in particular at the `ackermann` program, which computes `A(m,n)`, the Ackermann–Péter function, which is known to be computable but not primitive recursive, and produces large values very quickly.
+* For `m, n <= 2`, the program can be run by the ASP interpreter, if a stack of size 7 and a time limit of 175 is allowed ([specification](https://github.com/JosephCrowe/ic-while-synth/blob/be42bc0c5416c10eb63ce3279d3b14deada39a9a/examples/run/ackermann.lp), [output](https://github.com/JosephCrowe/ic-while-synth/blob/be42bc0c5416c10eb63ce3279d3b14deada39a9a/examples_output/run/ackermann.output.txt)).
+* For `m = n = 3`, the required stack size is 62 (or 59 with tail-call elimination), and the number of separate invocations to the Ackermann function would be 2432, meaning that at least 1000 time steps would be required, making it infeasible to run using the current simulator.
+* For `m >= 4`, the values become impracticable even for an efficient programming language to compute.
+
+Although it's possible to run the `ackermann` program, synthesising it is a different matter, since running a single instance takes on the order of 1 minute due to the large stack, and this would be multiplied many times when searching for the correct program.
+
+A learning task for `ackermann` is nonetheless given [here](https://github.com/JosephCrowe/ic-while-synth/blob/5d4e47acf37cf2ff32ac07c36ec9168d84263c83/examples/iterative/ackermann.lp). (It is specified with an ASP-syntax postcondition that calls a Lua function, since it's not currently easy to specify the Ackermann function in Haskell syntax such that a finite output is produced). It hangs for several minutes after finding the 4th counterexample, namely `A(2,0)`, and seeking a program with 4 lines.
+
+However, if the domain of `m` and `n` is limited to the trivial case of `m, n <= 1`, this does obtain the linear function `A(m,n) = m + n + 1`, fitting these 4 inputs.
+
+Relevant commits: [be42bc0](https://github.com/JosephCrowe/ic-while-synth/commit/be42bc0c5416c10eb63ce3279d3b14deada39a9a) [5d4e47a](https://github.com/JosephCrowe/ic-while-synth/commit/5d4e47acf37cf2ff32ac07c36ec9168d84263c83)
+
 # Friday 14 August 2015
 
 Partially implemented the ability to learn an arbitrary set of subroutines, possibly including `main`, given a precondition and postcondition for `main` and `line_limit_max` declarations for all but one of them. This uses an algorithm suggested by Mark Law where:
