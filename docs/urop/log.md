@@ -1,12 +1,22 @@
 # Tuesday 18 August 2015
 
-Considered how a number of example programs might be synthesised:
+Considered how a number of example programs involving matrices might be synthesised:
 
 1. *Reduced row echelon form* of matrices with entries in Z/pZ, the field of integers modulo a prime number, using Gauss-Jordan elimination. An implementation (in Python) with structure equal to what I believe the synthesiser would need to produce is given [here](https://github.com/JosephCrowe/ic-while-synth/blob/2a172aebfb037ce22c94e9a3909afca2dc4529e0/misc/gauss_jordan_modp.py).
 
-2. The shortest path between two nodes in a directed graph (where each edge weight is taken to be 1), given by an ajacenecy matrix, using a depth-first search with iterative deepening. As above, a relevant Python implementation is given [here](https://github.com/JosephCrowe/ic-while-synth/blob/2a172aebfb037ce22c94e9a3909afca2dc4529e0/misc/shortest_path.py).
+2. The shortest path between two nodes in a directed graph (where each edge weight is taken to be 1), given by an ajacency matrix, using a depth-first search with iterative deepening. As above, a relevant Python implementation is given [here](https://github.com/JosephCrowe/ic-while-synth/blob/2a172aebfb037ce22c94e9a3909afca2dc4529e0/misc/shortest_path.py).
 
-3. The *transitive closure* of a relation given by the adjacency matrix of the corresponding directed graph. An implementation in While syntax is given [here]().
+3. The *transitive closure* of a relation given by the adjacency matrix of the corresponding directed graph. An implementation in While syntax is given [here](https://github.com/JosephCrowe/ic-while-synth/blob/2a172aebfb037ce22c94e9a3909afca2dc4529e0/examples/run/trans_closure.lp).
+
+4. The *minimal spanning tree* of a connected undirected graph (where each edge weight is taken to be 1), given by an adjacency matrix, using Prim's algorithm. An implementation in While syntax is given [here](https://github.com/JosephCrowe/ic-while-synth/blob/2a172aebfb037ce22c94e9a3909afca2dc4529e0/examples/run/min_span_tree.lp).
+
+5. The transpose of a matrix (giving the result in a separate array, as opposed to performing the transpose in constant space, which would be more difficult). A runnable implementation as a While program is given [here](https://github.com/JosephCrowe/ic-while-synth/blob/2a172aebfb037ce22c94e9a3909afca2dc4529e0/examples/run/transpose_copy.lp). 
+
+For the first 4 of these programs, the length of the involved subroutines and the depth of their control structures makes it seem that it won't be possible to synthesise them unless a template with all or part of the looping structure is given.
+
+The first program, Gauss-Jordan elimination, was particularly awkward to write in While syntax, to the extent that I'm not sure it can be used as a realistic example with the current language.
+
+The transpose program is just short enough that it might be possible to synthesise it from just a precondition and postcondition. However, in writing the learning task for this program, I felt the need for some improvements to the performance and usability of the system, which I am currently working on.
 
 Relevant commits: [2a172ae](https://github.com/JosephCrowe/ic-while-synth/commit/2a172aebfb037ce22c94e9a3909afca2dc4529e0)
 
