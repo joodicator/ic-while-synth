@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings #-}
 
 module Clingo where
 
@@ -12,6 +12,7 @@ import Data.Char
 import Data.String
 
 import qualified ASP
+import Util
 
 type Parse a = String -> Maybe (a, String)
 
@@ -75,13 +76,6 @@ termToASP term = case term of
     TInt i           -> ASP.TInt i
     TStr s           -> ASP.TStr s
     TFun (Name f) ts -> ASP.TFun (ASP.Function f) (map (ASP.ETerm . termToASP) ts)
-
---------------------------------------------------------------------------------
--- ANSI terminal control sequences.
-ansiDarkRed, ansiDarkGreen, ansiClear :: String
-ansiDarkRed   = "\27[31m"
-ansiDarkGreen = "\27[32m"
-ansiClear     = "\27[0m"
 
 --------------------------------------------------------------------------------
 -- Run Clingo 3, which is assumed to be present on the search path as 'clingo',
@@ -178,7 +172,8 @@ showFact (Fact name args) = showSymbol name args
 -- Read a term: an integer, string, name, or function symbol with arguments.
 readTerm :: Parse Term
 readTerm str
-  = readValue TInt str <|> readValue TStr str <|> readSymbol TFun str
+  = readValue TInt str  <|> readValue TStr str <|>
+    readSymbol TFun str <|> readTuple str 
 
 showTerm :: Term -> String
 showTerm term = case term of
@@ -208,6 +203,12 @@ readName str = do
     guard (any isLower $ take 1 str)
     let (name, rest) = span (\c -> isAlphaNum c || c == '_') str
     return (Name name, rest)
+
+--------------------------------------------------------------------------------
+readTuple :: Parse Term
+readTuple str = do
+    (args, _str) <- readArgs str
+    return $ (TFun "" args, _str)
 
 --------------------------------------------------------------------------------
 readArgs :: Parse [Term]

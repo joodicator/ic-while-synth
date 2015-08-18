@@ -1,0 +1,92 @@
+[jjc311@line02:~/wsp/main]$ time ./IterativeLearn.hs -t -j4 ../examples/iterative/code_swap.lp 
+Reading configuration file...
+(1.015625s)
+Searching for a program with 0-3 'decode' and 5 'encode' line(s), satisfying 0 example(s)...
+Found the following program:
+   (empty program)
+(0.00002s)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+    Input:    k = 23
+    Expected: k = 19 | ...
+    Output:   k = 23
+(0.008322s)
+Searching for a program with 0-3 'decode' and 5 'encode' line(s), satisfying 1 example(s)...
+Found the following program:
+    sub main():
+       1. decode()
+       2. swap()
+       3. encode()
+    sub swap():
+       1. swap = x
+       2. x = y
+       3. y = swap
+    sub encode():
+       1. y = 5
+       2. y = 5
+       3. y = 5
+       4. y = 5
+       5. k = x - swap
+    sub decode():
+       1. y = k
+       2. x = y / 5
+(19.842626s)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+    Input:    k = 24
+    Expected: k = 24 | ...
+    Output:   k = 20
+(0.021094s)
+Searching for a program with 2-5 'decode' and 5 'encode' line(s), satisfying 2 example(s)...
+Found the following program:
+    sub main():
+       1. decode()
+       2. swap()
+       3. encode()
+    sub swap():
+       1. swap = x
+       2. x = y
+       3. y = swap
+    sub encode():
+       1. swap = y % k
+       2. x = y / 5
+       3. swap = y - x
+       4. y = swap % 5
+       5. k = k - y
+    sub decode():
+       1. y = 5 / k
+       2. x = k - y
+(63.358894s)
+Searching for a counterexample to falsify the postcondition...
+Found the following counterexample:
+    Input:    k = 0
+    Expected: k = 0 | ...
+    Output:   (does not halt)
+(0.053613s)
+Searching for a program with 2-5 'decode' and 5 'encode' line(s), satisfying 3 example(s)...
+Found the following program:
+    sub main():
+       1. decode()
+       2. swap()
+       3. encode()
+    sub swap():
+       1. swap = x
+       2. x = y
+       3. y = swap
+    sub encode():
+       1. k = swap + x
+       2. y = 5 * y
+       3. swap = k + 5
+       4. swap = x + y
+       5. k = swap
+    sub decode():
+       1. x = k % 5
+       2. y = k / 5
+(101.904596s)
+Searching for a counterexample to falsify the postcondition...
+The postcondition could not be falsified.
+(0.047806s)
+
+real	3m8.607s
+user	3m28.367s
+sys	0m0.371s

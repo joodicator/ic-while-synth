@@ -5,6 +5,8 @@ module Logic where
 import qualified Data.Set as S
 import Data.Maybe
 
+import Control.Monad
+import Control.Applicative
 import Data.Foldable (Foldable)
 import Data.Traversable
 
@@ -31,6 +33,10 @@ instance Monad Prop where
     PAnd  p q >>= f = PAnd (p >>= f) (q >>= f)
     POr   p q >>= f = POr  (p >>= f) (q >>= f)
     PNot  p   >>= f = PNot (p >>= f)
+
+instance Applicative Prop where
+    pure  = return
+    (<*>) = ap
 
 data Lit a
   = LAtom a | LNot a

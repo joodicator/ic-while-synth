@@ -1,0 +1,21 @@
+[jjc311@texel35:~/wsp/main]$ clingo ../examples/run/bubble_sort.lp
+Answer: 1
+    run_var_out(r0,len_xs,4)
+    run_var_out(r0,swapped,0)
+    run_var_out(r0,swap,2)
+    run_var_out(r0,x,3)
+    run_var_out(r0,y,4)
+    run_var_out(r0,j,4)
+    run_var_out(r0,i,2)
+    run_var_out(r0,array(xs,0),1)
+    run_var_out(r0,array(xs,1),2)
+    run_var_out(r0,array(xs,2),3)
+    run_var_out(r0,array(xs,3),4)
+SATISFIABLE
+
+Models      : 1
+Time        : 23.330
+  Prepare   : 22.900
+  Prepro.   : 0.430
+  Solving   : 0.000
+

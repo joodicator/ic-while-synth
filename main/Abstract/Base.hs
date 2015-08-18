@@ -1,4 +1,5 @@
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax, OverloadedStrings,
+{-# LANGUAGE NoImplicitPrelude, RebindableSyntax, 
+OverloadedStrings,
              FlexibleInstances, UndecidableInstances, OverlappingInstances,
              DeriveDataTypeable #-}
 
@@ -276,11 +277,22 @@ instance Prelude.Eq a => Eq a where
     x /= y = fromBoolean $ x Prelude./= y
 
 instance Eq Int where
-    (ICon x) == (ICon y) = fromBoolean $ x Prelude.== y
-    x == y               = fromBoolean $ BInt $ BIBi BEq x y
+    ICon x == ICon y          = fromBoolean $ x Prelude.== y
+    IVar u == IVar v | u == v = true
+    x      == y               = fromBoolean $ BInt $ BIBi BEq x y
 
-    (ICon x) /= (ICon y) = fromBoolean $ x Prelude./= y
-    x /= y               = fromBoolean $ BInt $ BIBi BNE x y
+    ICon x /= ICon y          = fromBoolean $ x Prelude./= y
+    IVar u /= IVar v | u == v = false
+    x      /= y               = fromBoolean $ BInt $ BIBi BNE x y
+
+instance Eq a => Eq [a] where
+    (x:xs) == (y:ys) = x == y && xs == ys
+    []     == []     = true
+    _      == _      = false
+
+    (x:xs) /= (y:ys) = x /= y || xs /= ys
+    []     /= []     = false
+    _      /= _      = true
 
 --------------------------------------------------------------------------------
 -- Generalised Ord class.

@@ -23,7 +23,7 @@ main = do
     hSetBuffering stdout NoBuffering
     conf <- getConf
     learn State{
-        stLineCount = 1,
+        stLineCount = 0,
         stConf      = conf }
 
 getConf :: IO Conf

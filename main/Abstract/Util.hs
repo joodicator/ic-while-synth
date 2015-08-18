@@ -1,9 +1,11 @@
-{-# LANGUAGE TypeFamilies, OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE TypeFamilies, OverloadedStrings, GeneralizedNewtypeDeriving,
+             DeriveDataTypeable #-}
 
 module Abstract.Util(
     HsExpr, HsVar, HsInput(..),
-    haskellToBool, boolToPropASP
+    HaskellT, HaskellError(..), runHaskellT, haskellToBool, haskellToBoolT,
+    boolToPropASP
 ) where
 
 --------------------------------------------------------------------------------
@@ -15,10 +17,24 @@ import qualified ASP
 import qualified Logic
 import Util
 
-import Language.Haskell.Interpreter
+import Language.Haskell.Interpreter hiding (get)
+
+import Control.Monad.Catch
+import Data.Bifunctor
 
 import Control.Applicative
+import Control.Monad.State.Strict
 import Data.List
+import Data.Typeable
+
+--------------------------------------------------------------------------------
+-- Exception hierarchy.
+
+data HaskellError
+  = HaskellError{ getHaskellError :: String }
+  deriving (Typeable, Show)
+
+instance Exception HaskellError
 
 --------------------------------------------------------------------------------
 -- Information about operators in various contexts.
@@ -295,21 +311,51 @@ type HsExpr  = String
 type HsVar   = String
 data HsInput = HsScalar A.Int | HsArray [A.Int]
 
+newtype HaskellT m a
+  = HaskellT{ internalRunHaskellT :: InterpreterT (StateT Bool m) a }
+  deriving (Functor, Applicative, Monad, MonadIO,
+            MonadThrow, MonadCatch, MonadMask)
+
+instance MonadTrans HaskellT where
+    lift = HaskellT . lift . lift
+
+runHaskellT :: (Functor m, MonadIO m, MonadMask m) => HaskellT m a -> m a
+runHaskellT action = do
+    result <- evalStateT (runInterpreter $ internalRunHaskellT action) False
+    case result of
+        Left e  -> error $ "runHaskellT: " ++ showInterpreterError e
+        Right r -> return r
+
+-- Evaluate a single Haskell expression of type Abstract.Bool. If evaluating
+-- multiple expressions, it is more efficient to use haskellToBoolT.
 haskellToBool :: HsExpr -> [(HsVar, HsInput)] -> IO (Either String A.Bool)
-haskellToBool expr vars = do
-    result <- runInterpreter $ do
-        loadModules ["Abstract.Main"]
-        setImports  ["Abstract.Main"]
-        set [languageExtensions := [RebindableSyntax]]
-        interpret ("\\"++ sArgs ++" "++ aArgs ++" -> "++ expr) infer
-    return $ case result of
-        Left (UnknownError e) -> Left $ "Unknown error: " ++ e
-        Left (NotAllowed   e) -> Left $ "Not allowed: "   ++ e
-        Left (GhcException e) -> Left $ "GHC exception: " ++ e
-        Left (WontCompile es) -> Left $ unlines [e | GhcError e <- es]
-        Right lambda            -> Right $ lambda sIns aIns
+haskellToBool expr vars
+  = runHaskellT . fmap (first getHaskellError) . try $ haskellToBoolT expr vars
+
+-- Evaluate a Haskell expression of type Abstract.Bool in the HaskellT monad
+-- transformer. Use runHaskellT to obtain the result with a constant overhead.
+haskellToBoolT
+  :: (Functor m, MonadIO m, MonadMask m)
+  => HsExpr -> [(HsVar, HsInput)] -> HaskellT m A.Bool
+haskellToBoolT expr vars
+  = HaskellT . handle (throwM . HaskellError . showInterpreterError) $ do
+        setup <- lift $ get
+        unless setup $ do
+            loadModules ["Abstract.Main"]
+            setImports  ["Abstract.Main"]
+            set [languageExtensions := [RebindableSyntax]]
+            lift $ put True
+        f <- interpret ("\\"++ sArgs ++" "++ aArgs ++" -> "++ expr) infer
+        return $ f sIns aIns
   where
     (sVars,sIns) = unzip [(v,i) | (v, HsScalar i) <- vars]
     (aVars,aIns) = unzip [(v,i) | (v, HsArray  i) <- vars]
     sArgs = "["++ intercalate "," sVars ++"]"
-    aArgs = "["++ intercalate "," aVars ++"]" 
+    aArgs = "["++ intercalate "," aVars ++"]"    
+
+showInterpreterError :: InterpreterError -> String
+showInterpreterError e = case e of
+    UnknownError e' -> error $ "unknown error: " ++ e'
+    NotAllowed   e' -> error $ "not allowed: "   ++ e'
+    GhcException e' -> error $ "GHC exception: " ++ e'
+    WontCompile  es -> error $ unlines [e' | GhcError e' <- es]
