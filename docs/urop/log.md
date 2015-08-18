@@ -1,3 +1,15 @@
+# Tuesday 18 August 2015
+
+Considered how a number of example programs might be synthesised:
+
+1. *Reduced row echelon form* of matrices with entries in Z/pZ, the field of integers modulo a prime number, using Gauss-Jordan elimination. An implementation (in Python) with structure equal to what I believe the synthesiser would need to produce is given [here](https://github.com/JosephCrowe/ic-while-synth/blob/2a172aebfb037ce22c94e9a3909afca2dc4529e0/misc/gauss_jordan_modp.py).
+
+2. The shortest path between two nodes in a directed graph (where each edge weight is taken to be 1), given by an ajacenecy matrix, using a depth-first search with iterative deepening. As above, a relevant Python implementation is given [here](https://github.com/JosephCrowe/ic-while-synth/blob/2a172aebfb037ce22c94e9a3909afca2dc4529e0/misc/shortest_path.py).
+
+3. The *transitive closure* of a relation given by the adjacency matrix of the corresponding directed graph. An implementation in While syntax is given [here]().
+
+Relevant commits: [2a172ae](https://github.com/JosephCrowe/ic-while-synth/commit/2a172aebfb037ce22c94e9a3909afca2dc4529e0)
+
 # Monday 17 August 2015
 
 Implemented the ability to designate variables as *local* to a subroutine, meaning that they are saved to the stack whenever that subroutine calls another subroutine.
