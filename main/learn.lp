@@ -105,6 +105,9 @@ array(A,L)       :- array(A,L,_,_).
 elem_type(A,ET)  :- array(A,_,ET,_).
 index_type(A,IT) :- array(A,_,_,IT).
 
+value(A,C) :- value(T,C), elem_type(A,T).
+value(V,C) :- value(T,C), var_type(V,T).
+
 leaf(con(C))   :- con(C).
 leaf(var(V))   :- scalar_var(V).
 leaf(elem(A))  :- array(A).

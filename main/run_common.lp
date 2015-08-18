@@ -3,7 +3,9 @@
 %-------------------------------------------------------------------------------
 
 % Silence warnings for certain undefined predicates.
-local(never,never) :- local(never,never).
+local(-1,-1) :- main_sub(-1).
+main_sub(-1) :- value(-1,-1).
+value(-1,-1) :- local(-1,-1).
 
 % run_any if any test cases were specified.
 run_any :- in(_,_,_).
@@ -30,7 +32,7 @@ run_halt(R,T) :-
     run_line(R,T,L), T<time_max, not line(L), run_stack_depth(R,T,0),
     not run_fail(R).
 
-run_fail(R)      :- run_fail(R,_).
+run_fail(R) :- run_fail(R,_).
 
 % Identify failure due to timeout and stack overflow.
 run_fail(R,time_max,L,timeout) :-
@@ -60,17 +62,36 @@ line_set(L,array(A,I)) :-
 % returning from a subroutine call, leave them constant.
 run_var(R,T+1,X,C) :-
     run_line(R,T,L), line(L), not line_set(L,X),
-    run_var(R,T,X,C), int(C).
+    run_var(R,T,X,C).
 run_var(R,T+1,X,C) :-
     run_line(R,T,L), sub_line_instr(L,set(X,E)), scalar_var(X),
-    run_expr(R,T,E,C), int(C).
+    run_expr(R,T,E,C), int(R,X,C).
 run_var(R,T+1,array(A,I),C) :-
     run_line(R,T,L), sub_line_instr(L,set(array(A,IE),E)),
-    run_expr(R,T,IE,I), run_expr(R,T,E,C), run_var(R,array(A,I)).
+    run_expr(R,T,IE,I), run_expr(R,T,E,C),
+    run_var(R,array(A,I)), int(R,array(A,I),C).
 run_var(R,T+1,array(A,I),C) :-
     run_line(R,T,L), sub_line_instr(L,set(array(A,JE),_)),
     run_expr(R,T,JE,J), J!=I, I=0..Len-1, array(A,Len),
     run_var(R,T,array(A,I),C).
+
+int(R,V,C)            :- int(C), run_var(R,V), not any_value(R,V).
+int(R,V,C)            :- value(R,V,C).
+any_value(R,V)        :- value(R,V,_).
+value(R,array(A,I),C) :- run_var(R,array(A,I)), value(R,A,C).
+value(R,V,C)          :- value(V,C), run(R).
+
+run_fail(R,T,L,(var_overflow,C)) :-
+    run_line(R,T,L), sub_line_instr(L,set(V,E)), scalar_var(V),
+    run_expr(R,T,E,C), not int(R,V,C).
+
+run_fail(R,T,L,(var_overflow,C)) :-
+    run_line(R,T,L), sub_line_instr(L,set(array(A,IE),E)),
+    run_expr(R,T,IE,I), run_expr(R,T,E,C), not int(R,array(A,I),C).
+
+run_fail(R,T,L,(array_index,I)) :-
+    run_line(R,T,L), sub_line_instr(L,set(array(A,IE),_)),
+    run_expr(R,T,IE,I), not run_var(R,array(A,I)).
 
 % Identify expressions which evaluate to a legal result.
 run_expr_not_fail(R,T,E) :- run_expr(R,T,E,_).
