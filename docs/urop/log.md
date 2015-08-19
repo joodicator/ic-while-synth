@@ -1,3 +1,9 @@
+# Wednesday 19 August 2015
+
+With help from Mark Law, worked on making the synthesiser more efficient. We were able to improve the program simulator so that programs are evaluated entirely during grounding, affording a large performance increase.
+
+We also worked on reducing the complexity of the grounding of program learning tasks, but this is still a work in progress.
+
 # Tuesday 18 August 2015
 
 Considered how a number of example programs involving matrices might be synthesised:
