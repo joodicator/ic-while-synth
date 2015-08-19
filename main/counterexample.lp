@@ -21,7 +21,7 @@ output_var(array(A,I)) :- run_var(counter, array(A,I)), output_array(A).
 array(counter, A, L) :- counter_array(A, L).
 
 % Select values for input variables satisfying the precondition.
-0{ counter_in(V,C) : int(C) }1 :- input_var(V).
+1{ counter_in(V,C) : int(C), counter_in(V,unset) }1 :- input_var(V).
 :- counter_in(V,C), not int(counter,V,C).
 counter_in_any(V) :- counter_in(V,_).
 

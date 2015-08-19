@@ -541,7 +541,7 @@ findProgramASP exs node conf
           PostConditionExample{ exID=runID, exArrays=arraySizes } <- exs
           let bindings = aspBindings conf arraySizes
           let definedLits = [
-               "run_var_out_set" [fromString runID, vTerm]
+               ASP.LNot $ "run_var_out" [fromString runID, vTerm, "unset"]
                | (var,(Out,_,vTerm)) <- bindings, var `isFreeIn` postCond]
           let domain var = ASP.Body $ case lookup var bindings of {
               Just (In,  _, vTerm) ->

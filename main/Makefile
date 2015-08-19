@@ -4,6 +4,10 @@ GHCFLAGS := -O2 -hidir obj -odir obj
 bin/IterativeLearn:
 	ghc ${GHCFLAGS} -o $@ IterativeLearn.hs
 
+.PHONY: bin/Profile
+bin/Profile:
+	ghc ${GHCFLAGS} -o $@ Profile.hs
+
 .PHONY: clean
 clean:
 	rm -rf obj/*

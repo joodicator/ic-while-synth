@@ -33,37 +33,56 @@ run(R,T) :- run_line(R,T,L), T<time_max.
 % reaches the last instruction while the call stack is empty.
 run_halt(R,T) :-
     run_line(R,T,L), T<time_max, not line(L), run_stack_depth(R,T,0).
-:- run_fail(R,_).
-
-% Identify failure due to timeout and stack overflow.
-%run_fail(R,time_max,L,timeout) :-
-%    run_line(R,time_max,L).
-%run_fail(R,T,L,stack_overflow) :-
-%    run_line(R,T,L), run(R,T), not run(R,T+1), line_call(L).
+%:- run_fail(R,_).
 
 run_does_halt(R)     :- run_halt(R,_).
 run_does_not_halt(R) :- run(R), not run_does_halt(R).
 
 % run_var_out(R,X,C) if the final value of X in run R is C.
-run_var_out(R,X,C)     :- run_does_halt(R), run_var(R,T,X,C), run_halt(R,T).
-run_var_out(R,X,unset) :- run_does_halt(R), run_var(R,X), not run_var_out_set(R,X).
-run_var_out_set(R,X)   :- run_var_out(R,X,C), C != unset.
+run_var_out(R,X,C)   :- run_halt(R,T), run_var(R,T,X,C).
 
 %-------------------------------------------------------------------------------
 % Initialise variables to their input value, if any.
-run_var(R,0,X,C) :- in(R,X,C), int(C).
+run_var(R,0,X,C)     :- in(R,X,C), int(C).
+run_var(R,0,X,unset) :- not_any_in(R,X).
+not_any_in(R,X)      :- run_var(R,X), not any_in(R,X).
+any_in(R,X)          :- in(R,X,_).
 
 % Identify lines where a particular variable's value may change.
-line_set(L,X) :-
-    sub_line_instr(L,set(X,_)), scalar_var(X).
-line_set(L,array(A,I)) :-
-    sub_line_instr(L,set(array(A,_),_)), array(A,Len), I=0..Len-1.
+%line_set(L,X) :-
+%    sub_line_instr(L,set(X,_)), scalar_var(X).
+%line_set(L,array(A,I)) :-
+%    sub_line_instr(L,set(array(A,_),_)), array(A,Len), I=0..Len-1.
+
+not_line_set(L,X) :-
+    sub_line_instr(L,set(Y,_)), scalar_var(Y), scalar_var(X), Y != X.
+not_line_set(L,array(A, I)) :-
+    sub_line_instr(L,set(Y,_)), scalar_var(Y), array(A, Len), I = 0..Len-1.
+
+not_line_set(L,array(A,I)) :-
+    sub_line_instr(L,set(array(A2,_),_)), A2 != A, array(A,Len), I=0..Len-1.
+
+not_line_set(L,array(A,I)) :-
+    not_set(L), array(A, Len), I = 0..Len-1.
+
+not_line_set(L,V) :-
+    not_set(L), scalar_var(V).
+
+not_set(L) :- line_call(L).
+not_set(L) :- line_while(L).
+not_set(L) :- line_if(L).
+not_set(L) :- line_end_while(L).
+
 
 % On a set statement, update variables; otherwise, unless possibly
 % returning from a subroutine call, leave them constant.
 run_var(R,T+1,X,C) :-
-    run_line(R,T,L), line(L), not line_set(L,X),
+    run_line(R,T,L), line(L), not_line_set(L,X),
     run_var(R,T,X,C).
+run_var(R,T+1,X,C) :-
+    run_line(R,T,L), line(L), sub_line_instr(L,set(Y,_)),
+    run_var(R,T,X,C), X != Y, scalar_var(X).
+
 run_var(R,T+1,X,C) :-
     run_line(R,T,L), sub_line_instr(L,set(X,E)), scalar_var(X),
     run_expr(R,T,E,C), int(R,X,C).
@@ -75,6 +94,9 @@ run_var(R,T+1,array(A,I),C) :-
     run_line(R,T,L), sub_line_instr(L,set(array(A,JE),_)),
     run_expr(R,T,JE,J), J!=I, I=0..Len-1, array(A,Len),
     run_var(R,T,array(A,I),C).
+
+:- run_line(R,T,L), sub_line_instr(L,set(array(_,E),_)), run_expr(R,T,E,unset).
+:- run_line(R,T,L), sub_line_instr(L,set(_,         E)), run_expr(R,T,E,unset).
 
 % Enforce type-based and individual constraints on variable values.
 con(C)         :- con(C, _).
@@ -96,35 +118,20 @@ value(R,V,C)          :- value(V,C), run(R).
 value(A,C) :- value(T,C), elem_type(A,T).
 value(V,C) :- value(T,C), var_type(V,T).
 
-% Identify value-out-of-bounds errors.
-%run_fail(R,T,L,(var_overflow,C)) :-
-%    run_line(R,T,L), sub_line_instr(L,set(V,E)), scalar_var(V),
-%    run_expr(R,T,E,C), not int(R,V,C).
-
-%run_fail(R,T,L,(var_overflow,C)) :-
-%    run_line(R,T,L), sub_line_instr(L,set(array(A,IE),E)),
-%    run_expr(R,T,IE,I), run_expr(R,T,E,C), not int(R,array(A,I),C).
-
-%run_fail(R,T,L,(array_index,I)) :-
-%    run_line(R,T,L), sub_line_instr(L,set(array(A,IE),_)),
-%    run_expr(R,T,IE,I), not run_var(R,array(A,I)).
-
-% Identify expressions which evaluate to a legal result.
-run_expr_not_fail(R,T,E) :- run_expr(R,T,E,_).
-
-% Identify the time at which a run fails due to illegal arithmetic.
-run_fail(R,T,L,expr) :-
-    run_line(R,T,L), sub_line_instr(L,set(_,E)),
-    not run_expr_not_fail(R,T,E).
-
 %-------------------------------------------------------------------------------
 % Identify lines where execution may jump to a remote instruction.
-line_jump(L) :- sub_line_instr(L, if(_,_)).
-line_jump(L) :- sub_line_instr(L, while(_,_)).
-line_jump(L) :- sub_line_instr(L, end_while).
-line_jump(L) :- sub_line_instr(L, call(_)).
+not_line_jump(L) :- sub_line_instr(L, set(_, _)).
 
-line_call(L) :- sub_line_instr(L, call(_)).
+line_call(L)     :- sub_line_instr(L, call(_)).
+not_line_call(L) :- line_set(L).
+not_line_call(L) :- line_while(L).
+not_line_call(L) :- line_if(L).
+not_line_call(L) :- line_end_while(L).
+
+line_set(L) :- sub_line_instr(L, set(_, _)).
+line_while(L) :- sub_line_instr(L, while(_, _)).
+line_if(L) :- sub_line_instr(L, if(_, _)).
+line_end_while(L) :- sub_line_instr(L, end_while).
 
 % For efficiency, project out if/while parameters occurring at these lines.
 line_instr_if_guard(L, G)     :- sub_line_instr(L, if(G, _)).
@@ -138,14 +145,13 @@ run_line(R, 0, (P,1))    :- run(R), main_sub(P).
 run_stack_depth(R, 0, 0) :- run(R).
 
 any_main_sub  :- main_sub(_).
-run_fail(R,T) :- run_fail(R,T,_,_).
 
 run_line(R,T+1,(P,N+1)) :-
     run_line(R,T,(P,N)), line((P,N)),
-    not line_jump((P,N)).
+    not_line_jump((P,N)).
 
 run_stack_depth(R, T+1, D) :-
-    run_line(R,T,L), line(L), not line_call(L), run_stack_depth(R,T,D).
+    run_line(R,T,L), line(L), not_line_call(L), run_stack_depth(R,T,D).
 run_stack_line(R, T+1, I, IL) :-
     run_line(R,T,L), line(L), run_stack_line(R,T,I,IL).
 run_stack_var(R, T+1, I, IV, IC) :-
@@ -227,12 +233,3 @@ run_stack_line(R, T+1, I, IL) :-
 run_stack_var(R, T+1, I, IV, IC) :-
     run_line(R,T,L), not line(L), run_stack_depth(R,T,D), D > 1,
     I=0..D-2, run_stack_var(R,T,I,IV,IC).
-
-%-------------------------------------------------------------------------------
-% Identify the time at which a run fails due to an illegal guard.
-%run_fail(R,T,L,bool) :-
-%    run_line(R,T,L), line_instr_if_guard(L,B),
-%    not run_bool_not_fail(R,T,B).
-%run_fail(R,T,L,bool) :-
-%    run_line(R,T,L), line_instr_while_guard(L,B),
-%    not run_bool_not_fail(R,T,B).

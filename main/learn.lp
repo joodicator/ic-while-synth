@@ -301,72 +301,132 @@ bool(le(con(C), var(X))) :- leaf_type(var(X);con(C),T), allow(comparison,T),
 #include "run_common.lp".
 
 % Evaluate arithmetic expressions.
-run_leaf_expr(R,T,E,C) :-
-    E=con(C), int(C), expr(E), run(R,T).
+run_leaf_expr(con(C),C) :-
+    int(C), expr(con(C)).
+
 run_leaf_expr(R,T,E,C) :-
     E=var(V), var(V), expr(E), run_var(R,T,V,C).
 
-run_expr(R,T,E,C) :-
-    run_leaf_expr(R,T,E,C).
+run_expr(R,T,E,C) :- run_leaf_expr(R,T,E,C).
+run_expr(R,T,E,C) :- run_leaf_expr(E,C), run(R), T=0..time_max-1.
 
 run_expr(R,T,E,C) :-
     E=array(A,IE), expr(E), expr(IE),
-    run_leaf_expr(R,T,IE,I), run_var(R,T,array(A,I),C).
+    run_expr(R,T,IE,I), run_var(R,T,array(A,I),C).
+run_expr(R,T,array(A,IE),unset) :-
+    expr(array(A,IE)), expr(IE), run_expr(R,T,IE,unset).
 
 run_expr(R,T,E,C) :-
     E=add(E1,E2), expr(E),
+    run_leaf_expr(R,T,E1,C1), run_leaf_expr(E2,C2),
+    C1!=unset, C2!=unset, C == C1 + C2, int(C).
+run_expr(R,T,E,C) :-
+    E=add(E1,E2), expr(E),
+    run_leaf_expr(R,T,E1,C1), run_leaf_expr(E2,C2),
+    C1!=unset, C2!=unset, C == C1 + C2, int(C).
+
+run_expr(R,T,E,C) :-
+    E=sub(E1,E2), expr(E),
+    run_leaf_expr(E1,C1), run_leaf_expr(R,T,E2,C2),
+    C1 != unset, C2 != unset, C = C1 - C2, int(C).
+run_expr(R,T,E,C) :-
+    E=sub(E1,E2), expr(E),
+    run_leaf_expr(R,T,E1,C1), run_leaf_expr(E2,C2),
+    C1 != unset, C2 != unset, C = C1 - C2, int(C).
+
+run_expr(R,T,E,C) :-
+    E=mul(E1,E2), expr(E),
+    run_leaf_expr(R,T,E1,C1), run_leaf_expr(E2,C2),
+    C1 != unset, C2 != unset, C = C1 * C2, int(C).
+
+run_expr(R,T,E,C) :-
+    E=div(E1,E2), expr(E),
+    run_leaf_expr(E1,C1), run_leaf_expr(R,T,E2,C2),
+    C1 != unset, C2 != unset, C2 != 0, C = (C1 #div C2), int(C).
+run_expr(R,T,E,C) :-
+    E=div(E1,E2), expr(E),
+    run_leaf_expr(R,T,E1,C1), run_leaf_expr(E2,C2),
+    C1 != unset, C2 != unset, C2 != 0, C = (C1 #div C2), int(C).
+
+run_expr(R,T,E,C) :-
+    E=mod(E1,E2), expr(E),
+    run_leaf_expr(E1,C1), run_leaf_expr(R,T,E2,C2),
+    C1 != unset, C2 != unset, C2 != 0, C = (C1 #mod C2), int(C).
+run_expr(R,T,E,C) :-
+    E=mod(E1,E2), expr(E),
+    run_leaf_expr(R,T,E1,C1), run_leaf_expr(E2,C2),
+    C1 != unset, C2 != unset, C2 != 0, C = (C1 #mod C2), int(C).
+%--
+run_expr(R,T,add(E1,E2),unset) :- expr(add(E1,E2)), run_expr(R,T,E2,unset).
+run_expr(R,T,add(E1,E2),unset) :- expr(add(E1,E2)), run_expr(R,T,E1,unset).
+run_expr(R,T,add(E1,E2),unset) :- expr(add(E1,E2)), run_expr(R,T,E1,C1), run_expr(R,T,E2,C2), C1!=unset, C2!=unset, not int(C1+C2).
+
+run_expr(R,T,sub(E1,E2),unset) :- expr(sub(E1,E2)), run_expr(R,T,E2,unset).
+run_expr(R,T,sub(E1,E2),unset) :- expr(sub(E1,E2)), run_expr(R,T,E1,unset).
+run_expr(R,T,sub(E1,E2),unset) :- expr(sub(E1,E2)), run_expr(R,T,E1,C1), run_expr(R,T,E2,C2), C1!=unset, C2!=unset, not int(C1-C2).
+
+run_expr(R,T,mul(E1,E2),unset) :- expr(mul(E1,E2)), run_expr(R,T,E2,unset).
+run_expr(R,T,mul(E1,E2),unset) :- expr(mul(E1,E2)), run_expr(R,T,E1,unset).
+run_expr(R,T,mul(E1,E2),unset) :- expr(mul(E1,E2)), run_expr(R,T,E1,C1), run_expr(R,T,E2,C2), C1!=unset, C2!=unset, not int(C1*C2).
+
+run_expr(R,T,div(E1,E2),unset) :- expr(div(E1,E2)), run_expr(R,T,E2,unset).
+run_expr(R,T,div(E1,E2),unset) :- expr(div(E1,E2)), run_expr(R,T,E1,unset).
+run_expr(R,T,div(E1,E2),unset) :- expr(div(E1,E2)), run_expr(R,T,E1,C1), run_expr(R,T,E2,C2), C1!=unset, C2!=unset, not int(C1-C2).
+run_expr(R,T,div(E1,E2),unset) :- expr(div(E1,E2)), run_expr(R,T,E1,C1), run_expr(R,T,E2,0).
+
+run_expr(R,T,mod(E1,E2),unset) :- expr(mod(E1,E2)), run_expr(R,T,E2,unset).
+run_expr(R,T,mod(E1,E2),unset) :- expr(mod(E1,E2)), run_expr(R,T,E1,unset).
+run_expr(R,T,mod(E1,E2),unset) :- expr(mod(E1,E2)), run_expr(R,T,E1,C1), run_expr(R,T,E2,C2), C1!=unset, C2!=unset, not int(C1-C2).
+run_expr(R,T,mod(E1,E2),unset) :- expr(mod(E1,E2)), run_expr(R,T,E1,C1), run_expr(R,T,E2,0).
+
+%--
+run_expr(R,T,E,C) :-
+    E=add(E1,E2), expr(E),
     run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
-    C = C1 + C2, int(C).
+    C1 != unset, C2 != unset, C = C1 + C2, int(C).
 
 run_expr(R,T,E,C) :-
     E=sub(E1,E2), expr(E),
     run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
-    C = C1 - C2, int(C).
+    C1 != unset, C2 != unset, C = C1 - C2, int(C).
 
 run_expr(R,T,E,C) :-
     E=mul(E1,E2), expr(E),
     run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
-    C = C1 * C2, int(C).
+    C1 != unset, C2 != unset, C = C1 * C2, int(C).
 
 run_expr(R,T,E,C) :-
     E=div(E1,E2), expr(E),
     run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
-    C2 != 0, C = (C1 #div C2), int(C).
+    C1 != unset, C2 != unset, C2 != 0, C = (C1 #div C2), int(C).
 
 run_expr(R,T,E,C) :-
     E=mod(E1,E2), expr(E),
     run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
-    C2 != 0, C = (C1 #mod C2), int(C).
+    C1 != unset, C2 != unset, C2 != 0, C = (C1 #mod C2), int(C).
 
 % Evaluate boolean expressions.
 run_bool(R,T,B,true) :-
     B=lt(E1,E2), bool(B),
     run_leaf_expr(R,T,E1,C1),
     run_leaf_expr(R,T,E2,C2),
-    C1 < C2.
+    C1!=unset, C2!=unset, C1 < C2.
 
 run_bool(R,T,B,false) :-
     B=lt(E1,E2), bool(B),
     run_leaf_expr(R,T,E1,C1),
     run_leaf_expr(R,T,E2,C2),
-    C1 >= C2.
+    C1!=unset, C2!=unset, C1 >= C2.
 
 run_bool(R,T,B,true) :-
     B=le(E1,E2), bool(B),
     run_leaf_expr(R,T,E1,C1),
     run_leaf_expr(R,T,E2,C2),
-    C1 <= C2.
+    C1!=unset, C2!=unset, C1 <= C2.
 
 run_bool(R,T,B,false) :-
     B=le(E1,E2), bool(B),
     run_leaf_expr(R,T,E1,C1),
     run_leaf_expr(R,T,E2,C2),
-    C1 > C2.
+    C1!=unset, C2!=unset, C1 > C2.
 
-% Identify booleans which evaluate to a legal result.
-%run_bool_not_fail(R,T,B) :-
-%    B=lt(E1,E2), bool(B),
-%    run_expr(R,T,E1,_), run_expr(R,T,E2,_).
-%run_bool_not_fail(R,T,B) :-
-%    B=le(E1,E2), bool(B),
-%    run_expr(R,T,E1,_), run_expr(R,T,E2,_).

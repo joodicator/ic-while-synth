@@ -61,10 +61,10 @@
 %   run_var_out(R,V,C)    % In run R, the variable V ended with the value C.
 %   run_does_not_halt(R)  % Run R failed to halt, due to timeout, overflow, etc.
 
-#hide.
-#show run_var_out/3.
-#show run_does_not_halt/1.
-#show run_fail/4.
+%#hide.
+%#show run_var_out/3.
+%#show run_does_not_halt/1.
+%#show run_fail/4.
 
 %------------------------------------------------------------------------------- 
 % Silence certain warnings due to undefined predicates.
@@ -136,61 +136,78 @@ run_expr(R,T,E,C) :-
 run_expr(R,T,E,C) :-
     E=array(A,IE), run_expr_occurs(R,T,E),
     run_expr(R,T,IE,I), run_var(R,T,array(A,I),C).
+run_expr(R,T,array(A,IE),unset) :-
+    run_expr_occurs(R,T,array(A,IE)), run_expr(R,T,IE,unset).
 
 run_expr(R,T,E,C) :-
     E=add(E1,E2), run_expr_occurs(R,T,E),
     run_expr(R,T,E1,C1), run_expr(R,T,E2,C2),
-    C = C1 + C2, int(C).
+    C1!=unset, C2!=unset, C = C1 + C2, int(C).
 
 run_expr(R,T,E,C) :-
     E=sub(E1,E2), run_expr_occurs(R,T,E),
     run_expr(R,T,E1,C1), run_expr(R,T,E2,C2),
-    C = C1 - C2, int(C).
+    C1!=unset, C2!=unset, C = C1 - C2, int(C).
 
 run_expr(R,T,E,C) :-
     E=mul(E1,E2), run_expr_occurs(R,T,E),
     run_expr(R,T,E1,C1), run_expr(R,T,E2,C2),
-    C = C1 * C2, int(C).
+    C1!=unset, C2!=unset, C = C1 * C2, int(C).
 
 run_expr(R,T,E,C) :-
     E=div(E1,E2), run_expr_occurs(R,T,E),
     run_expr(R,T,E1,C1), run_expr(R,T,E2,C2),
-    C2 != 0, C = (C1 #div C2), int(C).
+    C1!=unset, C2!=unset, C2 != 0, C = (C1 #div C2), int(C).
 
 run_expr(R,T,E,C) :-
     E=mod(E1,E2), run_expr_occurs(R,T,E),
     run_expr(R,T,E1,C1), run_expr(R,T,E2,C2),
-    C2 != 0, C = (C1 #mod C2), int(C).
+    C1!=unset, C2!=unset, C2 != 0, C = (C1 #mod C2), int(C).
+
+run_expr(R,T,add(E1,E2),unset) :- run_expr_occurs(R,T,add(E1,E2)), run_expr(R,T,E2,unset).
+run_expr(R,T,add(E1,E2),unset) :- run_expr_occurs(R,T,add(E1,E2)), run_expr(R,T,E1,unset).
+run_expr(R,T,add(E1,E2),unset) :- run_expr_occurs(R,T,add(E1,E2)), run_expr(R,T,E1,C1), run_expr(R,T,E2,C2), C1!=unset, C2!=unset, not int(C1+C2).
+
+run_expr(R,T,sub(E1,E2),unset) :- run_expr_occurs(R,T,sub(E1,E2)), run_expr(R,T,E2,unset).
+run_expr(R,T,sub(E1,E2),unset) :- run_expr_occurs(R,T,sub(E1,E2)), run_expr(R,T,E1,unset).
+run_expr(R,T,sub(E1,E2),unset) :- run_expr_occurs(R,T,sub(E1,E2)), run_expr(R,T,E1,C1), run_expr(R,T,E2,C2), C1!=unset, C2!=unset, not int(C1-C2).
+
+run_expr(R,T,mul(E1,E2),unset) :- run_expr_occurs(R,T,mul(E1,E2)), run_expr(R,T,E2,unset).
+run_expr(R,T,mul(E1,E2),unset) :- run_expr_occurs(R,T,mul(E1,E2)), run_expr(R,T,E1,unset).
+run_expr(R,T,mul(E1,E2),unset) :- run_expr_occurs(R,T,mul(E1,E2)), run_expr(R,T,E1,C1), run_expr(R,T,E2,C2), C1!=unset, C2!=unset, not int(C1*C2).
+
+run_expr(R,T,div(E1,E2),unset) :- run_expr_occurs(R,T,div(E1,E2)), run_expr(R,T,E2,unset).
+run_expr(R,T,div(E1,E2),unset) :- run_expr_occurs(R,T,div(E1,E2)), run_expr(R,T,E1,unset).
+run_expr(R,T,div(E1,E2),unset) :- run_expr_occurs(R,T,div(E1,E2)), run_expr(R,T,E1,C1), run_expr(R,T,E2,C2), C1!=unset, C2!=unset, not int(C1-C2).
+run_expr(R,T,div(E1,E2),unset) :- run_expr_occurs(R,T,div(E1,E2)), run_expr(R,T,E1,C1), run_expr(R,T,E2,0).
+
+run_expr(R,T,mod(E1,E2),unset) :- run_expr_occurs(R,T,mod(E1,E2)), run_expr(R,T,E2,unset).
+run_expr(R,T,mod(E1,E2),unset) :- run_expr_occurs(R,T,mod(E1,E2)), run_expr(R,T,E1,unset).
+run_expr(R,T,mod(E1,E2),unset) :- run_expr_occurs(R,T,mod(E1,E2)), run_expr(R,T,E1,C1), run_expr(R,T,E2,C2), C1!=unset, C2!=unset, not int(C1-C2).
+run_expr(R,T,mod(E1,E2),unset) :- run_expr_occurs(R,T,mod(E1,E2)), run_expr(R,T,E1,C1), run_expr(R,T,E2,0).
+
 
 % Evaluate boolean expressions.
 run_bool(R,T,B,true) :-
     B=lt(E1,E2), run_bool_occurs(R,T,B),
     run_expr(R,T,E1,C1),
     run_expr(R,T,E2,C2),
-    C1 < C2.
+    C1!=unset, C2!=unset, C1 < C2.
 
 run_bool(R,T,B,false) :-
     B=lt(E1,E2), run_bool_occurs(R,T,B),
     run_expr(R,T,E1,C1),
     run_expr(R,T,E2,C2),
-    C1 >= C2.
+    C1!=unset, C2!=unset, C1 >= C2.
 
 run_bool(R,T,B,true) :-
     B=le(E1,E2), run_bool_occurs(R,T,B),
     run_expr(R,T,E1,C1),
     run_expr(R,T,E2,C2),
-    C1 <= C2.
+    C1!=unset, C2!=unset, C1 <= C2.
 
 run_bool(R,T,B,false) :-
     B=le(E1,E2), run_bool_occurs(R,T,B),
     run_expr(R,T,E1,C1),
     run_expr(R,T,E2,C2),
-    C1 > C2.
-
-% Identify booleans which evaluate to a legal result.
-%run_bool_not_fail(R,T,B) :-
-%    B=lt(E1,E2), run_bool_occurs(R,T,B),
-%    run_expr(R,T,E1,_), run_expr(R,T,E2,_).
-%run_bool_not_fail(R,T,B) :-
-%    B=le(E1,E2), run_bool_occurs(R,T,B),
-%    run_expr(R,T,E1,_), run_expr(R,T,E2,_).
+    C1!=unset, C2!=unset, C1 > C2.
