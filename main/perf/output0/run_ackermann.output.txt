@@ -1,0 +1,10 @@
+[jjc311@voxel20:~/ws/main]$ clingo perf/run_transpose_copy.lp 
+Answer: 1
+run_var_out(r,w,2) run_var_out(r,h,3) run_var_out(r,array(m,0),1) run_var_out(r,array(m,1),0) run_var_out(r,array(m,2),1) run_var_out(r,array(m,3),0) run_var_out(r,array(m,4),1) run_var_out(r,array(m,5),0) run_var_out(r,x,0) run_var_out(r,array(t,1),1) run_var_out(r,array(t,0),1) run_var_out(r,j,2) run_var_out(r,array(t,3),0) run_var_out(r,array(t,5),0) run_var_out(r,array(t,4),0) run_var_out(r,array(t,2),1) run_var_out(r,i,3) run_var_out(r,k,5) 
+SATISFIABLE
+
+Models      : 1     
+Time        : 7.460
+  Prepare   : 7.360
+  Prepro.   : 0.100
+  Solving   : 0.000
