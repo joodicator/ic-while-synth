@@ -163,22 +163,34 @@ run_expr(R,T,E,C) :-
     C2 != 0, C = (C1 #mod C2), int(C).
 
 % Evaluate boolean expressions.
-run_bool(R,T,B) :-
+run_bool(R,T,B,true) :-
     B=lt(E1,E2), run_bool_occurs(R,T,B),
     run_expr(R,T,E1,C1),
     run_expr(R,T,E2,C2),
     C1 < C2.
 
-run_bool(R,T,B) :-
+run_bool(R,T,B,false) :-
+    B=lt(E1,E2), run_bool_occurs(R,T,B),
+    run_expr(R,T,E1,C1),
+    run_expr(R,T,E2,C2),
+    C1 >= C2.
+
+run_bool(R,T,B,true) :-
     B=le(E1,E2), run_bool_occurs(R,T,B),
     run_expr(R,T,E1,C1),
     run_expr(R,T,E2,C2),
     C1 <= C2.
 
-% Identify booleans which evaluate to a legal result.
-run_bool_not_fail(R,T,B) :-
-    B=lt(E1,E2), run_bool_occurs(R,T,B),
-    run_expr(R,T,E1,_), run_expr(R,T,E2,_).
-run_bool_not_fail(R,T,B) :-
+run_bool(R,T,B,false) :-
     B=le(E1,E2), run_bool_occurs(R,T,B),
-    run_expr(R,T,E1,_), run_expr(R,T,E2,_).
+    run_expr(R,T,E1,C1),
+    run_expr(R,T,E2,C2),
+    C1 > C2.
+
+% Identify booleans which evaluate to a legal result.
+%run_bool_not_fail(R,T,B) :-
+%    B=lt(E1,E2), run_bool_occurs(R,T,B),
+%    run_expr(R,T,E1,_), run_expr(R,T,E2,_).
+%run_bool_not_fail(R,T,B) :-
+%    B=le(E1,E2), run_bool_occurs(R,T,B),
+%    run_expr(R,T,E1,_), run_expr(R,T,E2,_).

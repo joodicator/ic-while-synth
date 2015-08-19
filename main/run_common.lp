@@ -32,16 +32,14 @@ run(R,T) :- run_line(R,T,L), T<time_max.
 % run_halt(R,T) if test case R halts normally at time T: i.e. if execution
 % reaches the last instruction while the call stack is empty.
 run_halt(R,T) :-
-    run_line(R,T,L), T<time_max, not line(L), run_stack_depth(R,T,0),
-    not run_fail(R).
-
-run_fail(R) :- run_fail(R,_).
+    run_line(R,T,L), T<time_max, not line(L), run_stack_depth(R,T,0).
+:- run_fail(R,_).
 
 % Identify failure due to timeout and stack overflow.
-run_fail(R,time_max,L,timeout) :-
-    run_line(R,time_max,L).
-run_fail(R,T,L,stack_overflow) :-
-    run_line(R,T,L), run(R,T), not run(R,T+1), line_call(L).
+%run_fail(R,time_max,L,timeout) :-
+%    run_line(R,time_max,L).
+%run_fail(R,T,L,stack_overflow) :-
+%    run_line(R,T,L), run(R,T), not run(R,T+1), line_call(L).
 
 run_does_halt(R)     :- run_halt(R,_).
 run_does_not_halt(R) :- run(R), not run_does_halt(R).
@@ -99,17 +97,17 @@ value(A,C) :- value(T,C), elem_type(A,T).
 value(V,C) :- value(T,C), var_type(V,T).
 
 % Identify value-out-of-bounds errors.
-run_fail(R,T,L,(var_overflow,C)) :-
-    run_line(R,T,L), sub_line_instr(L,set(V,E)), scalar_var(V),
-    run_expr(R,T,E,C), not int(R,V,C).
+%run_fail(R,T,L,(var_overflow,C)) :-
+%    run_line(R,T,L), sub_line_instr(L,set(V,E)), scalar_var(V),
+%    run_expr(R,T,E,C), not int(R,V,C).
 
-run_fail(R,T,L,(var_overflow,C)) :-
-    run_line(R,T,L), sub_line_instr(L,set(array(A,IE),E)),
-    run_expr(R,T,IE,I), run_expr(R,T,E,C), not int(R,array(A,I),C).
+%run_fail(R,T,L,(var_overflow,C)) :-
+%    run_line(R,T,L), sub_line_instr(L,set(array(A,IE),E)),
+%    run_expr(R,T,IE,I), run_expr(R,T,E,C), not int(R,array(A,I),C).
 
-run_fail(R,T,L,(array_index,I)) :-
-    run_line(R,T,L), sub_line_instr(L,set(array(A,IE),_)),
-    run_expr(R,T,IE,I), not run_var(R,array(A,I)).
+%run_fail(R,T,L,(array_index,I)) :-
+%    run_line(R,T,L), sub_line_instr(L,set(array(A,IE),_)),
+%    run_expr(R,T,IE,I), not run_var(R,array(A,I)).
 
 % Identify expressions which evaluate to a legal result.
 run_expr_not_fail(R,T,E) :- run_expr(R,T,E,_).
@@ -144,7 +142,7 @@ run_fail(R,T) :- run_fail(R,T,_,_).
 
 run_line(R,T+1,(P,N+1)) :-
     run_line(R,T,(P,N)), line((P,N)),
-    not line_jump((P,N)), not run_fail(R,T).
+    not line_jump((P,N)).
 
 run_stack_depth(R, T+1, D) :-
     run_line(R,T,L), line(L), not line_call(L), run_stack_depth(R,T,D).
@@ -155,20 +153,21 @@ run_stack_var(R, T+1, I, IV, IC) :-
 
 % Run if statements.
 run_line(R,T+1,(P,N+1)) :-
-    run(R,T), run_line(R,T,(P,N)), line_instr_if_guard((P,N),B), run_bool(R,T,B).
+    run(R,T), run_line(R,T,(P,N)), line_instr_if_guard((P,N),B),
+    run_bool(R,T,B,true).
 run_line(R,T+1,(P,N+BodyLength+1)) :-
     run(R,T), run_line(R,T,(P,N)), sub_line_instr((P,N),if(B,BodyLength)),
-    not run_bool(R,T,B).
+    run_bool(R,T,B,false).
 
 % Run while loops.
 run_line(R,T+1,(P,N+1)) :-
     % Boolean guard is true upon (re-)entering loop.
     run(R,T), run_line(R,T,(P,N)), line_instr_while_guard((P,N),B),
-    run_bool(R,T,B).
+    run_bool(R,T,B,true).
 run_line(R,T+1,(P,N+BodyLength+2)) :-
     % Boolean guard is false upon (re-)entering loop.
     run(R,T), run_line(R,T,(P,N)), sub_line_instr((P,N),while(B,BodyLength)),
-    not run_bool(R,T,B).
+    run_bool(R,T,B,false).
 run_line(R,T+1,(P,HeadLine)) :-
     % Re-enter loop after reaching end_while.
     run(R,T), run_line(R,T,(P,N)), sub_line_instr((P,N),end_while),
@@ -231,9 +230,9 @@ run_stack_var(R, T+1, I, IV, IC) :-
 
 %-------------------------------------------------------------------------------
 % Identify the time at which a run fails due to an illegal guard.
-run_fail(R,T,L,bool) :-
-    run_line(R,T,L), line_instr_if_guard(L,B),
-    not run_bool_not_fail(R,T,B).
-run_fail(R,T,L,bool) :-
-    run_line(R,T,L), line_instr_while_guard(L,B),
-    not run_bool_not_fail(R,T,B).
+%run_fail(R,T,L,bool) :-
+%    run_line(R,T,L), line_instr_if_guard(L,B),
+%    not run_bool_not_fail(R,T,B).
+%run_fail(R,T,L,bool) :-
+%    run_line(R,T,L), line_instr_while_guard(L,B),
+%    not run_bool_not_fail(R,T,B).
