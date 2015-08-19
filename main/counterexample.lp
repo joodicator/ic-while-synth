@@ -21,10 +21,11 @@ output_var(array(A,I)) :- run_var(counter, array(A,I)), output_array(A).
 array(counter, A, L) :- counter_array(A, L).
 
 % Select values for input variables satisfying the precondition.
-0{ counter_in(V, C) : int(counter,V,C) }1 :- input_var(V).
+0{ counter_in(V,C) : int(C) }1 :- input_var(V).
+:- counter_in(V,C), not int(counter,V,C).
 counter_in_any(V) :- counter_in(V,_).
 
-% Select values for expected output values satisfying the postcondition.
+% Select expected output values satisfying the postcondition.
 0{ any_expected }1.
 1{ expect(V, C) : int(C) }1 :- output_var(V), any_expected.
 
@@ -41,5 +42,5 @@ any_actual_var(V) :- counter_out(V, C), C != unset, output_var(V).
 in(counter, V, C) :- counter_in(V, C).
 counter_out(V, C) :- run_var_out(counter, V, C).
 counter_halt :- run_does_halt(counter).
-var(V) :- input_var(V).
-var(V) :- output_var(V).
+run_var(counter, V) :- input_var(V).
+run_var(counter, V) :- output_var(V).

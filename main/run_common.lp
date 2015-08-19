@@ -3,9 +3,12 @@
 %-------------------------------------------------------------------------------
 
 % Silence warnings for certain undefined predicates.
-local(-1,-1) :- main_sub(-1).
-main_sub(-1) :- value(-1,-1).
-value(-1,-1) :- local(-1,-1).
+local(-1,-1)       :- main_sub(-1).
+main_sub(-1)       :- value(-1,-1).
+value(-1,-1)       :- con(-1,-1).
+con(-1,-1)         :- var(-1,-1).
+var(-1,-1)         :- array(-1,-1,-1,-1).
+array(-1,-1,-1,-1) :- local(-1,-1).
 
 % run_any if any test cases were specified.
 run_any :- in(_,_,_).
@@ -75,12 +78,27 @@ run_var(R,T+1,array(A,I),C) :-
     run_expr(R,T,JE,J), J!=I, I=0..Len-1, array(A,Len),
     run_var(R,T,array(A,I),C).
 
+% Enforce type-based and individual constraints on variable values.
+con(C)         :- con(C, _).
+con_type(C, T) :- con(C, T).
+
+var(V)         :- var(V, _).
+var_type(V, T) :- var(V, T).
+
+array(A)         :- array(A,_).
+array(A,L)       :- array(A,L,_,_).
+elem_type(A,ET)  :- array(A,_,ET,_).
+index_type(A,IT) :- array(A,_,_,IT).
+
 int(R,V,C)            :- int(C), run_var(R,V), not any_value(R,V).
 int(R,V,C)            :- value(R,V,C).
 any_value(R,V)        :- value(R,V,_).
 value(R,array(A,I),C) :- run_var(R,array(A,I)), value(R,A,C).
 value(R,V,C)          :- value(V,C), run(R).
+value(A,C) :- value(T,C), elem_type(A,T).
+value(V,C) :- value(T,C), var_type(V,T).
 
+% Identify value-out-of-bounds errors.
 run_fail(R,T,L,(var_overflow,C)) :-
     run_line(R,T,L), sub_line_instr(L,set(V,E)), scalar_var(V),
     run_expr(R,T,E,C), not int(R,V,C).
