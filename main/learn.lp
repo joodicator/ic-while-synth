@@ -305,7 +305,7 @@ run_leaf_expr(con(C),C) :-
     int(C), expr(con(C)).
 
 run_leaf_expr(R,T,E,C) :-
-    E=var(V), var(V), expr(E), run_var(R,T,V,C).
+    E=var(V), run_var(R,V), expr(E), run_var(R,T,V,C).
 
 run_expr(R,T,E,C) :- run_leaf_expr(R,T,E,C).
 run_expr(R,T,E,C) :- run_leaf_expr(E,C), run(R), T=0..time_max-1.
@@ -315,6 +315,9 @@ run_expr(R,T,E,C) :-
     run_expr(R,T,IE,I), run_var(R,T,array(A,I),C).
 run_expr(R,T,array(A,IE),unset) :-
     expr(array(A,IE)), expr(IE), run_expr(R,T,IE,unset).
+run_expr(R,T,array(A,IE),unset) :-
+    expr(array(A,IE)), expr(IE), run_expr(R,T,IE,I),
+    not run_var(R,array(A,I)).
 
 run_expr(R,T,E,C) :-
     E=add(E1,E2), expr(E),

@@ -130,14 +130,16 @@ run_expr(R,T,con(C),C) :-
     run_expr_occurs(R,T,con(C)).
 
 run_expr(R,T,E,C) :-
-    E=var(V), run_expr_occurs(R,T,E),
-    run_var(R,T,V,C).
+    E=var(V), run_expr_occurs(R,T,E), run_var(R,T,V,C).
 
 run_expr(R,T,E,C) :-
     E=array(A,IE), run_expr_occurs(R,T,E),
     run_expr(R,T,IE,I), run_var(R,T,array(A,I),C).
 run_expr(R,T,array(A,IE),unset) :-
     run_expr_occurs(R,T,array(A,IE)), run_expr(R,T,IE,unset).
+run_expr(R,T,array(A,IE),unset) :-
+    run_expr_occurs(R,T,array(A,IE)), run_expr(R,T,IE,I),
+    not run_var(R,array(A,I)).
 
 run_expr(R,T,E,C) :-
     E=add(E1,E2), run_expr_occurs(R,T,E),

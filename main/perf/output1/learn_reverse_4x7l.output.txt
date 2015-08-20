@@ -1,0 +1,25 @@
+[jjc311@voxel01:~/ws/main]$ time clingo perf/learn_reverse_4x7l.lp | ./format
+Answer: 1
+    sub swap():
+       1. swap = xs[i]
+       2. xs[i] = xs[j]
+       3. xs[j] = swap
+    sub main():
+       1. j = len_xs
+       2. i = len_xs - j
+       3. while (i < j):
+       4.     j = j - 1
+       5.     swap()
+       6.     i = len_xs - j
+       7. end_while
+SATISFIABLE
+
+Models      : 1+
+Time        : 856.690
+  Prepare   : 3.240
+  Prepro.   : 1.770
+  Solving   : 851.680
+
+real    14m17.735s
+user    14m16.951s
+sys     0m1.028s

@@ -49,22 +49,17 @@ not_any_in(R,X)      :- run_var(R,X), not any_in(R,X).
 any_in(R,X)          :- in(R,X,_).
 
 % Identify lines where a particular variable's value may change.
-%line_set(L,X) :-
-%    sub_line_instr(L,set(X,_)), scalar_var(X).
-%line_set(L,array(A,I)) :-
-%    sub_line_instr(L,set(array(A,_),_)), array(A,Len), I=0..Len-1.
-
 not_line_set(L,X) :-
     sub_line_instr(L,set(Y,_)), scalar_var(Y), scalar_var(X), Y != X.
+not_line_set(L,X) :-
+    sub_line_instr(L,set(array(_,_),_)), scalar_var(X).
 not_line_set(L,array(A, I)) :-
     sub_line_instr(L,set(Y,_)), scalar_var(Y), array(A, Len), I = 0..Len-1.
-
 not_line_set(L,array(A,I)) :-
     sub_line_instr(L,set(array(A2,_),_)), A2 != A, array(A,Len), I=0..Len-1.
 
 not_line_set(L,array(A,I)) :-
     not_set(L), array(A, Len), I = 0..Len-1.
-
 not_line_set(L,V) :-
     not_set(L), scalar_var(V).
 
@@ -73,16 +68,7 @@ not_set(L) :- line_while(L).
 not_set(L) :- line_if(L).
 not_set(L) :- line_end_while(L).
 
-
-% On a set statement, update variables; otherwise, unless possibly
-% returning from a subroutine call, leave them constant.
-run_var(R,T+1,X,C) :-
-    run_line(R,T,L), line(L), not_line_set(L,X),
-    run_var(R,T,X,C).
-run_var(R,T+1,X,C) :-
-    run_line(R,T,L), line(L), sub_line_instr(L,set(Y,_)),
-    run_var(R,T,X,C), X != Y, scalar_var(X).
-
+% On a set statement, update variables.
 run_var(R,T+1,X,C) :-
     run_line(R,T,L), sub_line_instr(L,set(X,E)), scalar_var(X),
     run_expr(R,T,E,C), int(R,X,C).
@@ -90,10 +76,13 @@ run_var(R,T+1,array(A,I),C) :-
     run_line(R,T,L), sub_line_instr(L,set(array(A,IE),E)),
     run_expr(R,T,IE,I), run_expr(R,T,E,C),
     run_var(R,array(A,I)), int(R,array(A,I),C).
+
+% Frame axiom to preserve variable values not involved in a 'set' instruction.
 run_var(R,T+1,array(A,I),C) :-
-    run_line(R,T,L), sub_line_instr(L,set(array(A,JE),_)),
-    run_expr(R,T,JE,J), J!=I, I=0..Len-1, array(A,Len),
-    run_var(R,T,array(A,I),C).
+    array(R,A,Len), I=0..Len-1, I != J, run_var(R,T,array(A,I),C),
+    run_line(R,T,L), sub_line_instr(L,set(array(A,JE),_)), run_expr(R,T,JE,J).
+run_var(R,T+1,X,C) :-
+    run_line(R,T,L), line(L), not_line_set(L,X), run_var(R,T,X,C).
 
 :- run_line(R,T,L), sub_line_instr(L,set(array(_,E),_)), run_expr(R,T,E,unset).
 :- run_line(R,T,L), sub_line_instr(L,set(_,         E)), run_expr(R,T,E,unset).
@@ -122,15 +111,15 @@ value(V,C) :- value(T,C), var_type(V,T).
 % Identify lines where execution may jump to a remote instruction.
 not_line_jump(L) :- sub_line_instr(L, set(_, _)).
 
-line_call(L)     :- sub_line_instr(L, call(_)).
 not_line_call(L) :- line_set(L).
 not_line_call(L) :- line_while(L).
 not_line_call(L) :- line_if(L).
 not_line_call(L) :- line_end_while(L).
 
-line_set(L) :- sub_line_instr(L, set(_, _)).
-line_while(L) :- sub_line_instr(L, while(_, _)).
-line_if(L) :- sub_line_instr(L, if(_, _)).
+line_call(L)      :- sub_line_instr(L, call(_)).
+line_set(L)       :- sub_line_instr(L, set(_, _)).
+line_while(L)     :- sub_line_instr(L, while(_, _)).
+line_if(L)        :- sub_line_instr(L, if(_, _)).
 line_end_while(L) :- sub_line_instr(L, end_while).
 
 % For efficiency, project out if/while parameters occurring at these lines.
