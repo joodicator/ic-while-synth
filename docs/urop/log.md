@@ -1,8 +1,18 @@
+# Thursday 20 August 2015
+
+Did further work on optimising the ASP of the program synthesiser. Achieved a reduced grounding size compared to the initial case, but still working on improving the solving time.
+
+Also updated the ASP grounding profiling tool `Profile.hs` to break down the grounding by type of (ground) rule body in addition to by head, and to handle large groundings quickly.
+
+Relevant commits: [3c8d138](https://github.com/JosephCrowe/ic-while-synth/commit/3c8d13838e84cc8ded81d4c349d9dc8fc22cde72)
+
 # Wednesday 19 August 2015
 
 With help from Mark Law, worked on making the synthesiser more efficient. We were able to improve the program simulator so that programs are evaluated entirely during grounding, affording a large performance increase.
 
 We also worked on reducing the complexity of the grounding of program learning tasks, but this is still a work in progress.
+
+Relevant commits: [3f3211e](https://github.com/JosephCrowe/ic-while-synth/commit/3f3211e635e5f42617185c00e952b1f881fc6c80) [6d3201d](https://github.com/JosephCrowe/ic-while-synth/commit/6d3201d17b5ac84931ff96671949a15030903b64)
 
 # Tuesday 18 August 2015
 
