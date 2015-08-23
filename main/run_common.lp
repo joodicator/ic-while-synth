@@ -32,7 +32,7 @@ run(R,T) :- run_line(R,T,L), T<time_max.
 % run_halt(R,T) if test case R halts normally at time T: i.e. if execution
 % reaches the last instruction while the call stack is empty.
 run_halt(R,T) :-
-    run_line(R,T,L), T<time_max, not line(L), run_stack_depth(R,T,0).
+    run_not_line(R,T), T<time_max, run_stack_depth(R,T,0).
 %:- run_fail(R,_).
 
 run_does_halt(R)     :- run_halt(R,_).
@@ -50,13 +50,15 @@ any_in(R,X)          :- in(R,X,_).
 
 % Identify lines where a particular variable's value may change.
 not_line_set(L,X) :-
-    sub_line_instr(L,set(Y,_)), scalar_var(Y), scalar_var(X), Y != X.
+    var_set_at_line(L, scalar_var(Y)), scalar_var(X), Y != X.
 not_line_set(L,X) :-
-    sub_line_instr(L,set(array(_,_),_)), scalar_var(X).
+    var_set_at_line(L, array(_)), scalar_var(X).
 not_line_set(L,array(A, I)) :-
-    sub_line_instr(L,set(Y,_)), scalar_var(Y), array(A, Len), I = 0..Len-1.
+    var_set_at_line(L, scalar_var(Y)), array(A, Len), I=0..Len-1.
 not_line_set(L,array(A,I)) :-
-    sub_line_instr(L,set(array(A2,_),_)), A2 != A, array(A,Len), I=0..Len-1.
+    var_set_at_line(L, array(A2)), A2 != A, array(A,Len), I=0..Len-1.
+
+
 
 not_line_set(L,array(A,I)) :-
     not_set(L), array(A, Len), I = 0..Len-1.
@@ -68,24 +70,25 @@ not_set(L) :- line_while(L).
 not_set(L) :- line_if(L).
 not_set(L) :- line_end_while(L).
 
-% On a set statement, update variables.
-run_var(R,T+1,X,C) :-
-    run_line(R,T,L), sub_line_instr(L,set(X,E)), scalar_var(X),
-    run_expr(R,T,E,C), int(R,X,C).
-run_var(R,T+1,array(A,I),C) :-
-    run_line(R,T,L), sub_line_instr(L,set(array(A,IE),E)),
-    run_expr(R,T,IE,I), run_expr(R,T,E,C),
-    run_var(R,array(A,I)), int(R,array(A,I),C).
+
 
 % Frame axiom to preserve variable values not involved in a 'set' instruction.
+%run_var(R,T+1,array(A,I),C) :-
+%    array(R,A,Len), I=0..Len-1, I != J, run_var(R,T,array(A,I),C),
+%    current_line_instr(R,T,set(array(A,JE),_)), run_expr(R,T,JE,J).
 run_var(R,T+1,array(A,I),C) :-
     array(R,A,Len), I=0..Len-1, I != J, run_var(R,T,array(A,I),C),
-    run_line(R,T,L), sub_line_instr(L,set(array(A,JE),_)), run_expr(R,T,JE,J).
+    %current_line_instr(R,T,set(array(A,JE),_)), run_expr(R,T,JE,J).
+    set_lhs(R,T,array(A,J)).
+
+
 run_var(R,T+1,X,C) :-
     run_line(R,T,L), line(L), not_line_set(L,X), run_var(R,T,X,C).
 
-:- run_line(R,T,L), sub_line_instr(L,set(array(_,E),_)), run_expr(R,T,E,unset).
-:- run_line(R,T,L), sub_line_instr(L,set(_,         E)), run_expr(R,T,E,unset).
+
+:- set_rhs(R, T, unset).
+:- set_lhs(R, T, array(_,unset)).
+
 
 % Enforce type-based and individual constraints on variable values.
 con(C)         :- con(C, _).
@@ -115,6 +118,7 @@ not_line_call(L) :- line_set(L).
 not_line_call(L) :- line_while(L).
 not_line_call(L) :- line_if(L).
 not_line_call(L) :- line_end_while(L).
+not_line_call(R, T) :- run_line(R,T,L), not_line_call(L).
 
 line_call(L)      :- sub_line_instr(L, call(_)).
 line_set(L)       :- sub_line_instr(L, set(_, _)).
@@ -140,11 +144,11 @@ run_line(R,T+1,(P,N+1)) :-
     not_line_jump((P,N)).
 
 run_stack_depth(R, T+1, D) :-
-    run_line(R,T,L), line(L), not_line_call(L), run_stack_depth(R,T,D).
+    not_line_call(R, T), run_stack_depth(R,T,D).
 run_stack_line(R, T+1, I, IL) :-
-    run_line(R,T,L), line(L), run_stack_line(R,T,I,IL).
+    run_line_projection(R,T), run_stack_line(R,T,I,IL).
 run_stack_var(R, T+1, I, IV, IC) :-
-    run_line(R,T,L), line(L), run_stack_var(R,T,I,IV,IC).
+    run_line_projection(R,T), run_stack_var(R,T,I,IV,IC).
 
 % Run if statements.
 run_line(R,T+1,(P,N+1)) :-
@@ -173,12 +177,12 @@ run_line(R,T+1,(P,HeadLine)) :-
 % Run subroutine calls.
 
 run_line(R,T+1,(Q,1)) :-
-    run(R,T), run_line(R,T,L), sub_line_instr(L,call(Q)),
+    run(R,T), current_line_instr(R,T,call(Q)),
     run_stack_depth(R,T,D), D < stack_max.
 
 % Increment the stack depth.
 run_stack_depth(R, T+1, D+1) :-
-    run_line(R,T,L), line_call(L), run_stack_depth(R,T,D), D < stack_max.
+    run_line_call_projection(R,T), run_stack_depth(R,T,D), D < stack_max.
 
 % Save the current line index to the stack.
 run_stack_line(R, T+1, D, L) :-
@@ -194,31 +198,66 @@ run_stack_var(R, T+1, D, V, C) :-
 
 % Decrement the stack depth.
 run_stack_depth(R, T+1, D-1) :-
-    run_line(R,T,L), not line(L), run_stack_depth(R,T,D), D > 0.
+    run_not_line(R,T), run_stack_depth(R,T,D), D > 0.
 
 % Restore and increment the caller's line index.
 run_line(R, T+1, (RetP,RetN+1)) :-
-    run(R,T), run_line(R,T,L), not line(L), run_stack_depth(R,T,D), D > 0,
+    run(R,T), run_not_line(R,T), run_stack_depth(R,T,D), D > 0,
     run_stack_line(R,T,D-1,(RetP,RetN)).
 
 % Restore values of variables saved on the stack.
 run_var(R, T+1, V, C) :-
-    run_line(R,T,L), not line(L), run_stack_depth(R,T,D), D > 0,
+    run_not_line(R,T), run_stack_depth(R,T,D), D > 0,
     run_stack_var(R,T,D-1,V,C).
 
 % Preserve values of variables not saved on the stack.
 run_var(R, T+1, V, C) :-
-    run_line(R,T,L), not line(L), run_stack_depth(R,T,D), D > 0,
+    run_not_line(R,T), run_stack_depth(R,T,D), D > 0,
     run_stack_line(R,T,D-1,(ReturnP,_)), not local(ReturnP,V),
     run_var(R,T,V,C).
 run_var(R, T+1, V, C) :-
-    run_line(R,T,L), not line(L), run_stack_depth(R,T,0),
+    run_not_line(R,T), run_stack_depth(R,T,0),
     run_var(R,T,V,C).
 
 % Preserve any other stack entries.
 run_stack_line(R, T+1, I, IL) :-
-    run_line(R,T,L), not line(L), run_stack_depth(R,T,D), D > 1,
+    run_not_line(R,T), run_stack_depth(R,T,D), D > 1,
     I=0..D-2, run_stack_line(R,T,I,IL).
 run_stack_var(R, T+1, I, IV, IC) :-
-    run_line(R,T,L), not line(L), run_stack_depth(R,T,D), D > 1,
+    run_not_line(R,T), run_stack_depth(R,T,D), D > 1,
     I=0..D-2, run_stack_var(R,T,I,IV,IC).
+
+
+%-------------------------------------------------------------------------------
+% Mark's new rules.
+
+current_line_instr(R, T, LI) :- run_line(R,T,(P,N)), sub_line_instr((P,N),LI).
+
+
+var_set_at_line(L,array(A)) :-
+  sub_line_instr(L,set(array(A,_),_)).
+
+var_set_at_line(L,scalar_var(Y)) :-
+  sub_line_instr(L,set(Y,_)), scalar_var(Y).
+
+run_not_line(R, T) :-
+  run_line(R, T, L), not line(L).
+
+run_line_projection(R, T) :- run_line(R, T, L), line(L).
+
+
+run_line_call_projection(R, T) :- run_line(R,T,L), line_call(L).
+
+
+run_var(R,T+1,V,C) :-
+  set_lhs(R, T, V), run_var(R, V), set_rhs(R, T, C), int(R,V,C).
+
+set_lhs(R, T, array(A, I)) :-
+  current_line_instr(R,T,set(array(A,IE),_)), run_expr(R,T,IE,I).
+
+set_lhs(R,T,X) :-
+  current_line_instr(R,T,set(X,_)), scalar_var(X).
+
+set_rhs(R, T, C) :-
+  current_line_instr(R,T,set(_,E)),
+  run_expr(R,T,E,C).

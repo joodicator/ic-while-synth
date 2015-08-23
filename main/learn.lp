@@ -1,3 +1,15 @@
+#begin_lua
+
+function maybe_num(value, default)
+    if Val.type(value) ~= Val.NUM then
+        return default;
+    else
+        return value;
+    end
+end
+
+#end_lua.
+
 % The following constants MUST be defined in file before this one:
 % #const time_max=TM.   % Maximum time steps to simulate before failure.
 % #const int_min=IMN.   % Minimum integer allowed to exist.
@@ -39,7 +51,7 @@
 #hide.
 #show sub_line_instr/2.
 
-#include "utility.lp".
+%#include "utility.lp".
 
 %-------------------------------------------------------------------------------
 % Silence certain warnings for undefined predicates:
@@ -345,7 +357,7 @@ run_expr(R,T,E,C) :-
 run_expr(R,T,E,C) :-
     E=div(E1,E2), expr(E),
     run_leaf_expr(E1,C1), run_leaf_expr(R,T,E2,C2),
-    C1 != unset, C2 != unset, C2 != 0, C = (C1 #div C2), int(C).
+    C1 != unset, C2 != unset, int(C1), int(C2), C2 != 0, C = (C1 #div C2), int(C).
 run_expr(R,T,E,C) :-
     E=div(E1,E2), expr(E),
     run_leaf_expr(R,T,E1,C1), run_leaf_expr(E2,C2),
@@ -354,7 +366,7 @@ run_expr(R,T,E,C) :-
 run_expr(R,T,E,C) :-
     E=mod(E1,E2), expr(E),
     run_leaf_expr(E1,C1), run_leaf_expr(R,T,E2,C2),
-    C1 != unset, C2 != unset, C2 != 0, C = (C1 #mod C2), int(C).
+    C1 != unset, C2 != unset, C2 != 0, int(C1), int(C2), C = (C1 #mod C2), int(C).
 run_expr(R,T,E,C) :-
     E=mod(E1,E2), expr(E),
     run_leaf_expr(R,T,E1,C1), run_leaf_expr(E2,C2),
@@ -401,12 +413,12 @@ run_expr(R,T,E,C) :-
 run_expr(R,T,E,C) :-
     E=div(E1,E2), expr(E),
     run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
-    C1 != unset, C2 != unset, C2 != 0, C = (C1 #div C2), int(C).
+    int(C1), int(C2), C1 != unset, C2 != unset, C2 != 0, C = (C1 #div C2), int(C).
 
 run_expr(R,T,E,C) :-
     E=mod(E1,E2), expr(E),
     run_leaf_expr(R,T,E1,C1), run_leaf_expr(R,T,E2,C2),
-    C1 != unset, C2 != unset, C2 != 0, C = (C1 #mod C2), int(C).
+    int(C1), int(C2), C1 != unset, C2 != unset, C2 != 0, C = (C1 #mod C2), int(C).
 
 % Evaluate boolean expressions.
 run_bool(R,T,B,true) :-
