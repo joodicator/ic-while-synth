@@ -1,3 +1,7 @@
+# Friday 21 August 2015
+
+With a view to implementing a prototype web interface for an educational tool using the system, examined an existing implementation of a web portal used to teach ILP systems at Imperial College London.
+
 # Thursday 20 August 2015
 
 Did further work on optimising the ASP of the program synthesiser. Achieved a reduced grounding size compared to the initial case, but still working on improving the solving time.
